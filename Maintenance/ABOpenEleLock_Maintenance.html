@@ -1,0 +1,355 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<style></style>
+<title>应急开锁</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+	
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+	/*
+	 * 界面显示小键盘
+	 */
+	function ShowKeyboard(){
+		try{top.inputmethod.ShowDigit(820,570);}catch(e){}
+	}
+	//关闭小键盘
+	function closeKeyboard(){
+		try{top.inputmethod.Close();}catch(e){}
+	}
+	// 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+	//光标最后停留的标签id名称
+	var last = "";
+	function checkEvent() {
+		try{
+			//如果光标停留在输入框上,更新last
+			if(document.activeElement.tagName == "INPUT"){
+				last = document.activeElement.id;
+			}
+			//输入框获得光标
+			if(event.srcElement.id != "" && (event.srcElement.type == "text" || event.srcElement.type == "password") && !event.srcElement.disabled){
+				top.wins.checkEvent(event.srcElement, event.srcElement.id);
+			}
+		  }catch(e){}
+	}
+	// 服务流程处理入口
+	function serverEntrance()
+	{
+		onKey_Enter = onKey_F6 = function()
+		{
+			inputInfo();
+		}
+		 onKey_F7 = function()
+		 {
+			 top.pool.set("OpenEleLockAllowed",false);
+			 top.serviceCtrl.navigate2Maintenance();
+		 }
+		 onKey_Cancel = onKey_F8 = function()
+		 {
+			 top.pool.set("OpenEleLockAllowed",false);
+			 top.serviceCtrl.navigate2Quit();
+			 
+		 }
+		 window.operateCtrl.enableInput();
+		 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">是否使用应急开锁？</span>";
+	     top.wins.showMain("oLConfirmTip");
+	}
+	
+	//输入加钞员工号及密码
+	function inputInfo()
+	{
+		 onKey_Enter = onKey_F6 = function()
+		 {
+			//关闭小键盘
+			closeKeyboard();
+			Confirm();
+		 }
+		 onKey_F7 = function()
+		 {
+			//关闭小键盘
+			closeKeyboard();
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Maintenance();
+		 }
+		 onKey_Cancel = onKey_F8 = function()
+		 {
+			 //关闭小键盘
+			closeKeyboard();
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Quit();
+		 }
+		 ShowKeyboard();		//显示界面键盘
+		 window.operateCtrl.enableInput();
+		 top.wins.showMain("oLInputInfo");
+		 inputInfoForm.input_username_A.focus();
+	}
+	
+	//选择确认
+	function Confirm()
+	{
+		if(checkVal()){		//检验输入框内容合法后允许发交易
+			var username_A = inputInfoForm.input_username_A.value;
+			var password_A = inputInfoForm.input_password_A.value;
+			var username_B = inputInfoForm.input_username_B.value;
+			var password_B = inputInfoForm.input_password_B.value;
+			
+			password_A = top.eleLock.encode64(new top.StringCtrl(password_A).prefixStr('F',32));
+			password_B = top.eleLock.encode64(new top.StringCtrl(password_B).prefixStr('F',32));
+			var strEleLockXml = "";
+			strEleLockXml = top.eleLock.SetNodeStr(new top.DateTimeCtrl().getYYYYMMDD() + new top.DateTimeCtrl().getHHmmSS(),"Ex_TrTime")
+				           + top.eleLock.SetNodeStr(new top.DateTimeCtrl().getHHmmSS().substr(0,4),"Ex_SeqNo")
+				           + top.eleLock.SetNodeStr("4000","Ex_TrCode")
+						   + top.eleLock.SetNodeStr(top.terminal.strTerminalNum,"Ex_LockSN")
+				           + top.eleLock.SetNodeStr(username_A,"Ex_OperAID")
+						   + top.eleLock.SetNodeStr(password_A,"Ex_OperAPwd")
+						   + top.eleLock.SetNodeStr(username_B,"Ex_OperBID")
+						   + top.eleLock.SetNodeStr(password_B,"Ex_OperBPwd");
+			top.pool.set("strEleLock",strEleLockXml);
+			top.journalPrinter.addJournalWithTime("应急开锁组电子密码锁报文完成");
+			top.wins.showProcessingTip("正在处理,请稍候...");
+			top.trans.send930000Async();	//电子密码锁请求交易
+		}
+	}
+
+	//trans接收到服务器响应之后回调函数
+	onAsync930000Complete = function(){
+		top.pool.set("OpenEleLockAllowed",true);
+		top.serviceCtrl.stopUserTimeout();
+		window.operateCtrl.enableInput();
+		onKey_F7 = function(){
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Maintenance();
+		}
+		onKey_Cancel = onKey_F8 = function(){
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Quit();
+		}
+		var strRetEleLockXml = top.pool.get("strEleLockRetMsg");
+		var RetCode = "" + top.eleLock.GetNodeVal(strRetEleLockXml,"Ex_RetCode");
+		var ExTrCode = top.eleLock.GetNodeVal(strRetEleLockXml,"Ex_TrCode");
+		var TrCode = top.eleLock.convertTranCode(ExTrCode);
+		var result = "";
+		if("0000" == RetCode){
+			var OpenCode = "" + top.eleLock.GetNodeVal(strRetEleLockXml,"Ex_OpenCode");	//获取开锁码
+			if("4000"==ExTrCode){
+				if(OpenCode != null && OpenCode != ""){
+					result = TrCode + "成功</br>开锁码:" + OpenCode;
+					Show_Hint.innerHTML  = "<span class=\"Tip_Alarm\">操作提示：在密码锁上按任意键唤醒锁具，依次输入【*69#】及</br>以上开锁码并输入【#】键结束</span>";
+				}else{
+					result = TrCode + "失败</br>失败信息：" + "密码锁系统返回开锁码为空";
+				}
+			}else{
+				result = TrCode + "成功";
+				Show_Hint.innerHTML  = "";
+			}
+		}else if(RetCode != null || RetCode != ""){
+			var RetMsg = top.eleLock.convertRetCode(RetCode);	//根据返回码获取错误信息说明
+			if(RetMsg == null || RetMsg == "")
+			RetMsg = top.eleLock.GetNodeVal(strRetEleLockXml,"Ex_RetMsg");	//如果convertRetCode中未定义该错误，则从返回报文中获取
+			result = TrCode + "失败</br>失败信息：" + RetMsg;
+		}else{
+			result = "失败，密码锁系统返回异常";
+		}
+		Show_RetMsg.innerHTML  = "<span class=\"Tip_Title\">" + result + "</span>";
+		top.wins.showMain("oLSuccessTip");
+	}
+	
+	//交易失败
+	function onServiceFailed(title, retcode, retdesc)
+	{
+	  window.operateCtrl.disableInput(true);
+	 	top.serviceCtrl.stopUserTimeout();
+	  onKey_F7 = function() {
+		  top.pool.set("OpenEleLockAllowed",false);
+		  top.serviceCtrl.navigate2Maintenance();
+		}
+	  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+	  {
+		  top.pool.set("OpenEleLockAllowed",false);
+		  top.serviceCtrl.navigate2Quit();
+	  }
+	  oFailedTitle.innerHTML = title;
+	  oFailedRetDesc.innerHTML = retdesc;
+	  window.operateCtrl.enableInput();
+	  top.wins.showMain("oLServiceFailedTip");
+	}
+	
+	function setKeyboard(inputType){
+		error_input.innerHTML = "";
+		if("text" == inputType){
+			ShowKeyboard();
+		}else if("password" == inputType){
+			closeKeyboard();
+		}
+	}
+	/*
+	*检查输入框内容是否合法
+	*返回值：  true-合法  false-不合法
+	*/
+	function checkVal(number){
+		try{
+			var username_A = inputInfoForm.input_username_A.value;
+			var password_A = inputInfoForm.input_password_A.value;
+			var username_B = inputInfoForm.input_username_B.value;
+			var password_B = inputInfoForm.input_password_B.value;
+	
+			if(number == null || number == ""){	//如果不传参数，则默认全部校验
+				number = 99;
+			}else{
+				number = parseInt(number);
+			}
+			if(number > 0){
+				if(!new top.StringCtrl(username_A).isAllDigit2() || username_A.length > 12 || username_A.length < 4){
+				   error_input.innerHTML = "加钞员工号只能为4-12位数字，请重新输入";
+				   inputInfoForm.input_username_A.value = "";
+				   inputInfoForm.input_username_A.focus();
+				   ShowKeyboard();
+				   return false;
+				}
+			}
+			
+			if(number > 1){
+				if(!new top.StringCtrl(password_A).isAllDigit2() || password_A.length > 8 || password_A.length < 6){
+				   error_input.innerHTML = "加钞员密码只能为只能为6-8位数字，请重新输入";
+				   inputInfoForm.input_password_A.value = "";
+				   inputInfoForm.input_password_A.focus();
+				   closeKeyboard();
+				   return false;
+				}
+			}
+			if(number > 2){
+				if(!new top.StringCtrl(username_B).isAllDigit2() || username_B.length > 12 || username_B.length < 4){
+				   error_input.innerHTML = "加钞员工号只能为4-12位数字，请重新输入";
+				   inputInfoForm.input_username_B.value = "";
+				   inputInfoForm.input_username_B.focus();
+				   ShowKeyboard();
+				   return false;
+				}
+			}
+			if(number > 3){
+				if(!new top.StringCtrl(password_B).isAllDigit2() || password_B.length > 8 || password_B.length < 6){
+				   error_input.innerHTML = "加钞员密码只能为6-8位数字，请重新输入";
+				   inputInfoForm.input_password_B.value = "";
+				   inputInfoForm.input_password_B.focus();
+				   closeKeyboard();
+				   return false;
+				}
+			}
+		}catch(e){}
+		return true;
+	}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+	<div id="oLConfirmTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+				<tr class="FirstLine">
+				  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+				</tr>
+			</table>
+		</div>
+	   <span class="MMENU6" id="oLMenu6"><button onclick="javascript:onKey_F6();" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+	   <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	   <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+  
+  <div id="oLInputInfo" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+	 <form name="inputInfoForm">
+	  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		   <tr><td height="0"></td></tr>
+		   <tr><td height="0"></td></tr>
+		   <tr>
+		       <td align="center">  	  
+				  <table  width="100%" border="0">
+					   <tr>
+						 <td align="center" colspan="2" class="Tip_Title">在线应急开锁</td>
+					   </tr>
+					   <tr>
+						 <td height ="25" align="center" colspan="2" class="Tip_Title"></td>
+					   </tr>
+					   <tr>
+						<td height ="35" align="right" class="Tip_Title">加钞员A工号:</td>
+						<td align="left" class="Tip_Title">
+							<input  class="inputTel_select"  type="text"  name="input_username_A"  id="input_username_A"  size="20"  maxlength="12"  onclick = "javascript:setKeyboard('text');" onblur = "javascript:checkVal(1);"/>
+						</td>
+					   </tr>
+					   <tr>
+							<td height ="35" align="right" class="Tip_Title">加钞员A密码:</td>
+							<td align="left" class="Tip_Title">
+								<input  class="inputTel_select"  type="password"  name="input_password_A"  id="input_password_A"  size="20"  maxlength="8"  onclick="javascript:setKeyboard('password');" onblur = "javascript:checkVal(2);"/>
+							</td>  
+					   </tr>
+					   <tr>
+						<td height ="35" align="right" class="Tip_Title">加钞员B工号:</td>
+						<td align="left" class="Tip_Title">
+							<input  class="inputTel_select"  type="text"  name="input_username_B"  id="input_username_B"  size="20"  maxlength="12"  onclick = "javascript:setKeyboard('text');" onblur = "javascript:checkVal(3);"/>
+						</td>
+					   </tr>
+					   <tr>
+							<td height ="35" align="right" class="Tip_Title">加钞员B密码:</td>
+							<td align="left" class="Tip_Title">
+								<input  class="inputTel_select"  type="password"  name="input_password_B"  id="input_password_B"  size="20"  maxlength="8"  onclick="javascript:setKeyboard('password');" onblur = "javascript:checkVal(4);"/>
+							</td>  
+					   </tr>
+				  </table>
+				  <pre class="Error_Title" id="error_input">&nbsp;</pre>
+		        </td>
+		   </tr>
+		  
+	  </table> 
+	   </form>
+	</div>
+	<span class="MMENU6" id="oLMenu6"><button onclick="javascript:onKey_F6();" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+	<span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	<span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+  
+  <div id="oLSuccessTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+				<tr>
+				  <td align="center" colspan="2"><span id="Show_RetMsg"></span></td>
+				</tr>
+				<tr>
+				  <td align="center" colspan="2"><span id="Show_Hint">&nbsp;</span></td>
+				</tr>
+			</table>
+		</div>
+	   <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	   <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+  <div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+   <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+ </div>
+</body>
+</html>

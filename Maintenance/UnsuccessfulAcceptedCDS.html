@@ -1,0 +1,363 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>异常受理存单轧账</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+function doMouseDown() {
+//	top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+
+// 服务流程处理入口
+function serverEntrance() {
+top.pool.set("successfulAcceptedCDS","false");
+top.trans.sendQueryAcceptedFailedCDSAsync();
+}
+
+var cdsTranslogInfoStr="";//存单明细信息
+//存单发放失败笔数
+var cdsopenCount = 0;
+//存单受理失败笔数
+var cdscloseCount = 0;
+
+
+//配置标题和数据
+var strHeadingArr = new Array(
+	"凭证号码",
+  	"账号",
+  	"交易类型",
+  	"存单金额",
+	"交易金额",
+	"交易时间",
+	"交易结果"
+);
+
+var strRecordArr=new Array();
+
+
+//从数据库获取本终端的当日受理成功的存单段信息明细
+onQueryAcceptedFailedCDSAsyncComplete = function(){
+     cdsTranslogInfoStr=  top.pool.get("cdsTransFailedlogInfoStr");
+     loadDetailInfo();
+	 showDetailInfo();
+  }
+
+//存单段详细数据信息
+ var cdsTranslogInfoArr1= new Array();
+
+   
+//初始化一次性读取并统计存单箱信息
+ function loadDetailInfo()
+ {
+	//生产
+	 var cdsTranslogInfoArr= new Array();
+   
+     cdsTranslogInfoArr=cdsTranslogInfoStr.split('|');
+     
+     for (var i=0;i<cdsTranslogInfoArr.length-1;i++){
+        cdsTranslogInfoArr1[i]=new Array();
+     	cdsTranslogInfoArr1[i]=cdsTranslogInfoArr[i].split(',');
+     }
+  
+	
+	var j=0;
+	for(var i=0;i<cdsTranslogInfoArr1.length;i++){
+	
+			strRecordArr[j] = new Array();
+			
+			strRecordArr[j][0] = cdsTranslogInfoArr1[i][0];  //凭证号码
+			strRecordArr[j][1] = cdsTranslogInfoArr1[i][1];  //账号
+			strRecordArr[j][2] = cdsTranslogInfoArr1[i][2];  //交易类型
+			strRecordArr[j][3] = cdsTranslogInfoArr1[i][3];  //存单金额
+			strRecordArr[j][4] = cdsTranslogInfoArr1[i][4];  //交易金额
+			strRecordArr[j][5] = cdsTranslogInfoArr1[i][5];  //交易时间
+			strRecordArr[j][6] = cdsTranslogInfoArr1[i][6];  //交易结果
+	
+		    if(strRecordArr[j][2]=="存单开户"|| strRecordArr[j][2]=="续存开户" || strRecordArr[j][2]=="部提开户"){
+		    	cdsopenCount+=1;
+		    }
+		    if(strRecordArr[j][2]=="存单销户" ||strRecordArr[j][2]=="续存销户" || strRecordArr[j][2]=="部提销户" ){
+		    	cdscloseCount+=1;
+		    }			
+			j+=1;
+		}
+	
+	  
+	}
+	
+
+
+
+//存单段详细信息
+function showDetailInfo() {
+
+window.operateCtrl.disableInput(true);
+	onKey_F8 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	//打印
+	onKey_Enter = onKey_F7 = function() {
+		print();
+	}
+	//轧账提交
+	onKey_F6 = function() {	
+		print();
+		//清除本周期内的受理异常存单数据
+		top.pool.set("successfulAcceptedCDS","false");
+		top.wins.showProcessingTip("正在提交轧账,请稍候...");
+		top.trans.sendClearCDSTransLogAsync();
+	}
+	onKey_Cancel = onKey_F9 = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	
+var mrv = new top.MultiRecordView();
+
+			   mrv.strClassName_Table_Head             			= "ADMTable_Head";
+			  mrv.strClassName_Table_Record           			= "ADMTable_Record";
+			  mrv.strClassName_Table_Record2         			= "ADMTable_Record2";
+			  mrv.strClassName_Table_RecordSelected    	= "ADMTable_RecordSelected";
+   			  mrv.oTHead = oTHead;
+              mrv.oTBody = oTBody;
+              mrv.oTablePageTip = oTablePageTip;
+              mrv.oMFirstPage  = oMFirstPage;
+              mrv.oMPrevPage = oMPrevPage;
+              mrv.oMNextPage = oMNextPage;
+              mrv.oMEndPage = oMEndPage;
+              mrv.strRecordArr = strRecordArr;
+              mrv.strHeadingArr = strHeadingArr;
+              mrv.iRowsPerPage = 5;
+              onKey_F1 = function(){mrv.onFirstPage();}
+              onKey_F2 = function(){mrv.onPrevPage();}
+              onKey_F3 = function(){mrv.onNextPage();}
+              onKey_F4 = function(){mrv.onEndPage();}
+			  mrv.show();
+			  
+ 	openCountSpan.innerHTML = "<span class=\"Tip_Content\">发放失败笔数:"+ cdsopenCount+"</span>";
+	 closeCountSpan.innerHTML = "<span class=\"Tip_Content\">受理失败笔数:"+ cdscloseCount+"</span>";
+	 if(strRecordArr.length <= 0)
+	 	oLMenu6.innerHTML = "";
+	top.wins.showMain("oLshowDetailInfo");
+	window.operateCtrl.enableInput();
+}
+ //打印信息
+function print() {
+
+	     if (typeof(top.YHAXReceiptPrint) != "undefined")
+ 		 {
+			printReceipt();
+	      }
+ 	      printJournal();
+       		//onServiceSuccessful(); 
+ }
+ 
+  //打印清存单凭条
+	function printReceipt() {
+		//无受理存单数据也可打印凭条
+	  	//if(strRecordArr.length<=0){
+		//	return;
+		//}*/
+	 top.receiptprinter.set("***********受理存单失败轧账清单***********");
+		 top.receiptprinter.set("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+         top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username"));
+         top.receiptprinter.set("----------------------------------------");
+         top.receiptprinter.set("**********存单交易汇总信息*********");
+        top.receiptprinter.set("发放失败笔数："+new top.StringCtrl(cdsopenCount).formatStr(' ', 4)+" ");
+        top.receiptprinter.set("受理失败笔数："+new top.StringCtrl(cdscloseCount).formatStr(' ', 4)+" ");
+        if(strRecordArr.length>0){ 
+	        top.receiptprinter.set("**********存单交易信息明细*********");
+	         top.receiptprinter.set("凭证号码         账号        交易类型");
+	         top.receiptprinter.set("交易金额       交易时间    交易结果");
+	         top.receiptprinter.set("");
+	           for (var i=0; i<strRecordArr.length; i++){
+	                             top.receiptprinter.set(new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 8)+
+				                                                   new top.StringCtrl(strRecordArr[i][1]).formatStr(' ', 20)+
+				                							       new top.StringCtrl(strRecordArr[i][2]).formatStr(' ', 9)+
+				                							       "\r\n"+
+				                							       new top.StringCtrl(strRecordArr[i][4]).formatStr(' ', 12)+
+				                							       new top.StringCtrl(strRecordArr[i][5]).formatStr(' ', 23)
+				                 								  ) ;      
+								top.receiptprinter.set(new top.StringCtrl(strRecordArr[i][6]).formatStr(' ', 14));		                 								       
+	 		}
+        }
+             top.receiptprinter.set("----------------------------------------");
+      		top.receiptprinter.printAndEject();
+	}
+       
+//打印清存单流水	
+ function printJournal(){
+		if(strRecordArr.length<=0){
+			return;
+		}	
+	    top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("***********受理存单失败轧账清单***********");
+        top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+		top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+        top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+        top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********存单交易汇总信息*********");
+         top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("发放异常数："+new top.StringCtrl(cdsopenCount).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("受理异常数："+new top.StringCtrl(cdscloseCount).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("\r\n");
+       
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********存单交易信息明细*********");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("凭证号码         账号        交易类型");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("交易金额       交易时间   ");
+        top.journalPrinter.addJournal("   交易结果");
+        top.journalPrinter.addJournal("\r\n");
+         for (var i=0; i<strRecordArr.length; i++){
+        		 top.journalPrinter.addJournal(new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 8)+
+			                                                   new top.StringCtrl(strRecordArr[i][1]).formatStr(' ', 20)+
+			                							       new top.StringCtrl(strRecordArr[i][2]).formatStr(' ', 9)+
+			                							       "\r\n"+
+			                							       new top.StringCtrl(strRecordArr[i][4]).formatStr(' ', 12)+
+			                							     
+			                							       new top.StringCtrl(strRecordArr[i][5]).formatStr(' ', 23)
+			                 								  );       
+                 top.journalPrinter.addJournal("\r\n");
+       		     top.journalPrinter.addJournal(new top.StringCtrl(strRecordArr[i][6]).formatStr(' ', 14));
+       		     top.journalPrinter.addJournal("\r\n");            
+		}
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+ 	}
+   
+    //交易成功
+function onAsyncClearCDSTransComplete() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+//交易失败
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+  onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  oFailedTitle.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLServiceFailedTip");
+}
+    
+
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+
+<div id="oLshowDetailInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">异常受理存单轧账</span>
+                    <br/> <br/>
+   				<table cellpadding="3" cellspacing="1" width="85%" height="20%" border="0">
+                        <tr>
+                              <td><span class="Tip_Content"  id="openCountSpan"></span></td>    
+                          </tr>
+                          <tr>
+                          		<td><span class="Tip_Content"  id="closeCountSpan"></span></td>
+                          </tr>
+                    </table>                                       
+                       <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTableListSegment" width="85%" height="15%">
+                        <thead class="ADMTable_Head" id="oTHead">
+                         </thead>
+                        <tbody id="oTBody"  class="ADMTable_Record"></tbody>
+                    </table>
+                           <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+            </tr>
+        </table>
+    </div>
+      <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+     <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+     <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+     <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+    
+    <span class="MMENU5" id="oLMenu5"><button onmousedown="doMouseDown();setTimeout(onKey_F9,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm">轧账提交</button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMButton" name="oConfirm">打印</button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>	
+</div>
+<div id="oLInfoTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   </div>
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">异常存单轧账成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

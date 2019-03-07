@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MappingRule description="柜员指纹授权">
+    <!-- id 唯一标识 -->
+    <!-- strAlignType 定长域对齐方式，1：右对齐，2：左对齐  默认1  -->
+	<!-- strFillContent 定长域补充内容      默认空格 -->
+	<!-- strLength 长度 -->
+	<!-- strSource 取值方式  $从平台中取 $$取默认值 -->
+	<!-- strDestKey 平台取值字段名称-->
+	<!-- strDefaultValue 默认值-->
+ <request>
+	<field description="报文类型标识符">
+		<id>F0</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>4</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>0008</strDefaultValue>
+	</field>
+	<field description="客户号（可选）">
+		<id>F1</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strCustomerId</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="柜员号">
+		<id>F2</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTellerum</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="交易处理码">
+		<id>F3</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTransCode</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="系统跟踪号">
+		<id>F11</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTerminalTsn</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="受卡方所在地时间 hhmmss">
+		<id>F12</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTransTime</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="受卡方所在地日期 yyyyMMdd">
+		<id>F13</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTransDate</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="主账号">
+		<id>F34</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="受卡机终端标识码 机具编号">
+		<id>F41</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTerminalNum</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>		
+	<field description="指纹数据">
+	    <id>F48</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strFeatureData</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="指纹模块类型">
+	    <id>F57</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>04</strDefaultValue>
+	</field>
+	<field description="自定义域">
+	    <id>F60</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>100</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>IMG_BATCHNO,</strDefaultValue>
+	</field>
+	<field description="影像批次号">
+	    <id>IMG_BATCHNO</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>20</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strBatchId</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="客户流水号(业务批次号)">
+	    <id>F71</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>100</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strSingleBusinessNum</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="是否记录交易流水">
+		<id>F999</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>4</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>false</strDefaultValue>
+	</field>
+  </request>
+  <TransCheckField>
+    <field description="关键域检验">F3,F11,F41</field>
+  </TransCheckField>
+</MappingRule>

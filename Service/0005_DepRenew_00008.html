@@ -1,0 +1,252 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>存单续存：余额取现转出流程(取现方式选择&柜面支取)</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">	
+	//光标最后停留的标签id名称
+	var last = "";
+  // 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+function checkEvent()
+{
+  try
+  {
+	//如果光标停留在输入框上,更新last
+	if(document.activeElement.tagName == "INPUT"){
+		last = document.activeElement.id;
+	}
+	//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+	if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+		top.wins.checkEvent(event.srcElement, last);
+	}else{
+		top.wins.checkEvent(event.srcElement, event.srcElement.id);
+	}
+  }catch(e){}
+}
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+	top.pool.set("strNavigate2Url", "");
+	//选择余额取回方式
+	top.serviceCtrl.stopUserTimeout();
+	onChooseDraw();	
+  }
+  
+  //选择支取方式
+  function onChooseDraw()
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//转账支取
+	onKey_F7 = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2("/Service/0005_DepRenew_00010.html");
+	}
+	//现金支取
+	onKey_F8 = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2("/Service/0005_DepRenew_00009.html");
+	}
+	//柜面支取
+	onKey_F9 = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		cashBase();
+	}
+	onKey_F98 = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		sendDepositQuery();	
+	}
+	onTimeout = function()
+	{
+		top.pool.set("strbusinessName","存单续存余额取回方式选择超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();	
+	}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oDrawTypeTick);
+	top.wins.showMain("oLDrawSelect");  
+  }
+  //返回购物车
+  function sendDepositQuery(){
+  	top.serviceCtrl.navigate2("/Service/0005_DepRenew_00006.html");
+  }  
+  
+  //存单交易失败：呼叫大堂经理回调
+  function onShowTellCDSFailed(){
+	top.serviceCtrl.navigate2("/Service/CDSFailed.html"); 
+  }  
+
+   //pad帮助超时回调
+  function onProcessingTimeout(){
+	//如果存单模块状态异常
+	if(new top.CheckCard().cdStDeviceStatus() !="true"){
+		//大堂经理帮助成功：设备显示设备故障
+		top.serviceCtrl.navigate2("/Service/CDSFailed.html");
+	}else{
+		if(top.pool.get("surplusAmt") > 0){
+			top.pool.set("strbusinessName","存单续存-交易超时(内部账有钱)");
+			top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+			top.trans.send910304CDSFailedAsync();
+		}else{
+			top.serviceCtrl.navigate2Quit();
+		}
+	}
+  }
+
+  //交易失败
+  function onServiceFailed(title, retcode, retdesc){
+	showSvcFailedInfo("存单续存交易失败", retcode, retdesc);	
+  } 
+  
+   //现金叫号
+   function cashBase()
+   {
+	top.serviceCtrl.stopUserTimeout();
+	//发送现金支取交易（排队叫号交易）
+	top.pool.set("strType",top.misc.getValuesByName("strCdsLineDrawType"));	
+	//正文内容xml组装
+	var strContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root>"
+						+"<custName>"+top.pool.get("strIDName")+"</custName>"
+						+"<IDType>00</IDType>"
+						+"<IDNo>"+top.pool.get("strIDCardNum")+"</IDNo>"
+						+"<amount>"+new top.StringCtrl("").formatStrAmount(top.pool.get("surplusAmt"))+"</amount>"
+						+"<cashAnalysisNum>2102</cashAnalysisNum></root>"
+						+"<promoNo>NF</promoNo>"
+						+"<remark>取现</remark>";
+	top.pool.set("strContent",strContent);
+	top.wins.showNewProcessingTip(top.langcur.send910103);
+	top.trans.send910103Async();	
+   }
+   
+  // 现金支取：打印叫号凭条
+  function onContentSuccessful()
+  {	
+	top.serviceCtrl.stopUserTimeout();
+	top.wins.showNewProcessingTip("正在打印凭条...");
+	//开始打印凭条
+	onOpenCardReceiptPrinter();					
+  }
+  
+  function onOpenCardReceiptPrinter(){
+	top.pool.set("Amount",top.pool.get("surplusAmt"));
+	top.pool.set("strTransName","存单续存");	
+	top.pool.set("strQueueNo",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/queueNo"));//排队号 
+	onReceiptEjected = function(){}
+	onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+	{
+		//提示打印失败
+		top.wins.showInfoTip("凭条打印故障");
+		top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+	}
+	onQuit = onReceiptCaptured = onReceiptTaken = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		//打印利息清单
+		onCashSucess();
+	}
+	top.pool.set("printType","32");//选择打印的凭条类型	
+	top.receiptprinter.printAndEject();	
+  }
+  //存单续存-现金支取成功
+  function onCashSucess()
+  {
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	onTimeout = onKey_Enter = onKey_Cancel = function()
+    {
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.navigate2Quit();
+    }
+    top.serviceCtrl.startUserTimeout(onTimeout, 10,oCashSuccessTick);
+	window.operateCtrl.enableInput();
+    top.wins.showMain("oLCashSuccessTip");
+  }
+  
+  //续存失败
+  function showSvcFailedInfo(title, retcode, retdesc)
+  {
+  	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F98 = onTimeout = function() {
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		sendDepositQuery();	
+	}
+	oTitle.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+	
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip"); 
+  }
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLDrawSelect" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oDrawTypeTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center">
+		<br/><br/><br/><br/><br/><br/><br/><br/>
+          <pre class="Tip_Title" id="oSelectType"></pre>
+		  <span class="MENU6CASH"><button onclick="javascript:onKey_F7()"  class="Menu_Right" name="oConfirm" id="oTransTaken"></button></span>
+	      <span class="MENU7CASH"><button onclick="javascript:onKey_F8()"  class="Menu_Right" name="oConfirm" id="oCashTaken"></button></span>
+	      <span class="MENU8CASH"><button onclick="javascript:onKey_F9()" class="Menu_Right" name="oConfirm" id="oCounterTaken"></button></span>
+	   </td>
+      </tr>
+    </table>
+  </div>
+  <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="Table_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+						</tr>
+						<tr class="Table_Record">
+							<td id="oDescription"></td>
+							<td><span id="oFailedRetDesc"></span></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div> 
+
+<div id="oLCashSuccessTip" class="FULLSCR" style="visibility:hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oCashSuccessTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine"><td align="center" colspan="2">
+				<span class="Tip_Title" id="oRenewCDSSuccess"></span>
+			</td>
+			</tr>
+		</table>
+	 </div>
+</div>	
+</body>
+</html>

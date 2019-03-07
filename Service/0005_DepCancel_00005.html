@@ -1,0 +1,260 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>存单销户流程（销户回收存单-销户流程）</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  // 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+function checkEvent()
+	{
+	  try
+	  {
+		//如果光标停留在输入框上,更新last
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	  }catch(e){}
+}
+//光标最后停留的标签id名称
+var last = "";
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+    top.wins.stopProcessingTimeout();
+	CaptureCDS();
+  }
+  //回收旧存单
+  function CaptureCDS()
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onControlComplete = function(){
+		var strJrn = new top.StringCtrl("销户回收存单成功 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+        top.journalPrinter.addJournal(strJrn);
+		sendCancel();				
+	}
+	onMediaTaken = function(){}
+		
+	onDeviceError_cd = function()
+	{
+		var strJrn = new top.StringCtrl("销户回收存单硬件故障 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+        top.journalPrinter.addJournal(strJrn);
+		top.serviceCtrl.stopUserTimeout();
+		if(top.pool.get("strNewAmount") > 0){
+			//查询销户记录
+			onSendDepositQuery();
+		}else{
+			//显示失败信息
+			showSvcFailedInfoNew(top.langcur.oAcceptCDSFailed, top.TERMRETCODE_ID_DEPOSITRPTFAILED, top.langcur.oAcceptRetainFailed);
+		}			
+	}
+	onTimeout = function(){
+		var strJrn = new top.StringCtrl("销户回收存单超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+        top.journalPrinter.addJournal(strJrn);
+		top.serviceCtrl.stopUserTimeout();
+		if(top.pool.get("strNewAmount") > 0){
+			top.pool.set("strbusinessName", "存单销户-回收存单超时(购物车有钱)");
+		}else{
+			top.pool.set("strbusinessName", "存单销户-回收存单超时(购物车没钱)");
+		}				
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	CDDispenser_Tip.innerHTML = top.langcur.oRetainCDS;		
+	window.operateCtrl.enableInput();
+	top.documentscanner2.controlMedia("RETRACT");
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oCDretractTick);
+	top.wins.showMain("oLCDretractTip");	  
+  }
+  //存单交易失败：呼叫大堂经理回调
+  function onShowTellCDSFailed(){
+	top.serviceCtrl.navigate2("/Service/CDSFailed.html"); 
+  }  
+  function sendCancel()
+  {
+	//发送销户交易
+	top.pool.set("strCDSType","2");
+	top.wins.showNewProcessingTip(top.langcur.send905104);
+    top.trans.send905104Async();	
+  }
+  //销户成功后更新数据库中凭证状态
+  function doCaptureCD(){
+	top.serviceCtrl.stopUserTimeout();
+	//如果是代理则，登记办理人
+	if(top.pool.get("isAgent") == "1"){
+		top.pool.set("strOption","C");
+		top.pool.set("strAgentTransCode","905104");	
+		top.wins.showNewProcessingTip(top.langcur.send901112Add);
+		top.trans.send901112Async();
+	}else{
+		//非代理人:先回收存单再进行销户
+		onUpdateTermStatus("1");
+	}		
+  }
+  //代理人信息维护成功
+  function onUpdateAgentSuccessful(){
+	//先回收存单再进行销户
+	onUpdateTermStatus("1");
+  }
+  //销户失败
+  function onCancelServiceFailed(title, retcode, retdesc)
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Cancel = onTimeout = function() {
+		top.serviceCtrl.stopUserTimeout();
+		if(top.pool.get("strNewAmount") > 0){
+			//查询销户记录
+			onSendDepositQuery();
+		}else{
+			top.pool.set("strbusinessName", "存单销户-回收存单成功销户失败(购物车没钱)");
+			top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+			top.trans.send910304CDSFailedAsync();
+		}				
+	}
+	oCanTitle.innerHTML = title;
+	oCancelRetDesc.innerHTML = retdesc;
+	
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oCancelFailedTick);
+	top.wins.showMain("oLCancelFailedTip");   
+  }
+  //更新数据库信息
+  function onUpdateTermStatus(strTermTxStatus){
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strMangerVouchNo", top.pool.get("strCDCertNum"));
+	top.pool.set("iTransLogId",  top.pool.get("transLogId"));
+	top.pool.set("iTermTxStatus",strTermTxStatus);
+	top.pool.set("strMangerTransType","3");
+	top.pool.set("strMangerTransCode","905104");
+	if(top.pool.get("isAgent") == "1"){
+		top.pool.set("strMangerIDCardNum", top.pool.get("strAgentIDCardNum"));
+	}else{
+		top.pool.set("strMangerIDCardNum", top.pool.get("strIDCardNum"));
+	}	
+	top.serviceCtrl.doWithProcessingAd(top.trans.sendUpdateTermStatusAsync);	   
+  }
+  //如果是交易成功的情况则进行后续流程
+  function onUpdateTermStatusAsyncComplete(){
+	top.wins.stopProcessingTimeout();
+	if(top.pool.get("iTermTxStatus") == "1"){
+		//回收成功后，查询销户记录
+		top.pool.set("CDBusinessSuccess","success");
+		onSendDepositQuery();
+	}else{
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+  }
+    //超时处理
+  function onProcessingTimeout(){	
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strbusinessName", "存单销户-交易超时");
+	top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+	top.trans.send910304CDSFailedAsync();
+  }
+ 
+    //销户回收失败
+  function showSvcFailedInfoNew(title, retcode, retdesc)
+  {
+  	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Cancel = onTimeout = function() {
+		top.pool.set("strbusinessName", "存单销户-回收存单失败(购物车没钱)");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	oTitleNew.innerHTML = title;
+	oFailedRetDescNew.innerHTML = retdesc;
+	
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedNewTick);
+	top.wins.showMain("oLServiceFailedNewTip"); 
+  }
+  //返回购物车
+  function onSendDepositQuery(){
+	  top.serviceCtrl.navigate2("/Service/0005_DepCancel_00006.html");  
+  }
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLCDretractTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br>
+	<span class="Tip_Tick" id="oCDretractTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <br/><br/>
+		   <br/>
+		   <img alt="" src="../Terminal/Style/Default/Img/LOGO2.gif" style="background: transparent;" width="130" height="130"/>
+		   <br/>
+		   <span class="Tip_Title" id="CDDispenser_Tip"></span>
+		   <br/>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+	 </div>
+</div>
+
+<div id="oLCancelFailedTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oCancelFailedTick"></span> <br />
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="Table_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oCanTitle"></td>
+						</tr>
+						<tr class="Table_Record">
+							<td id="oDescription"></td>
+							<td><span id="oCancelRetDesc"></span></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+</div> 
+
+<div id="oLServiceFailedNewTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceFailedNewTick"></span> <br />
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="Table_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oTitleNew"></td>
+						</tr>
+						<tr class="Table_Record">
+							<td id="oDescription"></td>
+							<td><span id="oFailedRetDescNew"></span></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+</div> 
+
+</body>
+</html>

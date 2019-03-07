@@ -1,0 +1,211 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>首页快捷菜单页面</title>
+<LINK rel="stylesheet" href="../Terminal/Style/Default/Style.css" type="text/css" />
+<LINK rel="stylesheet" href="../Terminal/Style/Default/idangerous.swiper.css" type="text/css" />
+<style>
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.swiper-container {
+  width: 100%;
+  height: 90%;
+  top: 42%;
+  left: 0%;
+  color: #fff;
+  text-align: center;
+}
+.swiper-slide {
+  width: 720px;
+  height: 570px;
+}
+.red-slide {
+  background: #ca4040;
+}
+.blue-slide {
+  background: #4390ee;
+}
+.orange-slide {
+  background: #ff8604;
+}
+.green-slide {
+  background: #49a430;
+}
+.pink-slide {
+  background: #973e76;
+}
+.swiper-slide .title {
+  font-style: italic;
+  font-size: 43px;
+  margin-top: 80px;
+  margin-bottom: 0;
+
+}
+.pagination {
+  position: absolute;
+  z-index: 20;
+  left: 12px;
+  top: 65%;
+}
+.swiper-pagination-switch {
+  width:19px;
+  height:12px;
+  display:inline-block;
+  border-radius:100%;
+  opacity:.2;
+  margin-right: 615px;
+  border: 2px solid #fff;
+  cursor: pointer;
+  behavior:url("../Terminal/Style/Default/PIE.htc");
+}
+.swiper-visible-switch {
+  background: #aaa;
+}
+/*选择的页签颜色*/
+.swiper-active-switch {
+  background: #f98e26;
+}
+.arrow-left {
+  background-color:transparent;
+  position: absolute;
+  left: 15px;
+  top: 48%;
+  width: 52px;
+  height: 52px;
+}
+.arrow-right {
+  background-color:transparent;
+  position: absolute;
+  right: 5px;
+  top: 45%;
+  width: 52px;
+  height: 52px;
+}
+</style>
+<script type="text/javascript">
+var  strServiceUrl ="";
+/*开始运行服务*/
+function startService(strServiceAction)
+{
+	var menuName = "";
+	switch(strServiceAction){
+		case "0001_901101_00001":
+			menuName = "开卡";break;
+		case "0001_901610_00001":
+			menuName = "综合签约";break;
+		case "TransRemitMenu":
+			menuName = "转账";break;
+		case "0005_DepOpen_00001":
+			menuName = "存单开户";break;
+		case "0002_902117_00001":
+			menuName = "查询余额";break;
+		case "0002_902111_00001":
+			menuName = "明细查询";break;
+		case "0002_902301_00001":
+			menuName = "存折补登";break;
+		case "0002_902503_00001":
+			menuName = "修改密码";break;
+		default:
+			menuName = strServiceAction;
+	}
+   top.journalPrinter.addJournalWithTime("客户选择 快捷菜单 " + menuName);
+   strServiceUrl = strServiceAction;
+}
+</script>
+</head>
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <a class="arrow-left" id="leftButton"><img id="arrow-left" src="../Terminal/Style/Default/Img/prev.png"></a>
+  <a class="arrow-right" id="rightButton"><img id="arrow-right" src="../Terminal/Style/Default/Img/next.png"></a>
+  <div class="swiper-container">
+    <div class="swiper-wrapper" id="swiper_wrapperId">
+      <div class="swiper-slide">
+        <table width="90%"  align="center" cellpadding="0" cellspacing="0" height="60%">
+			<tr>
+               <td ><span class="Tip_Title" style="margin-left:120px"  onclick=""></span></td>
+			   <td ><span class="Tip_Title" style="margin-left:120px"  onclick=""></span></td>
+               
+               <td ><span class="Tip_Title" style="margin-left:120px" onclick=""></span></td>
+			   <td ><span class="Tip_Title" style="margin-left:120px" onclick=""></span></td>
+            </tr>
+		</table>
+      </div>
+	  <div class="swiper-slide">
+        <table width="90%"   align="center" cellpadding="0" cellspacing="0" height="60%">
+			<tr>
+               <td ><span class="Tip_Title" style="margin-left:80px" onclick=""></span></td>
+               <td ><span class="Tip_Title" style="margin-left:80px"  onclick=""></span></td>
+               <td ><span class="Tip_Title" style="margin-left:80px" onclick=""></span></td>
+			   <td ><span class="Tip_Title" style="margin-left:80px" onclick=""></span></td>
+            </tr>
+		</table>
+      </div>
+    </div>
+  </div>
+  <script type="text/javascript" src="../JavaScript/jquery-1.10.1.min.js"></script>
+  <script type="text/javascript" src="../JavaScript/myIdangerous.swiper.min.js"></script>
+	<script language="javascript">
+	if(!document.getElementsByClassName){
+	  document.getElementsByClassName = function(className, element){
+		var children = (element || document).getElementsByTagName('*');
+		var elements = new Array();
+		for (var i=0; i<children.length; i++){
+		  var child = children[i];
+		  var classNames = child.className.split(' ');
+		  for (var j=0; j<classNames.length; j++){
+			if (classNames[j] == className){
+			  elements.push(child);
+			  break;
+			}
+		  }
+		}
+		return elements;
+	  };
+   }
+
+	var  maxIndex = document.getElementsByClassName('swiper-slide',swiper_wrapperId).length;
+	var  indexNow=1;
+	leftRigtShow();
+	var mySwiper = new Swiper('.swiper-container',{
+	  onSlideClick: function(swiper){
+	      if(strServiceUrl == null || strServiceUrl == ""){
+	          return;
+	      }
+		  else{
+		      var strUrl = "/Service/" + strServiceUrl + ".html";
+	          window.parent.frames.selectTrans(strUrl);
+	      }
+       }
+		})
+		$('#arrow-left').on('click', function(e){
+			e.preventDefault()
+			mySwiper.swipePrev()
+
+        })
+        $('#arrow-right').on('click', function(e){
+			e.preventDefault()
+			mySwiper.swipeNext()
+
+		})
+	function leftRigtShow(){
+		if(indexNow==1){
+			leftButton.style.visibility="hidden";
+			rightButton.style.visibility="visible";
+			return ;
+		} else
+		if(indexNow==maxIndex){
+			leftButton.style.visibility="visible";
+			rightButton.style.visibility="hidden";
+			return ;
+		}else {
+		leftButton.style.visibility="visible";
+			rightButton.style.visibility="visible";
+			return ;
+		}
+	}
+	</script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>首页菜单页面</title>
+<LINK rel="stylesheet" href="../Terminal/Style/Default/Style.css" type="text/css" />
+<LINK rel="stylesheet" href="../Terminal/Style/Default/idangerous.swiper.css" type="text/css" />
+<style>
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.swiper-container {
+  width: 100%;
+  height: 88%;
+  top: 16%;
+  left: 0%;
+  color: #fff;
+  text-align: center;
+}
+.swiper-slide {
+  width: 850px;
+  height: 672px;
+}
+.red-slide {
+  background: #ca4040;
+}
+.blue-slide {
+  background: #4390ee;
+}
+.orange-slide {
+  background: #ff8604;
+}
+.green-slide {
+  background: #49a430;
+}
+.pink-slide {
+  background: #973e76;
+}
+.swiper-slide .title {
+  font-style: italic;
+  font-size: 42px;
+  margin-top: 80px;
+  margin-bottom: 0;
+  line-height: 45px;
+}
+.pagination {
+  position: absolute;
+  z-index: 30;
+  left: 47%;
+  top: 96%;
+}
+.swiper-pagination-switch {
+  width:25px;
+  height:25px;
+  display:inline-block;
+  border-radius:100%;
+  background:#ffffff;
+  opacity: 0;
+  margin-right: 22px;
+  border: 2px solid #fff;
+  cursor: pointer;
+  behavior:url("../Terminal/Style/Default/PIE.htc");
+}
+.swiper-visible-switch {
+  background: #aaa;
+}
+/*选择的页签颜色*/
+.swiper-active-switch {
+  background: #f98e26;
+}
+</style>
+<script type="text/javascript">
+var  strServiceUrl ="";
+/*开始运行服务*/
+function startService(strServiceAction)
+{
+	var menuName = "";
+	switch(strServiceAction){
+		case "0001_901610_00001":
+			menuName = "综合签约";break;
+		case "0001_901201_00001":
+			menuName = "借记卡激活";break;
+		case "0001_901123_00001":
+			menuName = "社保卡申领";break;
+		default:
+			menuName = strServiceAction;
+	}
+   top.journalPrinter.addJournalWithTime("客户选择 " + menuName);
+   strServiceUrl = strServiceAction;
+}
+</script>
+</head>
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div class="swiper-container">
+    <div class="swiper-wrapper">
+      <div class="swiper-slide">
+        <table border="0" align="center" cellpadding="18" cellspacing="0">
+			<tr valign="top">  
+			   <td><img src="../Terminal/Style/Default/Img/SignTrans/DebitCardSynSign.png" onclick="javascript:startService('0001_901610_00001');" width="246" height="242"></td>
+               <td><img src="../Terminal/Style/Default/Img/DebitCard_Menu/DebitCardActivate.png" onclick="javascript:startService('0001_901201_00001');" width="246" height="242"></td>
+               <td><img src="../Terminal/Style/Default/Img/sbksq.png" onclick="javascript:startService('0001_901123_00001');" width="246" height="242"></td>
+            </tr>
+		</table>
+      </div>
+
+    </div>
+	<!--影藏菜单分页图标-->
+	<div class="pagination"></div>
+	<!--影藏菜单分页图标-->
+  </div>
+  <script type="text/javascript" src="../JavaScript/jquery-1.10.1.min.js"></script>
+  <script type="text/javascript" src="../JavaScript/idangerous.swiper.min.js"></script>
+  <script>
+  var mySwiper = new Swiper('.swiper-container',{
+    onSlideClick: function(swiper){
+	  if(strServiceUrl == null || strServiceUrl == ""){
+	      return;
+	  }else{
+	      var strUrl = "/ServiceMV/" + strServiceUrl + "MV.html";
+	      window.parent.frames.selectTrans(strUrl);
+	  }
+    },
+	<!--影藏菜单分页图标-->
+    pagination: '.pagination',
+	<!--影藏菜单分页图标-->
+    //paginationClickable: true,
+    moveStartThreshold: 100
+  })
+  </script>
+</body>
+</html>

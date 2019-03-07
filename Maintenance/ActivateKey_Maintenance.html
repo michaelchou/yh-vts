@@ -1,0 +1,128 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>管理员界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script language="javascript">
+  function doMouseDown(){
+	//top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+     window.operateCtrl.disableInput(true);
+	 onKey_Enter = onKey_F6 = function()
+     {
+	   oConfirm.style.visibility = "hidden";
+	   Tip_Title.innerHTML  = "<span class=\"Tip_Title\">正在激活密钥，请稍候...</span>";
+	   //发送激活密钥报文
+       top.trans.send911202Async();	   
+     }
+	 onKey_F7 = function()
+     {
+        top.serviceCtrl.navigate2Maintenance();
+     }
+     onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	 window.operateCtrl.enableInput();
+	 top.wins.showMain("oLConfirmTip");
+	 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">是否确认要激活密钥？</span>";
+  }
+  //激活密钥成功
+  function onServiceSuccessful()
+  {
+     window.operateCtrl.disableInput(true);
+     onKey_Enter = onKey_F7 = function()
+     {
+         top.serviceCtrl.navigate2Maintenance();
+     }
+     onKey_Cancel = onKey_F8 = function()
+     {
+	     top.serviceCtrl.navigate2Quit();
+     }
+     window.operateCtrl.enableInput();
+     top.wins.showMain("oLServiceSuccessTip");
+   }
+   //激活密钥失败
+   function onServiceFailed(title, retcode, retdesc)
+   {
+      window.operateCtrl.disableInput(true);
+      onKey_Enter = onKey_F7 = function()
+      {
+         top.serviceCtrl.navigate2Maintenance();
+      }
+
+      onKey_Cancel = onKey_F8 = function()
+      {
+         top.serviceCtrl.navigate2Quit();
+      }
+
+      oFailed.innerHTML = title;
+      oFailedRetDesc.innerHTML = retdesc;
+  
+      window.operateCtrl.enableInput();
+      top.serviceCtrl.startUserTimeout(onKey_Cancel, null, null);
+      top.wins.showMain("oLServiceFailedTip");
+}
+</script>
+</head>	
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLConfirmTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+  
+  <div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+	    <br/><br/>
+        <span class="Tip_Title">激活密钥成功</span>
+		<br><br><br>
+	    </td></tr>
+    </table>
+   </div>
+   <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+  </div>
+   
+  <div id="oLServiceFailedTip" class="FULLSCR">
+	<div class="FULLSCR">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="ADMTable_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oFailed"></td>
+						</tr>
+						<tr class="ADMTable_Record">
+							<td id="oDescription"></td>
+							<td>
+								<span id="oFailedRetDesc"></span>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+  </div>
+
+</body>
+</html>

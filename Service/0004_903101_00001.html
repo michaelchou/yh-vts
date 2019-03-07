@@ -1,0 +1,1173 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>信用卡转账</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var isDestPan1 = false;
+var isDestPan2 = false;
+var isFingerTime = "";
+var checkPasswordId = 0;
+var isAmount = false;
+var last = "";//光标最后停留的标签id名称
+var isPadCheck = false;
+//二次验密输错密码次数
+var strInputFlag = 0;
+var checkTellerNum = false;
+
+function doMouseDown(){
+  top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick",checkEvent);
+document.attachEvent("ondblclick",checkEvent);
+document.attachEvent("onfocusin",checkEvent);
+document.attachEvent("onkeypress",checkEvent);
+function checkEvent() {
+	//如果光标停留在输入框上,更新last
+	try{
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text"){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	}catch(e){}
+}
+
+// 服务流程处理入口
+function serverEntrance()
+{
+	top.pool.set("strNavigate2Url", window.location.pathname);
+	if (top.cardreader.isCardPresent()){
+		if(top.pool.get("strCardType") != "3"){
+			InsertCreditCard();//提示插入IC卡
+		}else{	
+			top.pool.set("strNavigate2Url","");
+			top.pool.set("pinblock1",top.pool.get("strPinBlock"));
+			checkPasswordId = 0;
+			top.wins.showNewProcessingTip("正在查询您的账户信息，请稍候...");
+			top.trans.send901606Async();
+		}
+	}else{
+		top.serviceCtrl.navigate2InsertCard();
+	}
+}
+
+//901606验密回调(获取转账额度和户名)
+function onVerifyServiceSuccessful(){
+	if(checkPasswordId == 0)
+	{
+		top.pool.set("cashAvailLimit",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/cashAvailLimit"));
+		top.pool.set("strName",top.exchxmlasync.msgxmldomResp.getElementValue("F61_6_NM"));//转出账号户名
+		doInputTransferInfo();
+	}
+	else if(checkPasswordId == 1)
+	{
+		if(top.pool.get("Amount") >= top.AmountLimit)
+		{
+			top.pool.set("strbusinessName","转账金额超过20万");
+			window.operateCtrl.disableInput(true);
+			top.serviceCtrl.stopUserTimeout();
+			top.wins.showNewProcessingTip("正在呼叫大堂经理协助，请稍候...");
+			top.trans.send910304Async();//金额超限审核-呼叫柜员协助
+		}else{
+			window.operateCtrl.disableInput(true);
+			top.serviceCtrl.stopUserTimeout();
+			userSign();
+		}
+	}
+	
+}
+
+//提示插入贷记卡
+function InsertCreditCard()
+{
+	onCardEjected = function()
+	{
+		top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+		// 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}	
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+
+		top.wins.showMain("oLTakeCardTip");
+	}
+	onCardTaken = function()
+	{
+		top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+	}
+	onDeviceError_Idc = function()
+	{
+		if (top.cardreader.isCardPresent()){
+			top.YHAXCardReader.Capture();
+		} 
+		onServiceFailed(top.langcur.oTransferFail, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError); 
+	}
+	onCardCapturedTipEnd = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	onCardCaptured = function()
+	{
+		top.pool.set("printType","3");//选择打印的凭条类型
+		top.receiptprinter.printAndEject();
+		top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+		top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+	}
+	top.cardreader.eject();
+}
+
+//输入转账信息
+function doInputTransferInfo()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Enter = onKey_F99 = function()
+	{
+		//判断第一次输入账号是否合法
+		if(input_DestPan1.value == null || input_DestPan1.value.length < 16 || !new top.StringCtrl(input_DestPan1.value).isAllDigit()){
+			error_Content1.innerHTML = top.langcur.oInputPanErro1;
+			input_DestPan1.value = "";
+			input_DestPan1.focus();
+		}
+		//判断第二次输入的账号是否合法
+		else if(input_DestPan2.value.length < 16 || !new top.StringCtrl(input_DestPan2.value).isAllDigit()){
+			error_Content2.innerHTML = top.langcur.oInputPanErro2;
+			input_DestPan2.value = "";
+			input_DestPan2.focus();
+		}
+		//判断两次输入的账号是否一致
+		else if(input_DestPan2.value.length >= 16 && new top.StringCtrl(input_DestPan2.value).isAllDigit() && input_DestPan1.value != input_DestPan2.value){
+			error_Content2.innerHTML = top.langcur.oPan1NotEquaPan2;
+			input_DestPan2.value = "";
+			input_DestPan2.focus();
+		}
+		//判断金额是否合法
+		else if(!new top.StringCtrl(input_Amount.value).isValidAmount() || input_Amount.value <= 0){
+			error_Content3.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();	
+		}
+		//判断金额是否大于100万
+		else if(parseFloat(input_Amount.value) > parseFloat(top.AmountLimitMax)){
+			error_Content3.innerHTML = "转账金额大于100万，请重新输入转账金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+		}
+		else if(input_Amount.value > parseFloat(formatStrAmount(top.pool.get("cashAvailLimit")))){
+			input_Amount.value = "";
+			input_Amount.focus();
+			error_Content3.innerHTML = "余额不足，请重新输入金额";
+		}
+		else{
+			top.inputmethod.Close();
+			top.serviceCtrl.stopUserTimeout();
+			isAmount = false;
+			isDestPan1 = false;
+			isDestPan2 = false;
+			top.pool.set("DestPan", input_DestPan2.value );
+			top.pool.set("Amount", input_Amount.value);
+			top.wins.showNewProcessingTip("正在查询转入账户的账户信息，请稍候...");
+			top.trans.sendCreditInfoAsync();
+		}
+		top.inputmethod.Close();
+	}
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	onTimeout = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2Quit();
+	}
+	input_DestPan1.onkeypress = function()
+	{
+		//top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oInputDestPan1Tick);
+		error_Content1.innerHTML = "&nbsp;";
+		error_Content2.innerHTML = "&nbsp;";
+		error_Content3.innerHTML = "&nbsp;";
+	}
+	input_DestPan2.onkeypress = function()
+	{
+		//top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oInputDestPan1Tick);
+		error_Content1.innerHTML = "&nbsp;";
+		error_Content2.innerHTML = "&nbsp;";
+		error_Content3.innerHTML = "&nbsp;";
+	}
+	input_Amount.onkeypress = function()
+	{
+		//top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oInputDestPan1Tick);
+		error_Content1.innerHTML = "&nbsp;";
+		error_Content2.innerHTML = "&nbsp;";
+		error_Content3.innerHTML = "&nbsp;";
+	}
+	
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oInputDestPan1Tick);
+	// 播放提示音
+	top.inputmethod.ShowDigit(930,380);
+
+	//显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLInputDestPan");
+	input_DestPan1.value = "";
+	input_DestPan2.value = "";
+	input_Amount.value = "";
+	input_DestPan1.focus();
+	oTransLimit.innerHTML = "您当前卡片可取现额度为:" + new top.StringCtrl(parseFloat(formatStrAmount(top.pool.get("cashAvailLimit")))).formatNumber(2) + " 元";
+}
+
+//查询成功返回
+function onQuerySuccessful(){
+	top.pool.set("strDestName",top.exchxmlasync.msgxmldomResp.getElementValue("F61_6_NM"));
+	doConfirmFee();
+}
+
+//确认转账信息
+function doConfirmFee()
+{
+	window.operateCtrl.disableInput(true);
+
+	onKey_Enter = onKey_F99 = function()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		inputPin();
+	}
+
+	onKey_Cancel = onKey_F98 = function()
+	{
+		doInputTransferInfo();
+	}
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	//请核对屏幕显示帐号及金额提示音
+	try{top.soundPlayer.playback("/Sound/PleaseConfirmAmount.mp3");}catch(e){}
+	
+	text_Pan.innerHTML = top.pool.get("strPan");
+	text_Name.innerHTML = top.pool.get("strName");
+	text_DestPan.innerHTML = top.pool.get("DestPan");
+	text_HolderName.innerHTML = top.pool.get("strDestName");
+	text_Amount.innerHTML = new top.StringCtrl(parseFloat(top.pool.get("Amount"))).formatNumber(2);
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oFeeConfirmTick);
+	//显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLFeeConfirm");
+}
+
+// 输入密码
+var bQuitSelected = false;
+var bReturnSelected = false;
+function inputPin()
+{
+	top.serviceCtrl.stopUserTimeout();
+	window.operateCtrl.disableInput(true);
+	onPlainCancelled = function()
+	{
+		top.pinpad.bufferPIN();
+		//请输入密码提示音
+		top.soundPlayer.playback("/Sound/InputPassword.mp3");
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oInpPwdTick);
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("InputPassword");
+		input_Password.value = "";
+		input_Password.focus();
+	}
+	onKey_F98 =onKey_Cancel= function()
+	{
+		// 用户选择了返回
+		bReturnSelected = true;
+		if (input_Password.value.length < top.pinpad.iMaxPinLen)
+		top.pinpad.cancelPINEntry();
+	}
+	onGetPinBlockOK = function (pinblock)
+	{
+		top.pool.set("strPinBlock", pinblock);
+		if (bQuitSelected)
+		{
+			// 用户选择了退卡
+			top.serviceCtrl.navigate2Quit();
+			return;
+		}
+		if (bReturnSelected)
+		{
+			// 用户选择了返回
+			top.serviceCtrl.navigate2SecondMenu();
+			return;
+		}
+		if (input_Password.value.length < top.pinpad.iMinPinLen)
+		{
+			// 密码位数不足，则重新输入
+			error_InputPassword.innerHTML = top.langcur.oPlsReInputPwd;
+			top.serviceCtrl.startFlowCtrlTimeout(inputPin, 200);
+			return;
+		}
+		//发送验密交易
+		checkPasswordId = 1;
+		top.wins.showNewProcessingTip("正在发起验密交易，请稍候...");
+		top.trans.send901606SecondAsync();
+	}
+	onDeviceError_Pinpad = onPinCancelled = onPinInputTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	input_Password.onkeypress = function()
+	{
+		error_InputPassword.innerHTML = "&nbsp;";
+	}
+	top.pinpad.cancelUserEntry();//关闭明文输入
+	bQuitSelected = false;
+	bReturnSelected = false;
+}
+
+//验密失败
+function onServiceSecondFailed()
+{
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	
+	if(strInputFlag < 2){
+		strInputFlag++;
+		error_InputPassword.innerHTML = "密码输入错误，请重新输入密码,3次输错卡将被锁！";
+	    inputPin();
+	}
+	else
+	{
+	   strInputFlag = 0;
+	   window.operateCtrl.disableInput(true);
+       top.serviceCtrl.stopUserTimeout();
+	   top.serviceCtrl.navigate2Quit();
+	}
+}
+
+//pad帮助超时回调
+function onProcessingTimeout(){
+	top.serviceCtrl.navigate2Quit();  
+}
+
+//pad帮助成功回调
+function onCheckHelpingSuccessful(){
+	//输入大堂经理输入柜员号
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Enter = onKey_F99 = function()
+	{
+		//判断输入的柜员号是否有效
+		if (new top.StringCtrl(input_TellerNum.value.substring(0,8)).isAllDigit2() && input_TellerNum.value.length == 7 )
+		{
+			top.serviceCtrl.stopUserTimeout();
+			checkTellerNum =false;
+			top.inputmethod.Close();
+			top.pool.set("strTellerum", input_TellerNum.value);//柜员
+			top.pool.set("isFingerMore","true");
+			error_InputTellerNum.value = "";
+			input_TellerNum.focus();
+			//查询柜员的权限
+			top.wins.showNewProcessingTip(top.langcur.send910207);
+			top.trans.send910207Async();
+		}else{
+			error_InputTellerNum.innerHTML = "请您输入柜员号";
+			input_TellerNum.value = "";
+			input_TellerNum.focus();
+		}
+	}
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	input_TellerNum.onkeypress = function()
+	{
+		error_InputTellerNum.innerHTML = "&nbsp;";
+		top.serviceCtrl.startUserTimeout(onKey_Cancel, null, null);
+	}
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	checkTellerNum =true;
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oInputTellerNumTick);
+	oInputTellerNum.innerHTML = top.langcur.InputTellerNum;
+	// 播放提示音--录入柜员号
+	//try{top.soundPlayer.playback("/Sound/InputPhoneNum.mp3");}catch(e){}
+	top.inputmethod.ShowDigit(490,570);
+	top.wins.showMain("oLInputTellerNum");
+	input_TellerNum.value = "";
+	input_TellerNum.focus();	
+}
+//柜员信息查询成功，判断指纹方式还是密码方式
+function TellerQuerySucess()
+{
+	top.serviceCtrl.stopUserTimeout();
+	if(top.pool.get("strLoginType") == "0"){
+		//柜员进行指纹授权
+		if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY"){
+			onServiceFailed("指纹验证失败", top.TERMRETCODE_FINGER_FAILED, "指纹仪模块故障"); 
+		}else{
+			fingerInScanner();
+		}	
+	}else if(top.pool.get("strLoginType") == "1"){
+		//柜员进行密码授权
+		inputTellerPassword();
+	}else{
+		error_InputTellerNum.innerHTML = "柜员登入方式未知";
+		onCheckHelpingSuccessful();
+	}
+}
+//柜员信息查询失败
+function onTellerQueryFailed(title, retcode, retdesc)
+{
+	top.serviceCtrl.stopUserTimeout();
+	error_InputTellerNum.innerHTML = retdesc;
+	onCheckHelpingSuccessful(); 
+}
+//柜员进行密码验证
+function inputTellerPassword()
+{
+	top.serviceCtrl.stopUserTimeout();
+	window.operateCtrl.disableInput(true);
+	onKey_Enter = onKey_F99 = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+	    //判断输入的柜员号是否有效
+		if (input_TellerPassword.value.length > 0 )
+		{
+			top.inputmethod.Close();
+			top.pool.set("strTellerPwd", input_TellerPassword.value);//柜员
+			error_InputTellerPassword.value = "";
+			//验证柜员密码
+			top.wins.showNewProcessingTip(top.langcur.send910208);
+			top.trans.send910208Async();
+		}
+		else
+		{ 
+		  error_InputTellerPassword.innerHTML = top.langcur.oInputRightTellerPwd;
+		  input_TellerPassword.value = "";
+		  input_TellerPassword.focus();
+		}
+	}
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.stopUserTimeout();
+		error_InputTellerNum.innerHTML = "&nbsp;";
+	 	error_InputTellerPassword.innerHTML = "&nbsp;";
+		onCheckHelpingSuccessful();
+	}
+	onTimeout = function(){
+		top.inputmethod.Close();
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Quit();
+	}
+ 	input_TellerPassword.onkeypress = function() {
+ 		error_InputTellerPassword.innerHTML = "&nbsp;";
+	}
+	window.operateCtrl.enableInput();
+	oInputTellerPwd.innerHTML = top.langcur.InputTellerPwd;
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oTellerPwdTick);
+	top.wins.showMain("oLInputTellerPwd");
+	input_TellerPassword.value = "";
+	input_TellerPassword.focus();	
+	top.inputmethod.ShowFullEnglish(280, 570);
+}
+//柜员密码验证失败
+function onTellerCheckFailed(title, retcode, retdesc)
+{
+	top.serviceCtrl.stopUserTimeout();
+	error_InputTellerNum.innerHTML = retdesc;
+	onCheckHelpingSuccessful();  
+}
+//校验柜员密码
+function input_checkTellerPwd()
+{
+	error_InputTellerPassword.innerHTML = "&nbsp;";
+	if (!new top.StringCtrl(input_TellerPassword.value).isDigitOrLetter())
+	{
+		error_InputTellerPassword.innerHTML = top.langcur.oInputRightTellerPwd;
+		input_TellerPassword.value = "";
+		input_TellerPassword.focus();
+	}
+}
+//指纹授权
+function fingerInScanner()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onReadFingerCompleted = function(strFeatureData)
+	{
+		top.pool.set("strFeatureData",strFeatureData);	
+		//进行指纹验证
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.send910206Async();
+	}
+	onDeviceError_Finger  = onTimeout_Finger  = onInvalidFinger = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed("指纹验证失败", top.TERMRETCODE_FINGER_FAILED, "指纹仪模块故障"); 
+	}	
+	onTimeout = function()
+	{	
+		top.YHAXFingerScanner.CancelRead();
+		top.serviceCtrl.navigate2Quit();
+	}
+	//取消指纹授权
+	onKey_Cancel = onKey_F98 = function(){
+		top.YHAXFingerScanner.CancelRead();
+		top.serviceCtrl.navigate2Quit();
+	}
+   if(isFingerTime == 1){
+		error_FingerIn.innerHTML = top.langcur.oFingerCheckFailed;
+		isFingerTime = "";
+	}else{
+		error_FingerIn.innerHTML = "&nbsp;";
+	}
+	
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oFingerInTick);
+	top.fingerScanner.readFinger();
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/Finger.mp3");}catch(e){}
+	top.wins.showMain("oLFingerInTip");
+}
+
+    //指纹授权失败可以多次进行授权
+  function onFingerCheckFailed()
+  {
+	if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY"){
+		onServiceFailed("指纹验证失败", top.TERMRETCODE_FINGER_FAILED, "指纹仪模块故障");
+	}else{
+	    isFingerTime = 1;
+		fingerInScanner();
+	}
+  }
+
+//指纹授权成功
+function checkFingerSucess()
+{
+	userSign();
+}
+
+//发送转账交易
+function sendTransfer(){
+	top.pool.set("Amount",YuanToFen(top.pool.get("Amount")));
+	top.wins.showNewProcessingTip("正在进行转账交易，请稍候...");
+	top.trans.send903101Async();
+}
+
+function onServiceSuccessful(){
+	top.pool.set("TransCode","信用卡转账");
+	top.pool.set("TransNum",top.exchxmlasync.msgxmldomResp.getElementValue("F11"));
+	onServiceSuccess();
+}
+
+//用户签名
+function userSign()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+	oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	oSigFinger.style.visibility = "visible";
+	oESign.style.visibility = "visible";
+	oUserSign.innerHTML = "请确认以下信息并签名";
+	text_strPan.innerHTML = top.pool.get("strPan");
+	text_name.innerHTML = top.pool.get("strName");
+	text_destPan1.innerHTML = top.pool.get("DestPan");
+	text_destName.innerHTML = top.pool.get("strDestName");
+	text_amount.innerHTML = new top.StringCtrl(parseFloat(document.getElementById("input_Amount").value)).formatNumber(2);
+	
+	text_date.innerHTML = new top.DateTimeCtrl().getYYYYMMDD2();
+	text_time.innerHTML = new top.DateTimeCtrl().getHHmmSSWithSep();
+	text_term.innerHTML = top.terminal.strTerminalNum;
+
+	window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(window.frames['ifreamSign'].onTimeout, top.iUserTimeout,oSigFingerTick);
+	top.wins.showMain("oLUserSignTip");
+}
+
+function SignPrevStep()//ESign页面过度方法
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oSigConfirm.style.visibility = "hidden";
+	oSigAgain.style.visibility = "hidden";
+	oSigFinger.style.visibility = "hidden";
+	oESign.style.visibility = "hidden";
+	top.serviceCtrl.navigate2SecondMenu();
+	window.operateCtrl.enableInput();
+}
+
+function SignNextStep()//ESign页面过度方法
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+	top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+	top.wins.showNewProcessingTip(top.langcur.oSendImage);
+	top.trans.sendImageFileAsync();
+	window.operateCtrl.enableInput();
+}
+
+//影像文件上传成功
+function onImageFileSuccessful(){
+	var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+	top.pool.set("strBatchId",strBatchId);
+
+	var htmlstr = infoToPic.innerHTML;
+	top.pool.set("htmlstr",htmlstr);
+	oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+	infoToPic.style.visibility = "hidden";
+	top.wins.showNewProcessingTip("正在上传业务办理单，请稍候...");
+	top.trans.sendBusinessApplicationAsync();
+}
+
+//上传影像成功回调
+function onSuccessful(){
+	//onServiceSuccess();
+	sendTransfer();
+}
+
+//交易成功提示
+function onServiceSuccess()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	{
+		oPrintReceipt.style.visibility = "hidden";	
+	}else{
+		onKey_Enter = onKey_F99 = function()
+		{
+			top.pool.set("TransCode","信用卡转账");
+			top.pool.set("Amount",new top.StringCtrl(parseFloat(document.getElementById("input_Amount").value)).formatNumber(2));
+			top.pool.set("printType","7");//选择打印的凭条类型
+			top.serviceCtrl.navigate2PrintReceipt();	
+		}
+	}
+
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	Tip_Title.innerHTML = "转账交易成功！";
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccessTick);
+	//交易成功后，显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+//失败回调
+function onServiceFailed(title, retcode, retdesc)
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.inputmethod.Close();
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+	oTransferFailed.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+	//交易失败后，显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip");
+}
+
+function ShowKeyboard(){
+	top.inputmethod.ShowDigit(930,380);
+}
+
+function ShowKeyboard1(){
+  top.inputmethod.ShowDigit(490,570);
+}
+function ShowKeyboard3(){
+	top.inputmethod.ShowFullEnglish(280, 570);
+}
+//校验转入卡号1
+function input_checkDestPan1() 
+{
+	<!-- if((input_DestPan1.value).length == 6){ -->
+		<!-- var regex = /^(622478)/; -->
+		<!-- if (!regex.test(input_DestPan1.value)) {   -->
+			<!-- error_Content1.innerHTML = "请输入本行(622478)开头的银行卡号"; -->
+			<!-- input_DestPan1.focus(); -->
+			<!-- input_DestPan1.value = ""; -->
+		<!-- } -->
+	<!-- } -->
+	var strPanData = input_DestPan1.value;
+	var len = input_DestPan1.value.length;
+	if (strPanData.indexOf(".") >= 0){
+		strPanData = strPanData.substring(0, len-1);
+		document.getElementById("input_DestPan1").value = strPanData;
+		error_Content1.innerHTML = "请不要输入小数点";
+	}
+}
+
+//校验转入卡号2
+function input_checkDestPan2() 
+{
+	//校验第一次输入的卡号
+	if(input_DestPan1.value.length < 16){
+		input_DestPan1.focus();
+		input_DestPan2.value = "";
+		error_Content1.innerHTML = top.langcur.oInputPanErro1;
+	}
+	<!-- //校验第二次输入的是否本行卡 -->
+	<!-- if((input_DestPan2.value).length == 6){ -->
+		<!-- var regex = /^(622478)/; -->
+		<!-- if (!regex.test(input_DestPan2.value)) {   -->
+			<!-- error_Content2.innerHTML = "请输入本行(622478)开头的银行卡号"; -->
+			<!-- input_DestPan2.focus(); -->
+			<!-- input_DestPan2.value = ""; -->
+			
+		<!-- } -->
+	<!-- } -->
+	//校验卡号不能输入小数点
+	var strPanData = input_DestPan2.value;
+	var len = input_DestPan2.value.length;
+	if (strPanData.indexOf(".") >= 0){
+		strPanData = strPanData.substring(0, len-1);
+		document.getElementById("input_DestPan2").value = strPanData;
+		error_Content2.innerHTML = "请不要输入小数点";
+	}
+	//校验两次输入的卡号是否一致
+	if(input_DestPan2.value.length >= input_DestPan1.value.length){
+		if(input_DestPan1.value != input_DestPan2.value ){
+			strPanData = strPanData.substring(0, len);
+			document.getElementById("input_DestPan2").value = strPanData;
+			error_Content2.innerHTML = top.langcur.oPan1NotEquaPan2;
+			input_DestPan2.focus();
+			input_Amount.value = "";
+		}
+	}
+}
+
+//校验金额
+function input_checkAmount() 
+{	
+	if((input_Amount.value).indexOf(".") > 0){
+		var str = (input_Amount.value).substr(find_str((input_Amount.value),".",1)+1,(input_Amount.value).length);
+		if (str.indexOf(".") > 0)
+		{
+			error_Content3.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+		}else{
+			if(str.length == 0){
+			}
+			else if (!new top.StringCtrl(input_Amount.value).isValidAmount())
+			{
+				error_Content3.innerHTML = top.langcur.oPlsInputRightAmt;
+				input_Amount.value = "";
+				input_Amount.focus();
+			}
+		}
+	}
+	else {
+		if (!new top.StringCtrl(input_Amount.value).isValidAmount())
+		{
+			error_Content3.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+		}
+		if(input_DestPan1.value != input_DestPan2.value){
+			input_Amount.value = "";
+			input_DestPan2.focus();
+			error_Content2.innerHTML = top.langcur.oPan1NotEquaPan2;
+		}
+	}
+	
+}
+
+//用密码键盘输入时输入框校验
+function CheckValue()
+{
+	if(input_DestPan1.value.length > 0){
+		input_checkDestPan1();
+	}
+	if(input_DestPan2.value.length > 0){
+		input_checkDestPan2();
+	}
+	if(input_Amount.value.length > 0){
+		input_checkAmount();
+	}
+	if(checkTellerNum){
+		input_checkTellerNum();
+	}
+}
+
+function input_checkTellerNum(){
+  if (!new top.StringCtrl(input_TellerNum.value).isDigitOrLetter())
+	{
+		error_InputTellerNum.innerHTML = top.langcur.oInputRightTellerNum;
+		input_TellerNum.value = "";
+		input_TellerNum.focus();
+	}
+}
+
+/*
+把元转换为分
+返回：处理后的字符串
+*/
+function YuanToFen(num)
+{
+	num = Math.abs(num).toFixed(2);  //将num取绝对值并四舍五入取2位小数
+	var str = (num * 100).toFixed(0).toString();  //将num乘100并转换成字符串形式
+	return str;  
+}
+
+/*
+把分转换成元
+*/
+function formatStrAmount(strAmount)
+{
+	var amount = parseFloat(strAmount) / 100.00
+	if(amount.toString().indexOf(".") == -1)
+	amount = amount + ".00";
+	return amount;
+}
+
+//根据特定字符查找所在位置
+function find_str(str,f_str,n){
+	var arr_str;
+	var tmp_str=0;
+	var arr_str=str.split(f_str);
+	if(arr_str.length<n){n=arr_str.length}
+	for(i=0;i<n;i++){
+	   tmp_str=arr_str[i].length+tmp_str;
+	}
+	return tmp_str+i-1;
+}
+
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLInputDestPan" class="FULLSCR" >
+   <div class="FULLSCR">
+	   <br><br><br><br><br><br><br><br><br><br><br/>
+	   <span class="Tip_Tick" id="oInputDestPan1Tick"></span>
+	   <table width="100%" height="45%" align="center" border="0" cellpadding="0" cellspacing="0" align="center">
+		   <tr>
+				<tr>
+					<td align="center">
+					<pre class="Tip_Title" id="oPlsInputTransInfo">请输入转账信息</pre>
+					<br/>
+					</td>
+				</tr>
+		       <td align="center" height ="40" >
+				  <table width="100%" height="90" align="center" border="0" cellpadding="0" cellspacing="0">   
+				   <tr>
+				    <td height ="60" align="right"  width="40%" class="Tip_Title" id="oPlsInputDestPan"></td>
+					<td align="left"><input name="input_DestPan1" id="input_DestPan1" class="input_transfer" size="20" maxlength="19" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkDestPan1()"/></td>
+				   </tr>
+				   <tr>
+				   <td height ="40" align="right"  width="30%"></td>
+				   <td  align="left" height ="40" class="Error_Title" id="error_Content1"></td>
+				   </tr>
+				   <tr>
+				    <td height ="60" align="right" class="Tip_Title" id="oPlsReInputDestPan"></td>
+					<td align="left" ><input name="input_DestPan2" id="input_DestPan2" class="input_transfer" size="20" maxlength="19" onclick="javascript:ShowKeyboard();"onkeyup="return input_checkDestPan2()"/><td>
+				   </tr>
+				   <tr>
+				   <td height ="40" align="right"  width="30%"></td>
+				   <td  align="left" height ="40" class="Error_Title" id="error_Content2"></td>
+  
+				   </tr>
+				   <tr>
+				    <td height ="60" align="right" class="Tip_Title" id="oPlsInputTfrAmt"></td>
+					<td align="left" ><input name="input_Amount" id="input_Amount" class="input_amount" size="12" maxlength="12" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkAmount()"/></td>
+				   </tr>
+				   <tr>
+				   <td height ="40" align="right"  width="30%"></td>
+				   <td  align="left" height ="40" class="Error_Title" id="error_Content3"></td>
+				   </tr>   
+				  </table>
+				  <br/><br/><br/>
+				  <span align="center" class="Error_Title" id="oTransLimit"></span>
+		        </td>
+		   </tr>
+	  </table>
+  </div>
+  <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+  <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLFeeConfirm" class="FULLSCR">
+  <div class="FULLSCR">
+  <span class="Tip_Tick" id="oFeeConfirmTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="2" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%" border="0">
+          <tr class="Table_Head"><td colspan="2" align="center" id="oTfrConfirm"></td></tr>
+          <tr class="Table_Record"><td>转出账号</td><td class="Digit_Normal" id="text_Pan"></td></tr>
+		  <tr class="Table_Record"><td>转出户名</td><td class="Digit_Normal" id="text_Name"></td></tr>
+		  
+          <tr class="Table_Record"><td>转入账号</td><td class="Digit_Normal" id="text_DestPan"></td></tr>
+          <tr class="Table_Record"><td>转入户名</td><td class="Digit_Normal" id="text_HolderName"></td></tr>
+          <tr class="Table_Record"><td id="oAmount"></td><td class="Digit_Normal" id="text_Amount"></td></tr>
+		  <tr class="Table_Record"><td colspan="2" align="center" class="Error_Title" id="oWarmTip"></td></tr>
+        </table>
+		<br/><br/><br/>
+		<pre class="Error_Title" id="error_Content4"></pre>
+      </td></tr>
+	  
+    </table>
+  </div>
+	<span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+	<span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLInputTellerNum" class="FULLSCR">
+    <div class="FULLSCR">
+	<span class="Tip_Tick" id="oInputTellerNumTick"></span>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		<tr>
+			<td align="center">
+				<pre class="Tip_Title" id="oInputTellerNum"></pre>
+				<br />
+				<input name="input_TellerNum" id="input_TellerNum" class="input_long3" maxlength="7" onclick="javascript:ShowKeyboard1();" onkeyup="return input_checkTellerNum()" />
+				<br />
+				<br />
+				<pre class="Error_Title" id="error_InputTellerNum">&nbsp;</pre>
+			</td>
+		</tr>
+	</table>
+    </div>
+    <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return" ></button></span>
+    <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm" ></button></span>
+</div>
+
+<div id="InputPassword" class="FULLSCR">
+  <div class="FULLSCR">
+    <span class="Tip_Tick" id="oInpPwdTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <pre class="Tip_Title" id="oPlsInputPwd4Trans"></pre>
+        <input type="password" id="input_Password" name="input_Password" size=10 maxlength=6 class="input_short" />
+    <br/><br/>
+    <img width="600px" height="430px" src="../Image/InputPin.gif" />
+    <table><tr height="52"><td class="Error_Title" id="error_InputPassword"></td></tr></table>
+      </td></tr><br/><br/>
+    </table>
+  </div>
+ <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+</div>
+
+<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+<div class="FULLSCR">
+	<span class="Tip_Tick" id="oSigFingerTick"></span>
+	<br><br><br><br><br><br><br><br>
+	<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+		<tr>
+		<td height="20px" align="center" class="Error_Title" id="oUserSign"></td>
+		</tr>
+	</table>
+
+	<div id="infoToPic">   
+		<table width="75%" height="20%" border="0" bgcolor="#FFFFFF" cellpadding="0" cellspacing="0" align="center">
+		<tr><td height="20px" colspan="4"></td></tr>
+
+		<tr>
+			<td width="3%"></td>
+			<td width="68%" colspan="2">
+			<fieldset>
+			<legend><span>客户信息</span></legend>
+			<table>
+			<tr>
+				<td nowrap >&nbsp;&nbsp;<span>信用卡号:</span>&nbsp;&nbsp;<span id="text_strPan"></span></td>
+				<td nowrap >&nbsp;&nbsp;<span>户名:</span>&nbsp;&nbsp;<span id="text_name"></span></td>
+			</tr>
+			<tr>
+				<td nowrap >&nbsp;&nbsp;<span>转入账号:</span>&nbsp;&nbsp;<span id="text_destPan1"></span></td>
+				<td nowrap >&nbsp;&nbsp;<span>转入户名:</span>&nbsp;&nbsp;<span id="text_destName"></span></td>
+			</tr>
+			</table>
+			</fieldset>
+			</td>
+			<td width="3%"></td>
+		</tr>
+		<tr><td height="20px" colspan="4"></td></tr>
+		<tr>
+			<td width="3%"></td>
+			<td width="68%" colspan="2">
+			<fieldset>
+			<legend><span>交易信息</span></legend>
+			<table>
+			<tr>
+			<td colspan="2">&nbsp;&nbsp;<span>转出金额:</span>&nbsp;&nbsp;<span id="text_amount"></span></td>
+			</tr>
+			<tr>
+			<td nowrap>&nbsp;&nbsp;<span id="oTextDate"></span>&nbsp;&nbsp;<span id="text_date"></span></td>
+			<td nowrap>&nbsp;&nbsp;<span id="oTextTime"></span>&nbsp;&nbsp;<span id="text_time"></span></td>
+			<td nowrap>&nbsp;&nbsp;<span id="oTextTerm"></span>&nbsp;&nbsp;<span id="text_term"></span></td>
+			</tr>
+			</table>
+			</fieldset>
+			</td>
+			<td width="3%"></td>
+		</tr>
+		<tr><td height="20px" colspan="4"></td></tr>
+		</table>
+	</div>
+
+	<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+		<tr>
+		 <td colspan="2" ><iframe id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		</tr>
+	</table>
+
+</div>
+	<span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>
+	<span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+	<span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+	<span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span> 
+	<span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLInputTellerPwd" class="FULLSCR">
+  <div class="FULLSCR">
+  	<span class="Tip_Tick" id="oTellerPwdTick"></span>
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr><td align="center">
+           <pre class="Tip_Title" id="oInputTellerPwd"></pre>
+           <br />
+           <input  type="password" name="input_TellerPassword" id="input_TellerPassword" class="input_long3" maxlength="6" onclick="javascript:ShowKeyboard3();" onkeyup="return input_checkTellerPwd()" />
+           <br />
+           <br />
+           <pre class="Error_Title" id="error_InputTellerPassword">&nbsp;</pre>
+        </td></tr>
+      </table>
+    </div>
+  	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+    <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm" ></button></span>
+</div>
+
+<div id="oLFingerInTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br><br><br>
+	<br/><br/><br/><br/><br/><br/><br/><br/>
+	  <br/><br/><br/><br/><br/><br/>
+	<span class="Tip_Tick" id="oFingerInTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+	  <tr>
+		<td></td>
+	  </tr>
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <br/>
+		   <img src="../Terminal/Style/Default/Img/LOGO.gif" width="130" height="130" /></br></br>
+		   <span class="Tip_Title" id="">请将手指在指纹仪上长按&nbsp;<span class="TickCount_Title">3</span>&nbsp;秒后抬起!</span>
+		   </br></br></br></br></br></br></br>
+		   <pre class="Error_Title" id="error_FingerIn">&nbsp;</pre>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+  </div>
+  <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return" ></button></span>
+</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br /><br /><br /><br /><br /><br /><br /><br />
+			<tr class="FirstLine">
+					<td align="center">
+						<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+						<span class="Tip_Title" id="Tip_Title"></span>
+					</td>
+				</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	<span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" name="Menu_Right" id="oPrintReceipt"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+  <span class="Tip_Tick" id="oServiceFailedTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oTransferFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oFailedRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		<br/><br/><br/><br/><br/><br/><br/><br/>
+		<tr class="FirstLine"><td align="center">
+			<span class="Tip_Title">请取走您的卡,并重新插入贷记卡！</span><br/><br/>
+			<img src="../Image/TakeCardTip.gif" width="870" height="520" />
+		</td></tr>
+	</table>
+</div>
+
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+</body>   
+</html>

@@ -1,0 +1,269 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>存单部提流程(打印新存单&利息凭条流程)</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+    top.wins.stopProcessingTimeout();	  
+	top.serviceCtrl.stopUserTimeout();
+	//出新存单
+	makeCdsSucess();
+  }
+  //打印新存单
+  function makeCdsSucess()
+  {
+	top.wins.showNewProcessingTip(top.langcur.oNewCDSPrint);
+	onPrintComplete_cd = function()
+    {
+		top.serviceCtrl.stopUserTimeout();
+		outNewCDS();		
+	}
+	onDeviceError_cd_Print = function()
+    {		
+       	//发送大堂经理进行协助
+		top.pool.set("strbusinessName","存单部提打印存单失败");
+		onUpdateTermStatus("2");
+	}
+	//打印内容
+	var strPrintType = "凭密码";
+	var strPayType = "通兑";
+	if(top.pool.get("strPayType") == "6"){
+		strPrintType = "凭单折";
+		strPayType = "不通兑";
+	}
+	top.documentprinter.set("1|"+top.pool.get("strNewVoucherNo")+"|D:\\SNBC SP\\CheckPrinter6500\\pic|163|40|210|99|0|0|19|76|20|40|"+new top.StringCtrl("").formatStrToDataCDS(top.pool.get("strOpenDate"))+"&45|76|20|40|"+ top.pool.get("strAcctBalance")+"&66|76|20|40|"+top.cardreader.convertTransType(top.pool.get("strDepositTerm"))+"&81|76|20|40|"+top.pool.get("strCreditIntRate")+"%&96|76|20|40|"+new top.StringCtrl("").formatStrToDataCDS(top.pool.get("strCdsOpenDate"))+"&116|76|20|40|"+new top.StringCtrl("").formatStrToDataCDS(top.pool.get("strCdsEndDate"))+"&136|76|20|40|"+strPrintType+"&154|76|20|40|自动转存&174|76|20|40|"+strPayType+"&27|36|30|60|"+top.pool.get("strCoreAcctNo")+"&92|36|30|60|"+top.pool.get("strCdsIDName")+"&52|20|20|80|"+top.pool.get("strBranchName")+"&100|20|20|80|整存整取&133|36|30|60|"+top.pool.get("strNewVoucherNo")+"&122|86|24|48|"+top.pool.get("strOpenTellerId")+"&139|86|24|48|"+top.terminal.strTerminalNum+"&133|59|30|60|"+top.pool.get("strCipherValue")+"&42|51|20|80|人民币"+new top.StringCtrl("").chgAmout2Up(top.pool.get("strAcctBalance"))+"&170|53|30|60|"+top.terminal.strTerminalNum+"&20|20|20|80|已部提");
+	top.documentprinter.print();
+  }
+  //发出存单
+  function outNewCDS()
+  {
+	onControlComplete = function()
+	{
+		window.operateCtrl.disableInput(true);
+        top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout ,oTakeCDTick);
+        // 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCD.mp3");}catch(e){}
+		oPlsTakeCD1.innerHTML = top.langcur.oTakeCDS;
+		top.wins.showMain("oLTakeCDTip");
+	}
+	onTimeout = function()
+	{
+		//关门
+		top.YHAXDocumentPrinter.ControlMedia("RETRACT",0);
+		onUpdateTermStatus("4");
+	}
+	onMediaTaken_Media = function()
+	{
+		//票取走后延时5秒
+		top.serviceCtrl.startFlowCtrlTimeout(onCloseDoor, 5 * 1000);			
+	}
+	onCloseDoor = function()
+	{
+		//关门
+		top.YHAXDocumentPrinter.ControlMedia("RETRACT",0);
+		onUpdateTermStatus("1");		       
+	}
+	onDeviceError_cd  = function()
+	{
+		//发送大堂经理进行协助
+		top.pool.set("strbusinessName","存单部提-出单失败");
+		onUpdateTermStatus("3");
+	}
+	//退出存单
+	top.documentprinter.controlMedia("EJECT");
+  }
+  //更新数据库信息
+  function onUpdateTermStatus(strTermTxStatus){
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strMangerVouchNo", top.pool.get("strNewVoucherNo"));
+	top.pool.set("iTransLogId",  top.pool.get("transLogId"));
+	top.pool.set("iTermTxStatus",strTermTxStatus);
+	top.pool.set("strMangerTransType","3");
+	top.pool.set("strMangerTransCode","905103");
+	top.pool.set("strMangerIDCardNum", top.pool.get("strIDCardNum"));
+	top.wins.showNewProcessingTip("正在更新凭证状态，请稍候...");	
+	top.trans.sendUpdateTermStatusAsync();	   
+  }
+  //如果是交易成功的情况则进行后续流程
+  function onUpdateTermStatusAsyncComplete(){
+	top.serviceCtrl.stopUserTimeout();
+	if(top.pool.get("iTermTxStatus") == "1"){
+		//叫号凭条打印失败
+		if(top.pool.get("makeCdsFlag") == "2"){
+			top.pool.set("strbusinessName","存单部提-叫号凭条打印失败");
+			top.wins.showNewProcessingTip("存单部提叫号凭条打印失败，正在呼叫柜员协助，请稍候...");
+			top.trans.send910304CDSFailedAsync();
+		}else{
+			//出单成功
+			onOutNewCDSuccess();			
+		}		
+	}else if(top.pool.get("iTermTxStatus") == "2"){
+		top.wins.showNewProcessingTip("存单部提新单打印失败，正在呼叫柜员协助，请稍候...");
+		top.trans.send910304CDSFailedAsync();		
+	}else{
+		top.wins.showNewProcessingTip("存单部提打印成功出新单异常，正在呼叫柜员协助，请稍候...");
+		top.trans.send910304CDSFailedAsync();
+	}
+  }
+  
+  // 存单部提：打印利息凭条
+  function onOutNewCDSuccess()
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	onKey_F99 = onKey_Enter = function()
+    {
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.showNewProcessingTip("正在打印利息清单，请稍候...");
+		ReceiptPrint();
+    }
+	onKey_F98 = function()
+    {		
+		top.serviceCtrl.navigate2Quit();
+    }
+	onTimeout = function(){
+		top.serviceCtrl.navigate2Quit();
+	}
+    top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oOutCDSuccessTick);
+	window.operateCtrl.enableInput();
+    top.wins.showMain("oLOutCDSuccessTip");
+  }
+  //打印利息清单
+  function ReceiptPrint(){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//部提金额利息
+	var strDrawIntAmt = parseInt(top.pool.get("strDrawAmount"),10)-parseInt(top.pool.get("strOldAmount"),10);
+	//退存单部提凭条
+	onReceiptEjected = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oTakeTransReceiptTick);
+		top.wins.showMain("oTakeTransReceiptTip");
+	}
+	onReceiptCaptured = onReceiptTaken = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		//取走交易凭条
+		top.serviceCtrl.navigate2Quit();
+	}
+	//交易凭条打印失败
+	onCaptureReceiptFailed = onDeviceError_rpt_Print = onDeviceError_rpt_Eject = function()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onKey_Enter = onKey_F99 = function()
+		{
+			top.serviceCtrl.navigate2Quit();
+		}
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oTransPrintFailedTick);
+		text_TransFailedRetDesc.innerHTML = "存单部提交易成功，利息清单打印失败！";
+		top.wins.showMain("oTransPrintFailedTip");
+	}
+	onTimeout = function(){
+		top.serviceCtrl.navigate2Quit();
+	}
+	top.pool.set("printType","");//选择打印的凭条类型
+	top.receiptprinter.set("****************利息清单****************");
+	top.receiptprinter.set("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+	top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" ");
+	top.receiptprinter.set("----------------------------------------");
+	top.receiptprinter.set("账号:"+ top.pool.get("strCoreAcctNo"));
+	top.receiptprinter.set("存期:"+ top.cardreader.convertTransType(top.pool.get("strDepositTerm")));
+	top.receiptprinter.set("姓名:"+ top.pool.get("strCdsIDName"));
+	//top.receiptprinter.set("部提金额:"+ new top.StringCtrl("").formatStrAmount(top.pool.get("strOldAmount")));
+	//top.receiptprinter.set("部提利息:"+ new top.StringCtrl("").formatStrAmount(strDrawIntAmt));
+	top.receiptprinter.set("部提本息合:"+new top.StringCtrl("").formatStrAmount(top.pool.get("strDrawAmount")));
+	top.receiptprinter.set("----------------------------------------");
+	top.receiptprinter.printAndEject();
+  }
+
+  //超时处理
+  function onProcessingTimeout(){	
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strbusinessName", "存单部提-交易超时");
+	top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+	top.trans.send910304CDSFailedAsync();
+  }
+  //存单交易失败：呼叫大堂经理回调
+  function onShowTellCDSFailed(){
+	top.serviceCtrl.navigate2("/Service/CDSFailed.html"); 
+  } 
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLTakeCDTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCDTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title" id="oPlsTakeCD1"></span><br/><br/>
+      <img src="../Image/DepositRpt_out.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>
+
+<div id="oTakeTransReceiptTip" class="FULLSCR">
+  <span class="Tip_Tick" id="oTakeTransReceiptTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr class="FirstLine"><td align="center">
+      <span class="Tip_Title" id="oPlsTakeReceipt1"></span><span class="Tip_Title" id="oPlsTakeReceipt2"></span><br/><br/>
+      <img src="../Image/TakeReceiptTip.gif" width="870px" height="520px" />
+    </td></tr>
+  </table>
+</div>
+
+<div id="oTransPrintFailedTip" class="FULLSCR">
+  <div class="FULLSCR">
+  <span class="Tip_Tick" id="oTransPrintFailedTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oPrintReceiptFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td id="text_TransFailedRetDesc"></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+  <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+</div>
+
+<div id="oLOutCDSuccessTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oOutCDSuccessTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br /><br /><br /><br /><br /><br /><br /><br />
+			<tr class="FirstLine">
+					<td align="center">
+						<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+						<span class="Tip_Title" id="oDrawCDSSuccess"></span>
+					</td>
+				</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+  <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+</div>
+
+<div id="oTakeCDSReceiptTip" class="FULLSCR">
+  <span class="Tip_Tick" id="oTakeCDSReceiptTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr class="FirstLine"><td align="center">
+      <span class="Tip_Title" id="oPlsTakeReceipt1"></span><span class="Tip_Title" id="oPlsTakeReceipt2"></span><br/><br/>
+      <img src="../Image/TakeReceiptTip.gif" width="870px" height="520px" />
+    </td></tr>
+  </table>
+</div>
+
+</body>
+</html>

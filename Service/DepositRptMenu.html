@@ -1,0 +1,244 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>存单服务菜单页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 服务流程处理入口
+function serverEntrance()
+{
+  top.pool.set("strNavigate2Url", window.location.pathname);
+  if (typeof (top.YHAXDocumentPrinter) == "undefined" || typeof(YHAXDocumentScanner) != "undefined") {
+		onServiceFailed("存单业务失败", top.TERMRETCODE_CARD_NOCARDDISPERSER,"本机尚未配置该模块");
+  }else{
+		if (typeof (top.YHAXReceiptPrint) == "undefined")
+		{
+			onServiceFailed("存单业务失败", top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oReceiptError5);
+		}else if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+		{
+			onServiceFailed("存单业务失败", top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oReceiptError5);
+		}else{
+			showMenu();
+		}
+  }
+}
+/*
+  根据当前位置，显示菜单
+ */
+var menus;
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("存单开户", 'DepositRptOpen()');
+  menus[menus.length] = new Array("存单受理", 'DepositRptAccept()');
+  menus[menus.length] = new Array("存单部提", 'DepositRptDraw()');
+  menus[menus.length] = new Array("存单续存", 'DepositRptRenew()');
+  var btn = document.all("oLMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oMenuTick);
+  top.wins.showMain("oLMenu");
+}
+
+//存单开户
+function DepositRptOpen()
+{
+   startService("0005_DepOpen_00001");
+}
+
+//存单销户
+function DepositRptAccept()
+{
+   startService("0005_DepCancel_00001");	 
+}
+//存单部提
+function DepositRptDraw()
+{
+   startService("0005_DepDraw_00001");	 
+}
+
+//存单续存
+function DepositRptRenew()
+{
+   startService("0005_DepRenew_00001");
+}
+/*开始运行服务*/
+function startService(strServiceMenuAction)
+{
+	onPrintJudge(strServiceMenuAction);
+}
+
+/*判断现金模块状态*/
+function onPrintJudge(strServiceAction)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onKey_F99 = onKey_Enter = function()
+  {
+	top.serviceCtrl.stopUserTimeout();
+	//判断现金模块是否故障
+	top.serviceCtrl.navigate2("/Service/" + strServiceAction + ".html");
+  }
+  onKey_F98 = onKey_Cancel = function()
+  {
+	  top.serviceCtrl.stopUserTimeout();
+  	  top.serviceCtrl.navigate2Quit();
+  }
+  if(typeof(top.YHAXCashDispenser) != "undefined" && typeof(top.YHAXCashAcceptor) != "undefined"){
+	  if(top.deposit.checkAvai() == "true" && top.withdraw.checkAvai() == "true"){
+	      onKey_F99();
+		  return;	 
+	  }else{
+		  if(top.deposit.checkAvai() != "true"){
+			  top.journalPrinter.addCashJournalWithTime("存单交易现金模块"+top.deposit.checkAvai(),false);
+			  oImpNotice1.innerHTML = "存取款模块("+top.deposit.checkAvai()+"),不能存取现金，是否继续交易？"; 
+		  }
+		  if(top.withdraw.checkAvai() != "true"){
+			  top.journalPrinter.addCashJournalWithTime("存单交易现金模块"+top.withdraw.checkAvai(),false);
+			  oImpNotice1.innerHTML = "存取款模块("+top.withdraw.checkAvai()+"),不能存取现金，是否继续交易？"; 
+		  }
+		  if(top.withdraw.checkAvaiFen() != "true"){
+			  top.journalPrinter.addCashJournalWithTime("存单交易现金模块"+top.withdraw.checkAvaiFen(),false);
+			  oImpNotice1.innerHTML = "存取款模块("+top.withdraw.checkAvaiFen()+"),不能存取现金，是否继续交易？"; 
+		  }
+	  }
+  }
+  else
+  {
+	  top.journalPrinter.addCashJournalWithTime("存单交易未配置现金模块",false);
+	  //未配置现金模块
+      onKey_F99();
+	  return;	  
+  }
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oPrintTick);
+  top.wins.showMain("oLPrint");
+}
+
+	function onServiceFailed(title, retcode, retdesc) {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onKey_Cancel = onKey_F98 = function() {
+			if (top.cardreader.isCardPresent()) {
+				top.YHAXCardReader.Capture();
+			}
+			top.serviceCtrl.navigate2Quit();
+		}
+		oTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onKey_F98, top.iFailedTimeout,oServiceFailedTick);
+		top.wins.showMain("oLServiceFailedTip");
+	}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="DepositRptOpen" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="DepositRptAccept" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="DepositRptDraw" name="oMMenu3" id="oMMenu3"></button></span>
+  <span class="MENU4" id="oLMenu4"><button class="DepositRptRenew" name="oMMenu4" id="oMMenu4"></button></span>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPrint" class="FULLSCR" style="visibility: hidden;">
+	 <div class="FULLSCR">
+		<span class="Tip_Tick" id="oPrintTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		  <tr>
+            <td align="center">
+				<table cellpadding="10" cellspacing="1" class="Table_Ob" width="100%">
+					<tr><td align="center"><span class="Tip_Alarm" id="oImpNotice1"></span>
+					</td></tr>
+				</table>
+			 </td>
+		   </tr>
+		 </table>
+	  </div>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+  <span class="MENU99" id="oLMenu99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+  </div>
+
+<div id="oLServiceFailed" class="FULLSCR"  style="visibility: hidden;">
+    <div class="FULLSCR">
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr><td align="center">
+           <span class="Tip_Title">对不起，该流程尚未配置！</span>
+        </td></tr>
+      </table>
+    </div>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+	<span class="MENUM3" onclick="goManager(3);"></span>
+    <span class="MENUM4" onclick="goManager(4);"></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR"
+		style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr>
+					<td align="center">
+						<table cellpadding="10" cellspacing="1" class="Table_Ob"
+							width="55%">
+							<tr class="Table_Head">
+								<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+							</tr>
+							<tr class="Table_Record">
+								<td id="oDescription"></td>
+								<td><span id="oFailedRetDesc"></span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+<span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+
+	</div>
+</body>
+</html>

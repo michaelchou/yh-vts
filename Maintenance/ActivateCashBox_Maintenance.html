@@ -1,0 +1,233 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>激活钞箱</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+   window.operateCtrl.disableInput(true);
+	 onKey_Enter = onKey_F6 = function()
+     {
+	   setTimeout(function(){try{ActivateCashBox();}catch(e){}}, 500);  
+     }
+	 onKey_F7 = function()
+     {
+        top.serviceCtrl.navigate2Maintenance();
+     }
+     onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	 window.operateCtrl.enableInput();
+	 top.wins.showMain("oLConfirmTip");
+	 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">是否确认要激活钞箱？</span>";
+}
+var CashDispenserEnr;
+var CashAcceptorEnr;
+// 钞箱激活
+function ActivateCashBox()
+{
+	top.wins.showProcessingTip("正在激活钞箱,请稍候...");
+	if (typeof(top.YHAXCashDispenser) != "undefined"){
+	  //增加判断取款模块状态，正常则激活，否者强制复位
+	 if("HEALTHY" != top.YHAXCashDispenser.StDeviceStatus){
+		 try{top.YHAXCashDispenser.Reset("RETRACT", 0);}catch(e){
+			 top.journalPrinter.addJournalWithTime("取款模块异常，强制复位失败    " + e);
+		 }
+	 }
+	//激活取款钞箱
+	  StartExchangeCMD();
+  }else{
+	//激活存款钞箱
+	  StartExchangeCIM();
+  }
+}
+var logicalunitsCDM;
+var logicalunitsCIM;
+StartExchangeCMD = function(){
+	  var strUnits ="";
+	  logicalunitsCDM = top.YHAXCashDispenser.LogicalUnits;
+	  for (var i=0; i<logicalunitsCDM.Count; i++)
+	    strUnits += (strUnits.length==0 ? "" : ",") + logicalunitsCDM.Item(i).Number;
+		
+	CashDispenserEnr = new top.EventHandling(top.YHAXCashDispenser);
+	ExchangeInitiatedCMD = function(){
+		top.journalPrinter.addJournalWithTime("开始激活取款钞箱完成");
+		EndExchangeCMD();
+	}
+	onDeviceErrorCMD = function(){
+		top.journalPrinter.addJournalWithTime("激活钞箱失败 onDeviceErrorCMD");
+		onDeviceError();
+	}
+	  CashDispenserEnr.clearAll();
+	  CashDispenserEnr.appendEvent("ExchangeInitiated", ExchangeInitiatedCMD);
+	  CashDispenserEnr.appendEvent("DeviceError", onDeviceErrorCMD);
+	   top.journalPrinter.addJournalWithTime("开始激活钞箱 CashDispenser command InitiateCashUnitExchange");
+	  try{
+		  top.YHAXCashDispenser.InitiateCashUnitExchange(strUnits.split(","));	//开始激活钞箱
+	  }catch(e){
+		  top.journalPrinter.addJournalWithTime("开始激活取款钞箱命令异常  异常信息:" + e);
+		  onDeviceError();
+	  }
+ }
+ 
+ EndExchangeCMD = function(){
+	ExchangeCompletedCMD = function(){
+		top.journalPrinter.addJournalWithTime("激活钞箱完成");
+		StartExchangeCIM();
+	}
+	onDeviceErrorCMD = function(){
+		top.journalPrinter.addJournalWithTime("结束钞箱激活失败  onDeviceErrorCMD");
+		onDeviceError();
+	}
+	  CashDispenserEnr.clearAll();
+	  CashDispenserEnr.appendEvent("ExchangeCompleted", ExchangeCompletedCMD);
+	  CashDispenserEnr.appendEvent("DeviceError", onDeviceError);
+	  top.journalPrinter.addJournalWithTime("结束激活钞箱 CashDispenser command CompletedCashUnitExchange");
+	  try{
+		  top.YHAXCashDispenser.CompletedCashUnitExchange();	//结束激活钞箱
+	  }catch(e){
+		  top.journalPrinter.addJournalWithTime("结束激活取款钞箱命令异常  异常信息:" + e);
+		  onDeviceError();
+	  }
+ }
+ 
+ StartExchangeCIM = function(){
+	 CashAcceptorEnr = new top.EventHandling(top.YHAXCashAcceptor);
+	 ExchangeInitiatedCIM = function(){
+		top.journalPrinter.addJournalWithTime("开始激活存款钞箱完成");
+		EndExchangeCIM();
+	}
+	onDeviceErrorCIM = function(){
+		top.journalPrinter.addJournalWithTime("开始激活存款钞箱  onDeviceErrorCIM");
+		onDeviceError();
+	}
+	
+	 //激活存款钞箱
+	  if (typeof(top.YHAXCashAcceptor) != "undefined"){
+		//增加判断取款模块状态，正常则激活，否者强制复位
+		  if("HEALTHY" != top.YHAXCashAcceptor.StDeviceStatus){
+			  try{top.YHAXCashAcceptor.Reset("RETRACT", 0);}catch(e){
+					 top.journalPrinter.addJournalWithTime("存款模块异常，强制复位失败  " + e);
+				 }
+		  }
+		  
+		  var strUnits ="";
+		  logicalunitsCIM = top.YHAXCashAcceptor.LogicalUnits;
+		  for (var i=0; i<logicalunitsCIM.length; i++)
+		    strUnits += (strUnits.length==0 ? "" : ",") + logicalunitsCIM.Item(i).Number;
+		  
+		  CashAcceptorEnr.clearAll();
+		  CashAcceptorEnr.appendEvent("ExchangeInitiated", ExchangeInitiatedCIM);
+		  CashAcceptorEnr.appendEvent("DeviceError", onDeviceErrorCIM);
+		   top.journalPrinter.addJournalWithTime("开始激活钞箱 CashAcceptor command InitiateCashUnitExchange");
+		  try{
+			  top.YHAXCashAcceptor.InitiateCashUnitExchange(strUnits.split(","));	//开始激活钞箱
+		  }catch(e){
+			  top.journalPrinter.addJournalWithTime("开始激活存款钞箱命令异常  异常信息:" + e);
+			  onDeviceError();
+		  }
+	  }else{
+		  onSuccess();
+	  }
+ }
+ 
+ EndExchangeCIM = function(){
+	  ExchangeCompletedCIM = function(){
+		top.journalPrinter.addJournalWithTime("结束激活存款钞箱完成");
+		onSuccess();
+	}
+	onDeviceErrorCIM = function(){
+		top.journalPrinter.addJournalWithTime("结束激活存款钞箱  onDeviceErrorCIM");
+		onDeviceError();
+	}
+	  CashAcceptorEnr.clearAll();
+	  CashAcceptorEnr.appendEvent("ExchangeCompleted", ExchangeCompletedCIM);
+	  CashAcceptorEnr.appendEvent("DeviceError", onDeviceErrorCIM);
+	  top.journalPrinter.addJournalWithTime("结束激活钞箱 CashAcceptor command CompletedCashUnitExchange");
+	  try{
+		  top.YHAXCashAcceptor.CompletedCashUnitExchange();	//结束激活钞箱
+	  }catch(e){
+		  top.journalPrinter.addJournalWithTime("结束激活存款钞箱命令异常  异常信息:" + e);
+		  onDeviceError();
+	  }
+ }
+
+ //激活成功
+ onSuccess = function() {
+ 	window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+ 	onKey_F7 = function() {
+ 		top.serviceCtrl.navigate2Maintenance();
+ 	}
+ 	onKey_Cancel = onKey_F8 = function() {
+ 		top.serviceCtrl.navigate2Quit();
+ 	}
+ 	window.operateCtrl.enableInput();
+ 	Tip_Success.innerHTML  = "<span class=\"Tip_Title\">激活成功</span>";
+ 	top.wins.showMain("oLSuccessTip");
+ }
+ 
+ //激活失败
+ onDeviceError = function(){
+ 	window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+ 	onKey_F7 = function() {
+ 		top.serviceCtrl.navigate2Maintenance();
+ 	}
+ 	onKey_Cancel = onKey_F8 = function() {
+ 		top.serviceCtrl.navigate2Quit();
+ 	}
+ 	Tip_Failed.innerHTML  = "<span class=\"Tip_Title\">钞箱激活失败，请重新激活</span>";
+ 	window.operateCtrl.enableInput();
+ 	top.wins.showMain("oLFailedTip"); 
+ }
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLConfirmTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   <span class="MMENU6" id="oLMenu6"><button onclick="javascript:onKey_F6();" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+   <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+</div>
+<div id="oLSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Success"></span></td>
+			</tr>
+	    </table>
+	</div>
+    <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLFailedTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+				<td align="center" colspan="2"><span id="Tip_Failed"></span></td>
+			</tr>
+		</table>
+	</div>
+   <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.UKeyUnitStatus" table="UKeyUnitStatus" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strTerminalNum" column="strTerminalNum" type="string"/>
+	<property name="cuNum" column="iCuNum" type="int"/>
+	<property name="strCuType" column="strCuType" type="string"/>
+	<property name="initialCount" column="iInitialCount" type="int"/>
+	<property name="curCount" column="iCurCount" type="int"/>
+	<property name="strCuStatus" column="strCuStatus" type="string"/>
+	<property name="strUKeyType" column="strUKeyType" type="string"/>
+	<property name="strUKeyTrackStart" column="strUKeyTrackStart" type="string"/>
+	<property name="strUKeyTrackEnd" column="strUKeyTrackEnd" type="string"/>
+	<property name="uKeySuccCount" column="iUKeySuccCount" type="int"/>
+	<property name="uKeyCaptureCount" column="iUKeyCaptureCount" type="int"/>
+	<property name="uKeyDestroyCount" column="iUKeyDestroyCount" type="int"/>
+	<property name="uKeyUnknown" column="iUKeyUnknown" type="int"/>
+	<property name="uKeyTakenCount" column="iUKeyTakenCount" type="int"/>
+	</class>
+</hibernate-mapping>

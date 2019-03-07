@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.CDSUnitStatus" table="CDSUnitStatus" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strTerminalNum" column="strTerminalNum" type="string"/>
+	<property name="cuNum" column="iCuNum" type="int"/>
+	<property name="strCuType" column="strCuType" type="string"/>
+	<property name="initialCount" column="iInitialCount" type="int"/>
+	<property name="curCount" column="iCurCount" type="int"/>
+	<property name="strCuStatus" column="strCuStatus" type="string"/>
+	<property name="strCdsTrackStart" column="strCdsTrackStart" type="string"/>
+	<property name="strCdsTrackEnd" column="strCdsTrackEnd" type="string"/>
+	<property name="cdsSuccCount" column="iCdsSuccCount" type="int"/>
+	<property name="cdsCaptureCount" column="iCdsCaptureCount" type="int"/>
+	<property name="cdsDestroyCount" column="iCdsDestroyCount" type="int"/>
+	<property name="cdsUnknown" column="iCdsUnknown" type="int"/>
+	<property name="cdsTakenCount" column="iCdsTakenCount" type="int"/>
+	</class>
+</hibernate-mapping>

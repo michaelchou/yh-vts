@@ -1,0 +1,274 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>现金服务菜单页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 服务流程处理入口
+function serverEntrance()
+{
+  top.pool.set("strNavigate2Url", window.location.pathname);
+  showMenu();
+}
+
+/*
+  根据当前位置，显示菜单
+ */
+var menus;
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("个人现金", 'PersonCash()');
+  menus[menus.length] = new Array("公司现金", 'CompanyCash()');
+
+  var btn = document.all("oLMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	    eval(this.name);
+  	  };
+  }
+
+  onKey_F98 = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+   
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oMenuTick);
+  top.wins.showMain("oLMenu");
+}
+
+//个人现金
+function PersonCash(){
+	 window.operateCtrl.disableInput(true);
+	  top.serviceCtrl.stopUserTimeout();
+	    
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("取款", 'DebitWithdraw()');
+	  menus[menus.length] = new Array("存款", 'DebitDeposit()');
+
+	  var btn = document.all("oLPersonMenu").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+	  	  btn[i].style.visibility = "hidden";
+	  	  btn[i].innerHTML = "";
+	  	  btn[i].name = "";
+	  	  btn[i].onclick = function() { 
+	  	  };
+	  }
+	  for(var i=0; i<menus.length; i++)
+	  {
+	  	  btn[i].style.visibility = "";
+		  btn[i].id = menus[i][0];
+	  	  btn[i].name = menus[i][1];
+	  	  btn[i].onclick = function() { 
+			top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+	  	    eval(this.name);
+	  	  };
+	  }
+
+	  onKey_F98 = function()
+	  {
+		top.serviceCtrl.navigate2Quit();
+	  }
+	   
+	  //请选择交易提示音
+	  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+	  window.operateCtrl.enableInput();
+	  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oPersonMenuTick);
+	  top.wins.showMain("oLPersonMenu");
+}
+//公司现金
+function CompanyCash(){
+	 window.operateCtrl.disableInput(true);
+	  top.serviceCtrl.stopUserTimeout();
+	    
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("公司存款", 'ComPanyDeposit()'); 
+	  menus[menus.length] = new Array("公司取款", 'ComPanyWithdraw()');
+	  var btn = document.all("oLCompanyMenu").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+	  	  btn[i].style.visibility = "hidden";
+	  	  btn[i].innerHTML = "";
+	  	  btn[i].name = "";
+	  	  btn[i].onclick = function() { 
+	  	  };
+	  }
+	  for(var i=0; i<menus.length; i++)
+	  {
+	  	  btn[i].style.visibility = "";
+		  btn[i].id = menus[i][0];
+	  	  btn[i].name = menus[i][1];
+	  	  btn[i].onclick = function() { 
+			top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+	  	    eval(this.name);
+	  	  };
+	  }
+
+	  onKey_F98 = function()
+	  {
+		top.serviceCtrl.navigate2Quit();
+	  }
+	   
+	  //请选择交易提示音
+	  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+	  window.operateCtrl.enableInput();
+	  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oCompanyMenuTick);
+	  top.wins.showMain("oLCompanyMenu");
+}
+//取款
+function DebitWithdraw()
+{
+   startService("0009_909002_00001");
+}
+
+//存款
+function DebitDeposit()
+{
+   startService("0009_909005_00001");
+}
+
+//公司存款
+function ComPanyDeposit()
+{
+   startService("0009_909020_00001");
+}
+//公司取款
+function ComPanyWithdraw()
+{
+   startService("0009_909017_00001");
+}
+
+/*开始运行服务*/
+function startService(strServiceMenuAction)
+{
+	onPrintJudge(strServiceMenuAction);
+}
+
+/*不能打印凭条时友情提醒*/
+function onPrintJudge(strServiceAction)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onKey_F99 = onKey_Enter = function()
+  {
+    
+	if(strServiceAction != "null" && strServiceAction != ""){
+	    top.serviceCtrl.navigate2("/Service/" + strServiceAction + ".html");
+	}else{
+	
+	      top.serviceCtrl.navigate2("/Service/Failed.html");
+	  }
+  }
+  onKey_F98 = onKey_Cancel = function()
+  {
+  	  top.serviceCtrl.navigate2Quit();
+  }
+  if (top.receiptprinter.ReceiptPrinterStatus()!="true")
+  {
+	  oImpNotice1.innerHTML = top.langcur.oReceiptOffLine; 
+  }
+  else
+  {
+      onKey_F99();
+	  return;	  
+  }
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oPrintTick);
+  top.wins.showMain("oLPrint");
+}
+
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="PersonCashAccept" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CompanyCashMenu" name="oMMenu2" id="oMMenu2"></button></span>
+<!--   <span class="MENU3" id="oLMenu3"><button class="CompanyCashAccept" name="oMMenu3" id="oMMenu3"></button></span> -->
+   <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPersonMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oPersonMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="DebitCashDispenser" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="DebitCashAccept" name="oMMenu2" id="oMMenu2"></button></span> 
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLCompanyMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oCompanyMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+	<span class="MENU1" id="oLMenu1"><button class="CompanyCashAccept" name="oMMenu1" id="oMMenu1"></button></span> 
+	<span class="MENU2" id="oLMenu2"><button class="CompanyCashDispenser" name="oMMenu2" id="oMMenu2"></button></span> 
+   <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+<div id="oLPrint" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oPrintTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		  <tr>
+            <td align="center">
+				<table cellpadding="10" cellspacing="1" class="Table_Ob" width="100%">
+					<tr><td align="center"><span class="Tip_Alarm" id="oImpNotice1"></span>
+					</td></tr>
+				</table>
+			 </td>
+		   </tr>
+		 </table>
+	  </div>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+  <span class="MENU99" id="oLMenu99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+</div>
+
+</body>
+</html>

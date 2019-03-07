@@ -1,0 +1,434 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<style></style>
+<title>密钥管理(国密)</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+var idx = 0;
+var pattern=/^[A-Fa-f0-9]+$/;
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+//查询机增加禁止页面其他空间获得焦点的方法
+document.attachEvent("onclick",checkEvent);
+document.attachEvent("ondblclick",checkEvent);
+document.attachEvent("onfocusin",checkEvent);
+document.attachEvent("onkeypress",checkEvent);
+
+function checkEvent()
+{
+  try
+  {
+    var arr = new Array(
+      new Array(oLClearKey1Tip,	"strClearKey1"),
+	  new Array(oLClearKey2Tip,	"strClearKey2")
+    );
+    for (var i=0; i<arr.length; i++)
+    {
+  	  if (arr[i][0].style.visibility.toLowerCase() == "visible")
+      {
+        top.wins.checkEvent(event.srcElement, arr[i][1]);
+        break;
+  	  }
+    }
+  }catch(e){}
+}
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  CheckValue();
+}
+
+//长度判断
+function CheckValue()
+{
+  if(idx == 0){
+	 input_strClearKey1();
+  }else{
+	 input_strClearKey2();
+ }
+}
+
+//按键的值
+function setInput(key)
+{
+   top.serviceCtrl.setValue(key);
+}
+function ShowKeyboard(){
+	try{top.inputmethod.ShowFullEnglish(270,570);}catch(e){}
+}
+// 输入密钥明文1
+function input_strClearKey1()
+{
+   if(strClearKey1.value.length ==0 ){
+      onKey_Enter = onKey_F6 = function()
+      {
+         error_strClearKey1.innerHTML = "请输入32位的国密密钥明文1";
+      }
+		  onKey_F7 = function()
+	  {
+	  	try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	  }
+	  onKey_Cancel = onKey_F8 = function()
+	  {
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	  }
+
+	  strClearKey1.onkeypress = function()
+	  {
+		error_strClearKey1.innerHTML = "";
+	  }
+	  window.operateCtrl.enableInput();
+	  top.wins.showMain("oLClearKey1Tip");
+	  strClearKey1.value = "";
+	  strClearKey1.focus();
+	  try{top.inputmethod.ShowFullEnglish(270,570);}catch(e){}
+   }else if(strClearKey1.value.length >0 && strClearKey1.value.length <32 ){
+      onKey_Enter = onKey_F6 = function()
+      {
+         error_strClearKey1.innerHTML = "请输入32位的国密密钥明文1";
+      }
+		  onKey_F7 = function()
+	  {
+	  	try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	  }
+	  onKey_Cancel = onKey_F8 = function()
+	  {
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	  }
+	  strClearKey1.onkeypress = function()
+	  {
+		error_strClearKey1.innerHTML = "";
+	  }
+   }else if(pattern.test(strClearKey1.value)==false ){
+      onKey_Enter = onKey_F6 = function()
+      {
+         error_strClearKey1.innerHTML = "国密密钥明文范围为A-Fa-f0-9,请重新输入";
+      }
+	  onKey_F7 = function()
+	  {
+	  	try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	  }
+	  onKey_Cancel = onKey_F8 = function()
+	  {
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	  }
+
+	  strClearKey1.onkeypress = function()
+	  {
+		error_strClearKey1.innerHTML = "";
+	  }
+   }
+   
+   else if(strClearKey1.value.length==32){
+      onKey_Enter = onKey_F6 = function()
+      {
+	     idx++;
+         input_strClearKey2();
+		 try{top.inputmethod.Close();}catch(e){}
+      }
+		  onKey_F7 = function()
+	  {
+	  	try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	  }
+	  onKey_Cancel = onKey_F8 = function()
+	  {
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	  }
+      strClearKey1.onkeypress = function()
+      {
+         error_strClearKey1.innerHTML = "";
+      }
+	  top.pool.set("strClearKey1", strClearKey1.value);
+	  var strCheckvalue1 = top.YHAXCommonCtrl.UpdateSM4CheckValue(strClearKey1.value);
+	  error_strClearKey1.innerHTML = "成分1的校验值: "+strCheckvalue1;
+   }
+}
+// 输入密钥明文2
+function input_strClearKey2()
+{
+   if(strClearKey2.value.length ==0 ){
+      onKey_Enter = onKey_F6 = function()
+      {
+         error_strClearKey2.innerHTML = "请输入32位的国密密钥明文2";
+      }
+		  onKey_F7 = function()
+	  {
+	  	try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	  }
+	  onKey_Cancel = onKey_F8 = function()
+	  {
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	  }
+
+	  strClearKey2.onkeypress = function()
+	  {
+		error_strClearKey2.innerHTML = "";
+	  }
+	  window.operateCtrl.enableInput();
+	  top.wins.showMain("oLClearKey2Tip");
+	  strClearKey2.value = "";
+	  strClearKey2.focus();
+	  try{top.inputmethod.ShowFullEnglish(270,570);}catch(e){}
+   }else if(strClearKey2.value.length >0 && strClearKey2.value.length <32){
+      onKey_Enter = onKey_F6 = function()
+      {
+         error_strClearKey2.innerHTML = "请输入32位的国密密钥明文2";
+      }
+	  onKey_F7 = function()
+	  {
+	  	try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	  }
+	  onKey_Cancel = onKey_F8 = function()
+	  {
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	  }
+
+	  strClearKey2.onkeypress = function()
+	  {
+		error_strClearKey2.innerHTML = "";
+	  }
+   }else if(pattern.test(strClearKey2.value)==false ){
+      onKey_Enter = onKey_F6 = function()
+      {
+         error_strClearKey2.innerHTML = "国际密钥明文范围为A-Fa-f0-9,请重新输入";
+      }
+	  onKey_F7 = function()
+	  {
+	  	try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	  }
+	  onKey_Cancel = onKey_F8 = function()
+	  {
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	  }
+
+	  strClearKey2.onkeypress = function()
+	  {
+		error_strClearKey2.innerHTML = "";
+	  }
+   }else if(strClearKey2.value.length==32){
+      onKey_Enter = onKey_F6 = function()
+      {
+        var strCheckValue = top.YHAXCommonCtrl.GetSM4ClearKey(top.pool.get("strClearKey1"),top.pool.get("strClearKey2"));
+        top.pool.set("strCheckValue",strCheckValue.split("|")[0]);
+		top.pool.set("strSM4MasterKey",strCheckValue.split("|")[1]);
+		try{top.inputmethod.Close();}catch(e){}
+		onCheckValueSuccessful();
+	  }
+		  onKey_F7 = function()
+	  {
+	  	try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	  }
+	  onKey_Cancel = onKey_F8 = function()
+	  {
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	  }
+      strClearKey2.onkeypress = function()
+      {
+         error_strClearKey2.innerHTML = "";
+      }
+	  top.pool.set("strClearKey2", strClearKey2.value);
+	  var strCheckvalue2 = top.YHAXCommonCtrl.UpdateSM4CheckValue(strClearKey2.value);
+      error_strClearKey2.innerHTML = "成分2的校验值: "+strCheckvalue2;
+   }
+}
+
+function onCheckValueSuccessful()
+{
+  window.operateCtrl.disableInput(true);
+  onPlainCancelled = function()
+  {
+      //下装主密钥
+	  loadKey();
+  }
+  onKey_Enter = onKey_F6 = function()
+  { 
+      top.pinpad.cancelUserEntry();//关闭明文输入
+  }
+  onKey_F7 = function()
+  {
+	 top.serviceCtrl.navigate2Maintenance();
+  }
+  onKey_Cancel = onKey_F8 = function()
+  {
+	  top.serviceCtrl.navigate2Quit();
+  }
+  text_oCheckValue.innerHTML = top.pool.get("strCheckValue").substr(0,16);//密钥的校验值
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLCheckValueTip");
+}
+
+function loadKey()
+{
+   window.operateCtrl.disableInput(true);
+   onLoadKeyDeviceError = function()
+   {
+      onServiceFailed("下装主密钥",top.TERMRETCODE_RQK_LOADMASTERKEY,"下装国密主密钥失败");
+   }
+   onKeyLoaded = function()
+   {
+      top.pinpad.bGetWorkingKey = true;//下装主密钥后，需要重新签到
+      top.pinpad.userEntry();//打开明文输入
+      onServiceSuccessful();
+   }
+   top.pinpad.loadKey("SM4MasterKey",top.pool.get("strSM4MasterKey"),"KEYENCKEY");
+   window.operateCtrl.enableInput();
+}
+
+function onServiceSuccessful()
+{
+  window.operateCtrl.disableInput(true);
+  onKey_Enter = onKey_F7 = function()
+  {
+      top.serviceCtrl.navigate2Maintenance();
+  }
+  onKey_Cancel = onKey_F8 = function()
+  {
+	  top.serviceCtrl.navigate2Quit();
+  }
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLServiceSuccessTip");
+}
+
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+  onKey_Enter = onKey_F7 = function()
+  {
+    top.serviceCtrl.navigate2Maintenance();
+  }
+
+  onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+
+  oFailed.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+  
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_Cancel, null, null);
+  top.wins.showMain("oLServiceFailedTip");
+}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLClearKey1Tip" class="FULLSCR" style="visibility: hidden;">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center">
+          <pre class="Tip_Title">请输入32位的国密密钥明文1</pre>
+          <br/>
+          <input name="strClearKey1" id="strClearKey1" class="input_long3" onclick="javascript:ShowKeyboard();" maxlength="32" onkeyup="return input_strClearKey1()"/>
+          <br/>
+          <br/>
+          <pre class="TickCount_Title" id="error_strClearKey1">&nbsp;</pre>
+        </td>
+      </tr>
+   </table> 
+  </div>
+  <span class="MMENU6"><button onclick="javascript:onKey_F6();" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+  <span class="MMENU7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+  <span class="MMENU8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLClearKey2Tip" class="FULLSCR" style="visibility: hidden;">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center">
+          <pre class="Tip_Title">请输入32位的国密密钥明文2</pre>
+          <br/>
+          <input name="strClearKey2" id="strClearKey2" onclick="javascript:ShowKeyboard();" class="input_long3" maxlength="32" onkeyup="return input_strClearKey2()"/>
+          <br/>
+          <br/>
+          <pre class="TickCount_Title" id="error_strClearKey2">&nbsp;</pre>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <span class="MMENU6"><button onclick="javascript:onKey_F6();" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+  <span class="MMENU7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+  <span class="MMENU8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLCheckValueTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+	    <br/><br/>
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+          <tr class="Table_Head"><td colspan="2" align="center">国密密钥校验值</td></tr>
+          <tr class="Table_Record"><td>密钥的校验值</td><td class="Digit_Normal" id="text_oCheckValue"></td></tr>
+        </table>
+		<br><br><br>
+      </td></tr>
+    </table>
+  </div>
+  <span class="MMENU6"><button onclick="javascript:onKey_F6();" class="ADMButton">下装主密钥</button></span>
+  <span class="MMENU7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+  <span class="MMENU8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+	    <br/><br/>
+        <span class="Tip_Title">下装国密主密钥成功</span>
+		<br><br><br>
+	    </td></tr>
+    </table>
+  </div>
+  <span class="MMENU7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+  <span class="MMENU8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR">
+	<div class="FULLSCR">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="Table_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oFailed"></td>
+						</tr>
+						<tr class="Table_Record">
+							<td id="oDescription"></td>
+							<td>
+								<span id="oFailedRetDesc"></span>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+    <span class="MMENU7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+</body>
+</html>

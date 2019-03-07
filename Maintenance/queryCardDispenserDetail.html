@@ -1,0 +1,370 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>发卡明细</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+function doMouseDown() {
+//	top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+
+// 服务流程处理入口
+function serverEntrance() {
+ 
+  top.trans.sendQueryCardDispenserDetailAsync();
+  //测试
+ // onQueryCardDispenserDetailAsyncComplete();
+}
+
+
+ 
+
+
+var cardTranslogInfoStr="";//卡明细信息
+var successCount=0;//发卡已领
+var retractCount=0;//发卡回收
+var closeCount=0;//发卡未知
+var failedCount=0;//发卡失败
+//配置标题和数据
+var strHeadingArr = new Array(
+	"卡号",
+  	"卡类型",
+  	"发卡结果",
+	"交易时间" 
+);
+
+var strRecordArr=new Array();
+
+
+//从数据库获取本终端的当日受理成功的卡段信息明细
+onQueryCardDispenserDetailAsyncComplete = function(){
+     cardTranslogInfoStr=  top.pool.get("cardTranslogInfoStr");
+     //alert(cardTranslogInfoStr);
+     loadDetailInfo();
+	 showDetailInfo();
+  }
+//测试
+//每个字段以','分割，每条记录以'|'分割
+//  var cardTranslogInfoStr="1234567890123456789,061,发卡已领,2017/05/08 14:00:00|";
+//      cardTranslogInfoStr+="1234567890123456789,061,发卡回收,2017/05/08 14:00:00|";
+//     cardTranslogInfoStr+="1234567890123456789,061,发卡未知,2017/05/08 14:00:00|";
+//     cardTranslogInfoStr+="1234567890123456789,061,发卡失败,2017/05/08 14:00:00|";
+//     cardTranslogInfoStr+="1234567890123456789,061,发卡已领,2017/05/08 14:00:00|";
+//     cardTranslogInfoStr+="1234567890123456789,061,发卡已领,2017/05/08 14:00:00|";
+//     cardTranslogInfoStr+="1234567890123456789,061,发卡已领,2017/05/08 14:00:00|";
+//     cardTranslogInfoStr+="1234567890123456789,061,发卡已领,2017/05/08 14:00:00|";
+
+//卡段详细数据信息
+ var cardTranslogInfoArr1= new Array();
+
+   
+//初始化一次性读取并统计卡箱信息
+ function loadDetailInfo()
+ {
+	//生产
+	 var cardTranslogInfoArr= new Array();
+   
+     cardTranslogInfoArr=cardTranslogInfoStr.split('|');
+     
+     for (var i=0;i<cardTranslogInfoArr.length-1;i++){
+        cardTranslogInfoArr1[i]=new Array();
+     	cardTranslogInfoArr1[i]=cardTranslogInfoArr[i].split(',');
+     }
+  
+	
+	var j=0;
+	for(var i=0;i<cardTranslogInfoArr1.length;i++){
+	
+			strRecordArr[j] = new Array();
+			
+			strRecordArr[j][0] = cardTranslogInfoArr1[i][0];  //卡号
+			strRecordArr[j][1] = cardTranslogInfoArr1[i][1];  //卡类型
+			strRecordArr[j][2] = cardTranslogInfoArr1[i][2];  //结果
+			strRecordArr[j][3] = cardTranslogInfoArr1[i][3];  //交易时间
+		
+	
+		    if(strRecordArr[j][2]=="发卡已取"){
+		    	successCount+=1;
+		    }else
+		    if(strRecordArr[j][2]=="发卡回收"){
+		    	retractCount+=1;
+		    }else
+		    if(strRecordArr[j][2]=="发卡失败"){
+		    	failedCount+=1;
+		    }
+		    else
+		   {
+		    	closeCount+=1;
+		    }
+			
+				j+=1;
+		}
+	
+	  
+	}
+	
+
+
+
+//卡段详细信息
+function showDetailInfo() {
+
+window.operateCtrl.disableInput(true);
+	onKey_Cancel = onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Enter = onKey_F6 = function() {
+		print();
+	}
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+
+	
+var mrv = new top.MultiRecordView();
+
+			   mrv.strClassName_Table_Head             			= "ADMTable_Head";
+			  mrv.strClassName_Table_Record           			= "ADMTable_Record";
+			  mrv.strClassName_Table_Record2         			= "ADMTable_Record2";
+			  mrv.strClassName_Table_RecordSelected    	= "ADMTable_RecordSelected";
+   			  mrv.oTHead = oTHead;
+              mrv.oTBody = oTBody;
+              mrv.oTablePageTip = oTablePageTip;
+              mrv.oMFirstPage  = oMFirstPage;
+              mrv.oMPrevPage = oMPrevPage;
+              mrv.oMNextPage = oMNextPage;
+              mrv.oMEndPage = oMEndPage;
+              mrv.strRecordArr = strRecordArr;
+              mrv.strHeadingArr = strHeadingArr;
+              mrv.iRowsPerPage = 3;
+              onKey_F1 = function(){mrv.onFirstPage();}
+              onKey_F2 = function(){mrv.onPrevPage();}
+              onKey_F3 = function(){mrv.onNextPage();}
+              onKey_F4 = function(){mrv.onEndPage();}
+			  mrv.show();
+			  
+	 successCountSpan.innerHTML = "<span class=\"Tip_Content\">发卡已取:"+ successCount+"</span>";
+	 retractCountSpan.innerHTML = "<span class=\"Tip_Content\">发卡回收:"+ retractCount+"</span>";
+ 	 closeCountSpan.innerHTML = "<span class=\"Tip_Content\">发卡未知:"+ closeCount+"</span>";
+	 failedCountSpan.innerHTML = "<span class=\"Tip_Content\">发卡失败:"+ failedCount+"</span>";
+	 
+	top.wins.showMain("oLshowDetailInfo");
+	window.operateCtrl.enableInput();
+}
+ //打印信息
+function print() {
+
+	     if (typeof(top.YHAXReceiptPrint) != "undefined")
+ 		 {
+			printReceipt();
+	      }
+ 	      printJournal();
+       	 onServiceSuccessful(); 
+ }
+ 
+  //打印清卡凭条
+	function printReceipt() {
+		if(strRecordArr.length<=0){
+			return;
+		}	
+	 top.receiptprinter.set("*************发卡明细清单*************");
+		 top.receiptprinter.set("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+         top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username"));
+         top.receiptprinter.set("----------------------------------------");
+         top.receiptprinter.set("**********发卡汇总信息*********");
+        top.receiptprinter.set("发卡已取："+new top.StringCtrl(successCount).formatStr(' ', 4)+" "+"发卡回收："+new top.StringCtrl(retractCount).formatStr(' ', 4)+" ");
+        top.receiptprinter.set("发卡未知："+new top.StringCtrl(closeCount).formatStr(' ', 4)+" "+"发卡失败："+new top.StringCtrl(failedCount).formatStr(' ', 4)+" ");
+         top.receiptprinter.set("**********发卡信息明细*********");
+         top.receiptprinter.set("        卡号        卡类型  发卡结果");
+         top.receiptprinter.set("      交易时间");
+           for (var i=0; i<strRecordArr.length; i++){
+                             top.receiptprinter.set(new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 19)+
+			                                                   new top.StringCtrl(strRecordArr[i][1]).formatStr(' ', 7)+
+			                							       new top.StringCtrl(strRecordArr[i][2]).formatStr(' ', 9)+
+			                							       "\r\n"+
+			                							       new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 19)
+	
+			                 								  ) ;           
+ 		}
+             top.receiptprinter.set("----------------------------------------");
+      		top.receiptprinter.printAndEject();
+	}
+       
+//打印清卡流水	
+	function	printJournal(){
+		if(strRecordArr.length<=0){
+			return;
+		}
+	    top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("*************发卡明细清单*************");
+        top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+		top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+        top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+        top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********发卡汇总信息*********");
+         top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("发卡已取："+new top.StringCtrl(successCount).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("发卡回收："+new top.StringCtrl(retractCount).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("发卡未知："+new top.StringCtrl(closeCount).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("发卡失败："+new top.StringCtrl(failedCount).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("\r\n");
+       
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********发卡信息明细*********");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("        卡号        卡类型  发卡结果");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("      交易时间");
+        top.journalPrinter.addJournal("\r\n");
+         for (var i=0; i<strRecordArr.length; i++){
+        		 top.journalPrinter.addJournal(new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 19)+
+			                                                   new top.StringCtrl(strRecordArr[i][1]).formatStr(' ',7)+
+			                							       new top.StringCtrl(strRecordArr[i][2]).formatStr(' ', 9)+
+			                							       "\r\n"+
+			                							       new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 19)
+			                							 
+			                 								  );       
+                 top.journalPrinter.addJournal("\r\n");
+		}
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+ 	}
+   
+    //交易成功
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+//交易失败
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+  onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  oFailedTitle.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLServiceFailedTip");
+}
+    
+
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+
+<div id="oLshowDetailInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">查询发卡明细</span>
+                    <br/> <br/>
+                    
+                    <table cellpadding="3" cellspacing="1" width="80%" height="20%" border="0">
+                         <tr>
+                              <td><span class="Tip_Content"  id="successCountSpan"></span></td>
+                              <td><span class="Tip_Content"  id="retractCountSpan"></span></td>
+                          </tr>
+                          <tr>
+                          		<td><span class="Tip_Content"  id="closeCountSpan"></span></td>
+                              	<td><span class="Tip_Content"  id="failedCountSpan"></span></td>
+                          </tr>
+                    </table>
+                                       
+                       <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTableListSegment" width="80%" height="15%">
+                        <thead class="ADMTable_Head" id="oTHead">
+                         </thead>
+                        <tbody id="oTBody"  class="ADMTable_Record"></tbody>
+                    </table>
+                           <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+            </tr>
+        </table>
+    </div>
+      <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+     <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+     <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+     <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+    
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLInfoTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   </div>
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">查询发卡明细成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

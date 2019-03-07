@@ -1,0 +1,448 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>存单现金:购物车流程</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+//禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick", checkEvent);
+document.attachEvent("ondblclick", checkEvent);
+document.attachEvent("onfocusin", checkEvent);
+document.attachEvent("onkeypress", checkEvent);
+function checkEvent()
+{
+	try
+	{
+	//如果光标停留在输入框上,更新last
+	if(document.activeElement.tagName == "INPUT"){
+		last = document.activeElement.id;
+	}
+	//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+	if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+		top.wins.checkEvent(event.srcElement, last);
+	}else{
+		top.wins.checkEvent(event.srcElement, event.srcElement.id);
+	}
+	}catch(e){}
+}
+var last ="";
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+	top.pool.set("isAgent","");
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.changeNaviStatus('1');
+	top.serviceCtrl.changeNaviStatus('2');
+	//返回购物车
+	sendDepositQuery();
+  }
+  
+  //发送存单信息查询
+  function sendDepositQuery(){
+	top.serviceCtrl.stopUserTimeout();
+   top.pool.set("strCDSType","1");
+	top.pool.set("strOldTransCode","905108");
+	top.wins.showNewProcessingTip(top.langcur.CdsOpenQuery);
+	top.trans.sendDepositQueryAsync();
+  }
+  
+  //存单信息查询成功
+  function depositQuerySucess(){
+	top.serviceCtrl.stopUserTimeout();
+    var strDetail = top.pool.get("cdsTranslogInfoStr");
+	depositAcceptList(strDetail);
+  }
+  
+  //存单开户信息管理
+  function depositAcceptList(strDetail)
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	error_CdsDeviceError.innerHTML  = "&nbsp;";
+	
+   onKey_F2 = function(){tableList.onPrevPage();top.serviceCtrl.startUserTimeout(onKey_Cancel, null, null);}
+   onKey_F3 = function(){tableList.onNextPage();top.serviceCtrl.startUserTimeout(onKey_Cancel, null, null);}
+	//转账开户--本人办理
+	onKey_F5 = function()
+   {
+		top.journalPrinter.addJournalWithTime("客户选择现金开户本人办理");
+		top.serviceCtrl.stopUserTimeout();
+		//存单信息填写
+		top.pool.set("TransferAmount", "");
+		top.pool.set("Amount","");
+		top.pool.set("isAgent","");
+		//存单开户流程
+	 	top.serviceCtrl.navigate2("/Service/0005_DepOpen_00004.html");
+   }
+	//转账开户--他人办理
+   onKey_F6 = function()
+   {
+	   top.journalPrinter.addJournalWithTime("客户选择现金开户他人办理");
+	   top.serviceCtrl.stopUserTimeout();
+		top.pool.set("TransferAmount", "");
+		top.pool.set("Amount","");
+		top.pool.set("isAgent","1");
+		top.serviceCtrl.navigate2("/Service/0005_DepOpen_00004.html");
+   }
+	//转账开户--转账充值
+	onKey_F7 = function()
+   {
+		top.journalPrinter.addJournalWithTime("客户选择  转账充值");
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("TransferAmount", "");
+ 		top.pool.set("Amount","");
+	   	//转入内部账
+ 		top.serviceCtrl.navigate2("/Service/0005_DepOpen_00005.html");
+	}
+	//转账开户--余额取现
+	onKey_F8 = function()
+	{
+		top.journalPrinter.addJournalWithTime("客户选择 余额取回");
+		top.serviceCtrl.stopUserTimeout();
+		error_CdsDeviceError.innerHTML  = "&nbsp;";
+		top.pool.set("TransferAmount", "");
+		top.pool.set("Amount","");
+		if(top.pool.get("surplusAmt") > 0){
+			top.serviceCtrl.navigate2("/Service/0005_DepOpen_00006.html");	
+		}else{
+			//显示提示信息
+			onShowTransferOutTip();
+		}				
+   }
+	
+   viewMultiRecord(strDetail);
+
+	//开户金额
+	if(strDetail !=null && strDetail !=""){
+		var strToalAmount = 0;
+		var array = strDetail.split("|");
+		var num = array.length-1; //记录条数
+		for(var i = 0; i < num; i++) {
+			var strUserDetailData = array[i];
+			var arrayDetail = strUserDetailData.split(",");
+			// 交易金额
+			strToalAmount = parseInt(strToalAmount,10) + parseInt(new top.StringCtrl("").YuanToFen(arrayDetail[1]),10);
+		}
+		top.pool.set("totalAmt",strToalAmount);
+	}else{
+		top.pool.set("totalAmt","0");
+	}
+
+	//转账金额
+	var strTransQueryStr = top.pool.get("cdsTransQueryStr");
+	if(strTransQueryStr !=null && strTransQueryStr !=""){
+		var strTransAmount = 0;
+		var array = strTransQueryStr.split("|");
+		var num = array.length-1; //记录条数
+		for(var i = 0; i < num; i++) {
+			var strUserDetailData = array[i];
+			var arrayDetail = strUserDetailData.split(",");
+			// 交易金额
+			strTransAmount = parseInt(strTransAmount,10) + parseInt(new top.StringCtrl("").YuanToFen(arrayDetail[1]),10);
+		}
+		top.pool.set("strTransAmount",strTransAmount);
+	}else{
+		top.pool.set("strTransAmount","0");
+	}
+	
+	//内部账存款金额
+	var strCashTransQueryStr = top.pool.get("cdsCashTransQueryStr");
+	if(strCashTransQueryStr !=null && strCashTransQueryStr !=""){
+		var strCashTransAmount = 0;
+		var array = strCashTransQueryStr.split("|");
+		var num = array.length-1; //记录条数
+		for(var i = 0; i < num; i++) {
+			var strUserDetailData = array[i];
+			var arrayDetail = strUserDetailData.split(",");
+			// 交易金额
+			strCashTransAmount = parseInt(strCashTransAmount,10) + parseInt(new top.StringCtrl("").YuanToFen(arrayDetail[0]),10);
+		}
+		top.pool.set("strCashTransAmount",strCashTransAmount);
+	}else{
+		top.pool.set("strCashTransAmount","0");
+	}
+	//购物车金额 = 转入内部账金额+内部账存款	
+	var strNewAmount = parseInt(top.pool.get("strTransAmount"),10)+ parseInt(top.pool.get("strCashTransAmount"),10);
+	top.pool.set("strNewAmount",strNewAmount);
+	//可开户金额 = 购物车金额- 开户金额
+	var strDepRptAmount = parseInt(top.pool.get("strNewAmount"),10) - parseInt(top.pool.get("totalAmt"),10);
+	//保存可开户金额
+	top.pool.set("surplusAmt",strDepRptAmount);
+	text_surplusAmt.innerHTML = new top.StringCtrl("").formatStrAmount(top.pool.get("surplusAmt")) + top.langcur.oYUAN;
+
+	onTimeout = function(){
+		//购物车有钱呼叫大堂经理
+		if(top.pool.get("surplusAmt") > 0){
+			top.pool.set("strbusinessName","现金开户购物车选择超时(内部账有钱)");
+			top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+			top.trans.send910304CDSFailedAsync();
+		}else{
+			top.serviceCtrl.navigate2Quit();
+		}
+	}
+	if(strTransQueryStr !=null && strTransQueryStr !=""){
+		var arrayTrans = strTransQueryStr.split("|");
+		var transNum = arrayTrans.length-1; //记录条数
+		if(transNum >= 4){
+			oTransRe.style.visibility = "hidden";
+		}
+	}
+	//如果存单开户模块故障，则只显示余额取现，屏蔽其他交易
+	var strDevstatus = new top.CheckCard().cdStDeviceStatus();
+	if(strDevstatus !="true"){	
+		oNoPerSon.style.visibility = "hidden";
+		oPerSon.style.visibility = "hidden";
+		oTransRe.style.visibility = "hidden";
+		if(top.YHAXDocumentPrinter.StPaperStatus =="OUT"){
+			error_CdsDeviceError.innerHTML = top.langcur.oDocumentPrinterError2;
+		}else{
+			//显示提示语
+			error_CdsDeviceError.innerHTML = strDevstatus;
+		}
+	}
+	//内部账中有余额不显示安全退出按钮
+	if(top.pool.get("surplusAmt") > 0){
+		//显示安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+	}else{
+		//显示安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+	}
+   window.operateCtrl.enableInput();
+   top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oAcceptListTick);
+   top.wins.showMain("oLAcceptListTip");
+  }
+  
+  function viewMultiRecord(strDetail) {
+	var strRecordArr = new Array();
+	var mrv = new top.MultiRecordView();
+	var strHeadingArr = new Array(
+		top.langcur.oCDSTilName,
+		top.langcur.oCDSTilType,
+		top.langcur.oCDSTilTiem,
+		top.langcur.oCDSTilAmount
+	);
+	if(strDetail !=null && strDetail !=""){
+		var array = strDetail.split("|");
+		var num = array.length-1; //记录条数
+		for(var i = 0; i < num; i++) {
+			var strUserDetailData = array[i];
+			var arrayDetail = strUserDetailData.split(",");
+			var data = new Array();
+			data.push(arrayDetail[6]);		
+			// 存单类型
+			data.push(top.langcur.oSubCount);
+			// 存单存期
+			data.push(top.cardreader.convertTransType(arrayDetail[2]));
+			// 交易金额
+			data.push(arrayDetail[1]);
+			strRecordArr.push(data);
+		  }
+	 }
+	onTimeout = function(){
+		//购物车有钱呼叫大堂经理
+		if(top.pool.get("surplusAmt") > 0){
+			top.pool.set("strbusinessName","现金开户购物车选择超时(内部账有钱)");
+			top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+			top.trans.send910304CDSFailedAsync();
+		}else{
+			top.serviceCtrl.navigate2Quit();
+		}
+	}
+	mrv.oTHead = oTHead;
+	mrv.oTBody = oTBody;
+	mrv.oTablePageTip = oTablePageTip;
+	mrv.oMFirstPage  = oMFirstPage
+	mrv.oMPrevPage = oMPrevPage;
+	mrv.oMNextPage = oMNextPage;
+	mrv.oMEndPage = oMEndPage;
+	mrv.strRecordArr = strRecordArr;
+	mrv.strHeadingArr = strHeadingArr;
+	mrv.iRowsPerPage = 5;
+	onKey_F1 = function(){mrv.onFirstPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oAcceptListTick);}
+	onKey_F2 = function(){mrv.onPrevPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oAcceptListTick);}
+	onKey_F3 = function(){mrv.onNextPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oAcceptListTick);}
+	onKey_F4 = function(){mrv.onEndPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oAcceptListTick);}
+	mrv.show();
+  }
+  //余额取现提示
+  function onShowTransferOutTip() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Cancel = onKey_F98 = function() 
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Quit();
+	}
+	onKey_F99 = onKey_Enter = function(){
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("Amount","");
+		//返回购物车
+		sendDepositQuery();
+	}
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onKey_F98, top.iFailedTimeout, oTransferOutTipTick);
+	top.wins.showMain("oLTransferOutTip");
+  }
+  //超时处理
+  function onProcessingTimeout(){	
+	top.pool.set("strbusinessName","现金开户-交易超时");
+	top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+	top.trans.send910304CDSFailedAsync();
+  }
+  function onShowTellCDSFailed()
+  {
+	top.serviceCtrl.navigate2("/Service/CDSFailed.html");
+  }	
+  //失败显示
+  function onServiceFailed(title, retcode, retdesc){
+	top.serviceCtrl.stopUserTimeout();
+	showSvcFailedInfo(title, retcode, retdesc);
+  }
+  function showSvcFailedInfo(title, retcode, retdesc) {
+	infoToPic.style.visibility = "hidden";
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Cancel = onKey_F98 = function() 
+	{
+		sendDepositQuery();
+	}
+	oTitle.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onKey_F98, top.iFailedTimeout, oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip");
+  }
+
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div class="divFlowPage" id="divFlowPage">
+	<table border="0" cellpadding="0" cellspacing="0">
+		<tr>
+		   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+		   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+		   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+		   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td><div class="stepLine" id="nodeline41"></div></td>
+		   <td><div class="stepLine" id="nodeline42"></div></td><td width="34" class="stepStatusIcon" id="node5"></td><td><div class="stepLine" id="nodeline51"></div></td>
+		   <td><div class="stepLine" id="nodeline52"></div></td><td width="34" class="stepStatusIcon" id="node6"></td><td><div class="stepLine" id="nodeline61"></div></td>
+		   <td><div class="stepLine" id="nodeline62"></div></td><td width="34" class="stepStatusIcon" id="node7"></td><td><div class="stepLine" id="nodeline71"></div></td>
+		   <td><div class="stepLine" id="nodeline72"></div></td><td width="34" class="stepStatusIcon" id="node8"></td><td><div class="stepLine" id="nodeline81"></div></td>
+		   <td><div class="stepLine" id="nodeline82"></div></td><td width="34" class="stepStatusIcon" id="node9"></td><td><div class="stepLine" id="nodeline91"></div></td>
+		   <td><div class="stepLine" id="nodeline92"></div></td><td width="34" class="stepStatusIcon" id="node10"></td><td width="38"></td>
+		 </tr>
+		 <tr height="70">
+		   <td class="font25" align="center" colspan="3">现金开户</td>
+		   <td class="font25" align="center" colspan="3">内部账存款</td>
+		   <td class="font25" align="center" colspan="3" id="oFlowCDSShop"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowCDSInfo"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowCDSCon"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowConfirm"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowInputPin"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowCDSPtr"></td>
+		   <td class="font25" align="center" colspan="3" id="oPrintReceipt"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowComplete"></td>
+		 </tr>
+	</table>
+</div>
+<div id="oLAcceptListTip" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oAcceptListTick"></span>
+	<br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    <table width="100%" height="40%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+	       <span class="Tip_Title" id="oOpenCDSInfo"></span><br/><br/>
+           <table cellpadding="2" cellspacing="1" class="Table_Ob" id="oTable" width="65%" height="48%">
+			  <thead class="Table_Head" id="oTHead"></thead>
+			  <tbody id="oTBody">
+			  </tbody>
+            </table>
+			<br/>
+			<table width="100%" height="90" border="0" cellpadding="0" cellspacing="0">
+			  <tr>
+				<td height ="45" align="right"><span class="Tip_Title" id="oCDSOpenEnAmount"></span></td>
+				<td height ="45" align="left">&nbsp;&nbsp;<span class="TickCount_Title" id="text_surplusAmt"></span></td>
+			  </tr>
+			</table>
+		<span class="Tip_Content" id="oTablePageTip"></span>
+		<br/>
+          <pre class="Error_Title" id="error_CdsDeviceError">&nbsp;</pre>
+      </td></tr>
+    </table>
+   </div>
+  <span class="MMENU1NEW" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+  <span class="MMENU2NEW" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+  <span class="MMENU3NEW" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+  <span class="MMENU4NEW" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+
+  <span class="MMENU5CASH"><button onclick="javascript:onKey_F5()" class="Menu_Right" id="oPerSon"></button></span>
+  <span class="MMENU6CASH"><button onclick="javascript:onKey_F6()" class="Menu_Right" id="oNoPerSon"></button></span>
+  <span class="MMENU7CASH"><button onclick="javascript:onKey_F7()"  class="Menu_Right" id="oTransRe"></button></span>
+  <span class="MMENU8CASH"><button onclick="javascript:onKey_F8()" class="Menu_Right" id="oDrawBan"></button></span>
+</div>
+
+<div id="oLTransferOutTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oTransferOutTipTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br /><br /><br /><br /><br /><br /><br /><br />
+			<tr class="FirstLine">
+					<td align="center">
+						<span class="Tip_Title" id="oOpenCDSTransOutTip"></span>
+					</td>
+				</tr>
+		</table>
+	</div>
+	 <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+	<span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="Table_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+						</tr>
+						<tr class="Table_Record">
+							<td id="oDescription"></td>
+							<td><span id="oFailedRetDesc"></span></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div>
+
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,228 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>清机加Ukey</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown() {
+	top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+
+// 服务流程处理入口
+function serverEntrance() {
+	showUKeyBoxInfo();
+}
+
+// 初始化维护功能列表
+var mrv = new top.MultiRecordView();
+var strHeadingArr = new Array(
+	"Ukey箱编号",
+	"Ukey类型",
+	"加Ukey数",
+	"已发Ukey数",
+	"剩余Ukey数",
+	"废Ukey数"
+);
+var strRecordArr = new Array(
+	new Array("1", "Ukey1", "100", "50", "40", "10", "1"),
+	new Array("2", "Ukey2", "100", "50", "40", "10", "2"),
+	new Array("3", "Ukey3", "100", "50", "40", "10", "3")
+);
+
+//选择的数字键
+function onChangeNum(Key) {
+	top.pool.set("ukeyBox", Key);
+	addCard();
+}
+
+// 显示卡箱的详细信息
+function showUKeyBoxInfo() {
+	window.operateCtrl.disableInput(true);
+
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+
+	onKey_1 = function(ukeyBox) {
+		top.pool.set("ukeyBox", ukeyBox);
+		addUKey();
+	}
+
+	mrv.oTHead = oTHead; //表格标题行标签id
+	mrv.oTBody = oTBody; //表格数据行标签id
+	mrv.oTablePageTip = oTablePageTip;
+	mrv.oMPrevPage = oMPrevPage; //上一页按钮标签id
+	mrv.oMNextPage = oMNextPage; //下一页按钮标签id
+	mrv.strRecordArr = strRecordArr; //数据数组
+	mrv.strHeadingArr = strHeadingArr; //标题数组
+	mrv.oMSelNext = oMSelNext; //下一条记录标签id
+	mrv.iRowsPerPage = 3; //每页显示的记录数
+	onKey_F2 = function() {
+		mrv.onPrevPage();
+	}
+	onKey_F3 = function() {
+		mrv.onNextPage();
+	}
+	onKey_F4 = function() {
+		mrv.onSelNext();
+	}
+	onKey_Enter = onKey_F6 = function() {
+		try {
+			eval("onKey_1(" + mrv.getCurSel() + ");");
+		} catch (e) {}
+	}
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	mrv.showMX();
+	top.wins.showMain("oLShowUKeyBoxInfo");
+	window.operateCtrl.enableInput();
+}
+
+//加UKey
+function addUKey() {
+	window.operateCtrl.disableInput(true);
+	onKey_Enter = onKey_F6 = function() {
+		onServiceSuccessful();
+	}
+
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLAddUKey");
+	boxNum.innerHTML = "UKey箱:" + top.pool.get("ukeyBox") + "号UKey箱";
+	input_UKeyAmount.focus();
+}
+
+//加UKey成功
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+}
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLShowUKeyBoxInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">清机加UKey(请按数字键选择)</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" class="Table_Ob" id="oTable" width="65%" height="60%">
+                        <thead class="Table_Head" id="oTHead"></thead>
+                        <tbody id="oTBody"></tbody>
+                    </table>
+                    <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU2" id="oMPrevPage"><button onmousedown="doMouseDown();setTimeout(onKey_F2,100);" class="Menu_Left" name="oPrevPage" id="oPrevPage" style="visibility:hidden;"></button></span>
+    <span class="MMENU3" id="oMNextPage"><button onmousedown="doMouseDown();setTimeout(onKey_F3,100);" class="Menu_Left" name="oNextPage" id="oNextPage" style="visibility:hidden;"></button></span>
+    <span class="MMENU5" id="oMSelNext"><button onmousedown="doMouseDown();setTimeout(onKey_F4,100);" class="Menu_Right" name="oSelNext" id="oSelNext"></button></span>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="Menu_Right" name="oConfirm" id="oConfirm"></button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLAddUKey" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">UKey箱加UKey</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" width="45%" height="60%" border="0">
+                        <tr>
+                            <td colspan="4"><span class="Tip_Content" id="boxNum"></span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="Tip_Content">UKey类型:</span></td>
+                            <td align="left">
+                                <select id="" style="height: 55px;width: 160px;font-size:28px;">
+                                    <option value="">UKey1</option>
+                                    <option value="">UKey2</option>
+                                    <option value="">UKey3</option>
+                                </select>
+                            </td>
+                            <td><span class="Tip_Content">加UKey数:</span></td>
+                            <td>
+                                <input name="input_UKeyAmount" id="input_UKeyAmount" class="input_short2" maxlength="8" onclick="" />
+                            </td>
+                        </tr>
+                    </table>
+                    <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="Menu_Right" name="oConfirm" id="oConfirm"></button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">加UKey成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+                        <tr class="Table_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oTransferFailed"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+</body>
+</html>

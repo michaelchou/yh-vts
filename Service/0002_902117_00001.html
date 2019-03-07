@@ -1,0 +1,401 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>新查询余额</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />		
+<script type="text/javascript">
+var strRecordArr = new Array();//列表
+var strCurrentArr;//活期列表
+var strFixedArr;//定期列表
+var strDepositeArr;//零存整取列表
+var strSpecialArr;//专款列表
+// 初始化本次服务流程
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+function serverEntrance(){
+	top.pool.set("strNavigate2Url", window.location.pathname);
+	if (top.cardreader.isCardPresent()){
+		if(top.pool.get("strCardType") != "1"){			
+			InsertDebitCard();//提示插入借记卡				
+		}else{	
+		
+		top.wins.showNewProcessingTip("");
+		top.trans.send902117Async();
+  		//onServiceSuccessful();
+		}
+	}else{
+		top.serviceCtrl.navigate2InsertCard();
+
+	}
+}
+//重新插入借记卡
+function InsertDebitCard()
+{
+	onCardEjected = function()
+      {
+	    top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+        // 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("oLTakeCardTip");
+      }
+	  
+	 onCardTaken = function()
+      {
+        top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+      }
+	  
+	  onDeviceError_Idc = function()
+      {
+	    if (top.cardreader.isCardPresent()){
+	       top.YHAXCardReader.Capture();
+	    } 
+        onServiceFailed(top.langcur.oTransferSignFailed, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError); 
+      }
+	  
+	  onCardCapturedTipEnd = function()
+      {
+  	    top.serviceCtrl.navigate2Quit();
+      }
+	  
+      onCardCaptured = function()
+      {
+		top.pool.set("printType","3");//选择打印的凭条类型
+		top.receiptprinter.printAndEject();
+		top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+		top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+      }
+	top.cardreader.eject();
+}		
+//审核超时处理
+function onProcessingTimeout(){
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.navigate2Quit();  
+}
+	
+//查询成功
+function onServiceSuccessful(){
+	//活期开户机构
+	var openOrgCode = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/openOrgCode");
+	//定期开户机构
+	var openOrgCode1 = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/openOrgCode1");
+	//活期主账号
+	var cardBookNo = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/cardBookNo");
+	//定期主账号
+	var cardBookNo1 = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/cardBookNo1");
+	//要展示的定期账号
+	var cardBookNo1ToShow = cardBookNo1;
+	if(cardBookNo1.length > 8){
+		cardBookNo1ToShow = cardBookNo1.substr(0,4) + "***" + cardBookNo1.substr(cardBookNo1.length - 4,4);
+	}
+	//活期列表
+	strCurrentArr = new Array();
+	var count = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F56/item");
+	if(count == null || count == ""){
+		count = 0;
+	}
+	count = parseInt(count, 10);
+	for (var i = 1 ; i <= count; i++) {
+		//var subAcctNo = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F56/item[" + i+ //"]/subAcctNo");
+		var subAcctType = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F56/item[" + i+ "]/subAcctType");
+		var acctBalance = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F56/item[" + i+ "]/acctBalance");
+		var availBalance = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F56/item[" + i+ "]/availBalance");
+		var currCode   = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F56/item[" + i+ "]/currCode");
+		var openDate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F56/item[" + i+ "]/openDate");
+
+		var rowDataArr = new Array();
+		rowDataArr[rowDataArr.length] = i;
+		rowDataArr[rowDataArr.length] = top.trans.converSubAcctType(subAcctType);
+		rowDataArr[rowDataArr.length] = openDate;
+		rowDataArr[rowDataArr.length] = openOrgCode;
+		rowDataArr[rowDataArr.length] = currCode;
+		rowDataArr[rowDataArr.length] = acctBalance;
+		rowDataArr[rowDataArr.length] = availBalance;
+		rowDataArr[rowDataArr.length] = i;
+		strCurrentArr[strCurrentArr.length] = rowDataArr;
+	}
+	
+	//定期期列表
+	strFixedArr = new Array();
+	count = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F57/item");
+	if(count == null || count == ""){
+		count = 0;
+	}
+	count = parseInt(count, 10);
+	for (var i = 1 ; i <= count; i++) {
+		var openDate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F57/item[" + i+ "]/openDate");
+		
+		var productDesc = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F57/item[" + i+ "]/productDesc");
+		var endDate   = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F57/item[" + i+ "]/endDate");
+		var acctBalance   = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F57/item[" + i+ "]/acctBalance");
+		if(productDesc.length > 10){
+			productDesc = productDesc.substr(2,8) + "...";
+		}
+		var rowDataArr = new Array();
+		rowDataArr[rowDataArr.length] = i;
+		rowDataArr[rowDataArr.length] = cardBookNo1ToShow;
+		//rowDataArr[rowDataArr.length] = openDate;
+		rowDataArr[rowDataArr.length] = openOrgCode;
+		rowDataArr[rowDataArr.length] = productDesc;
+		rowDataArr[rowDataArr.length] = openDate;
+		rowDataArr[rowDataArr.length] = endDate;
+		rowDataArr[rowDataArr.length] = acctBalance;
+		rowDataArr[rowDataArr.length] = i;
+		strFixedArr[strFixedArr.length] = rowDataArr;
+	}
+	
+	//零存整取列表
+	strDepositeArr = new Array();
+	count = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F58/item");
+	if(count == null || count == ""){
+		count = 0;
+	}
+	count = parseInt(count, 10);
+	for (var i = 1 ; i <= count; i++) {
+		var acctNo = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F58/item[" + i+ "]/acctNo");
+		var openDate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F58/item[" + i+ "]/openDate");
+		var currCode = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F58/item[" + i+ "]/currCode");
+		var depositTerm = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F58/item[" + i+ "]/depositTerm");
+		var startIntDate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F58/item[" + i+ "]/startIntDate");
+		var endDate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F58/item[" + i+ "]/endDate");
+		var acctBalance = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F58/item[" + i+ "]/acctBalance");
+		var intRate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F58/item[" + i+ "]/intRate");
+		if(acctNo.length > 8){
+			acctNo = acctNo.substr(0,4) + "***" + acctNo.substr(acctNo.length - 4 ,4);
+		}
+		var rowDataArr = new Array();
+		rowDataArr[rowDataArr.length] = i;
+		rowDataArr[rowDataArr.length] = acctNo;
+		rowDataArr[rowDataArr.length] = openDate;
+		rowDataArr[rowDataArr.length] = openOrgCode;
+		rowDataArr[rowDataArr.length] = currCode;
+		rowDataArr[rowDataArr.length] = depositTerm;
+		rowDataArr[rowDataArr.length] = startIntDate;
+		rowDataArr[rowDataArr.length] = endDate;
+		rowDataArr[rowDataArr.length] = acctBalance;
+		rowDataArr[rowDataArr.length] = intRate;
+		rowDataArr[rowDataArr.length] = i;
+		strDepositeArr[strDepositeArr.length] = rowDataArr;
+	}
+	
+	//专款列表
+	strSpecialArr = new Array();
+	count = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+	if(count == null || count == ""){
+		count = 0;
+	}
+	count = parseInt(count, 10);
+	for (var i = 1 ; i <= count; i++) {
+		var feeTypeExplain = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/feeTypeExplain");
+		var feeBal = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/feeBal");
+		var status = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/status");
+		
+		var rowDataArr = new Array();
+		rowDataArr[rowDataArr.length] = i;
+		rowDataArr[rowDataArr.length] = feeTypeExplain;
+		rowDataArr[rowDataArr.length] = feeBal;
+		rowDataArr[rowDataArr.length] = status=="0"?"正常":"锁定";
+		rowDataArr[rowDataArr.length] = i;
+		strSpecialArr[strSpecialArr.length] = rowDataArr;
+	}
+	
+	show("current");
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	onKey_F98 = function(){
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+function show(idName){
+	document.getElementById("current").style.background = "#C7E0F8";
+	document.getElementById("fixed").style.background = "#C7E0F8";
+	document.getElementById("deposit").style.background = "#C7E0F8";
+	document.getElementById("special").style.background = "#C7E0F8";
+	document.getElementById(idName).style.background = "#3e81ca";
+	if("current" == idName){
+		var strHeadingArr = new Array(
+			top.langcur.oSerialNumber,
+			top.langcur.oSubAcctType,
+			top.langcur.oOpenDate,
+			top.langcur.oOpenOrg,
+			top.langcur.oCurrency,
+			top.langcur.oCurrBalance,
+			top.langcur.oAvailidteBalance
+		);
+		viewMultiRecord(strHeadingArr,strCurrentArr);
+	}else if("fixed" == idName){
+		var strHeadingArr = new Array(
+			top.langcur.oSerialNumber,
+			top.langcur.oAccount,
+			//top.langcur.oOpenDate,
+			top.langcur.oOpenOrg,
+			top.langcur.oDepositType,
+			top.langcur.oOpenAcctDate,
+			top.langcur.oRateEndDate,
+			top.langcur.oMaturity
+		);
+		viewMultiRecord(strHeadingArr,strFixedArr);
+	}else if("deposit" == idName){
+		var strHeadingArr = new Array(
+			top.langcur.oSerialNumber,
+			top.langcur.oAccount,
+			top.langcur.oOpenDate,
+			top.langcur.oOpenOrg,
+			top.langcur.oCurrency,
+			top.langcur.oSaveTime,
+			top.langcur.oRateStartDate,
+			top.langcur.oRateEndDate,
+			top.langcur.oAccountBalance,
+			top.langcur.oInterestRate
+		);
+		viewMultiRecord(strHeadingArr,strDepositeArr);
+	}else if("special" == idName){
+		var strHeadingArr = new Array(
+			top.langcur.oSerialNumber,
+			top.langcur.oSpecialTypeDesc,
+			top.langcur.oSpecialBalance,
+			top.langcur.oState
+		);
+		viewMultiRecord(strHeadingArr,strSpecialArr);
+	}
+}
+
+/**
+*展示明细数据
+*参数1：表头
+*参数2：明细数据
+*/
+function viewMultiRecord(strHeadingArr,strRecordArr)
+{
+  var mrv = new top.MultiRecordView();
+  
+  mrv.oTHead = oTHead;
+  mrv.oTBody = oTBody;     
+  mrv.oMFirstPage  = oMFirstPage;
+  mrv.oMPrevPage = oMPrevPage;
+  mrv.oMNextPage = oMNextPage;
+  mrv.oMEndPage = oMEndPage;
+  mrv.strRecordArr = strRecordArr;
+  mrv.strHeadingArr = strHeadingArr;
+  mrv.iRowsPerPage = 5;
+  onKey_F1 = function(){mrv.onFirstPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccessTick);}
+  onKey_F2 = function(){mrv.onPrevPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccessTick);}
+  onKey_F3 = function(){mrv.onNextPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccessTick);}
+  onKey_F4 = function(){mrv.onEndPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccessTick);}
+  mrv.show();
+}
+			
+//失败显示
+function onServiceFailed(title, retcode, retdesc)
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+
+	onTimeout = function()
+	{
+	top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	oTitle.innerHTML = title;
+	oFailedRetCode.innerHTML = retcode;
+	oFailedRetDesc.innerHTML = retdesc;
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip");
+}
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg"  oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden" >
+	<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+	<div id="successTip" align="center" style="margin-top:20%;" ><span class="Tip_Title" width="100%" id="oListInfo"></span></div>
+	
+	<div style="width:100%;" align="center">
+		<div style="width:90%;text-align:center;" align="center">
+		<div id="current"  name="acctType" style="float:left;background:#3e81ca;width:25%;height:50px;color: #000000;text-align:center;font-size:28px;font-family:微软雅黑;" onclick="show(this.id)">活期</div>
+		<div id="fixed" name="acctType" style="float:left;background:#C7E0F8;width:25%;height:50px;color: #000000;text-align:center;font-size:28px;font-family:微软雅黑;" onclick="show(this.id)">定期</div>
+		<div id="deposit" name="acctType" style="float:left;background:#C7E0F8;width:25%;height:50px;color: #000000;text-align:center;font-size:28px;font-family:微软雅黑;" onclick="show(this.id)">零存整取</div>
+		<div id="special" name="acctType" style="float:left;background:#C7E0F8;width:24.9%;height:50px;color: #000000;text-align:center;font-size:28px;font-family:微软雅黑;" onclick="show(this.id)">专款</div>
+		</div>
+	</div>
+	<div>
+		<div style="width:100%;height:75%">
+		<table width="100%" height="80%" border="0" cellpadding="0" cellspacing="0">
+		  <tr><td align="center">
+			   <table cellpadding="2" cellspacing="1" class="Table_Ob" id="oTable" width="90%" height="50%">
+				  <thead class="Table_Head" id="oTHead"></thead>
+				  <tbody id="oTBody">
+				  </tbody>
+				</table>
+		  </td></tr>
+		</table>
+		</div>
+		<span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+		<span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+		<span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+		<span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+		<span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+	</div>
+</div>
+		
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title" id ="oReInsertDebCard"></span><br/><br/>
+      <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>			
+
+			
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oServiceFailedTick"></span>
+	<br/>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+	  <tr><td align="center">
+		<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+		  <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oTitle"></td></tr>
+		  <tr class="Table_Record">
+			<td id="oDescription"></td>
+			<td><span id="oFailedRetDesc"></span>(<span id="oFailedRetCode"></span>)</td>
+		  </tr>
+		</table>
+	  </td></tr>
+	</table>
+  </div>
+</div>
+		
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+</body>
+</html>

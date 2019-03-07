@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.yihuacomputer.cols.entity.ExpLog" table="ExpLog" lazy="false">
+		<id name="id" type="int" column="id">
+			<generator class="identity" />
+		</id>
+		<property name="strTerminalNum" column="strTerminalNum" type="string" not-null="true" />
+		<property name="strPan" column="strPan" type="string" not-null="true" />
+		<property name="strExpCode" column="strExpCode" type="string" not-null="true" />
+	    <property name="dtOccur" column="dtOccur" type="timestamp"/>
+		<property name="strMemo" column="strMemo" type="string" />
+	</class>
+</hibernate-mapping>

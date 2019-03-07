@@ -1,0 +1,230 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>电子签名页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<style type="text/css">
+.oFingerTip
+{
+  position:absolute;
+  top: 85%;
+  left:25%;
+  COLOR:red;
+  font-size:30px;
+  font-family:微软雅黑;
+  font-weight:blod;
+}
+</style>
+<script type="text/javascript">
+var takepicTimeOut = top.iUserTimeout;//拍照超时时间
+var count = 0; //拍照计数器
+var forceCloseSign = true;
+   //电子签名
+function SignLoad(){
+    top.pool.set("copyFileType","");//上传的类型
+    oFingerTip.innerHTML = "";
+    top.pool.set("FingerCloseFlag","");//签名板打开标志
+	top.pool.set("SigCloseFlag","");//签名板打开标志
+	top.pool.set("SigCloseEnter","");//确定按钮关闭签名板标志
+	
+	if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY"){
+		window.parent.frames.oSigFinger.style.visibility = "hidden";
+	}
+	if (top.YHAXSigCameras.StDeviceStatus != "HEALTHY"){
+	    window.parent.frames.oESign.style.visibility = "hidden";
+	}
+	if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY" && top.YHAXSigCameras.StDeviceStatus != "HEALTHY"){
+		window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_CARD_FAILED, "指纹仪与电子签名模块故障"); 
+	}
+    /*指纹仪认证*/
+	finger= function()
+	{
+	    oFingerTip.innerHTML = "请将手指在指纹仪上长按&nbsp;<span class=\"TickCount_Title\">3</span>&nbsp;秒后抬起!";
+		window.parent.frames.oSigFinger.style.visibility = "hidden";
+		window.parent.frames.oESign.style.visibility = "hidden";
+		top.pool.set("FingerCloseFlag","1");//指纹仪打开标志
+		top.fingerScanner.readFinger();//打开指纹仪
+		top.pool.set("IsSignFinger","1");
+		// 播放提示音
+	    try{top.soundPlayer.playback("/Sound/Finger.mp3");}catch(e){}
+	}
+	/*指纹仪相关回调函数*/
+	//指纹读取完成
+	onFingerInserted = function()
+    {
+	    top.wins.showNewProcessingTip(top.langcur.oFingerTip);
+	}
+	onReadFingerCompleted = function(strFeatureData)
+    {
+	   top.serviceCtrl.stopUserTimeout();
+	   top.wins.stopProcessingTimeout();
+	   hiddenButton();
+	   top.pool.set("strFeatureData",strFeatureData.substr(0,20)+"......");
+	   var ret = new top.FileControl().fileCopy(top.COLS_SIGCAMERAS_FILEPATH,top.COLS_ZNGYPHOTOS_FILEPATH,top.COLS_FINGERSCANNER_FILENAME);//复制签名照片
+	   if(!ret){
+			hiddenButton();
+			window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_CARD_FAILED, "指纹上传失败"); 
+	   }
+	   top.YHAXFingerScanner.CancelRead();//关闭指纹仪
+	   top.pool.set("FingerCloseFlag","");//签名板打开标志
+       window.parent.frames.SignNextStep(); //返回主页面执行下一步流程
+    }
+	//指纹仪故障
+	onDeviceError_Finger  = onTimeout_Finger  = function()
+	{
+	  hiddenButton();
+	  window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_FINGER_FAILED, "硬件故障，指纹授权失败"); 
+	}
+	//无效指纹
+	onInvalidFinger = function()
+	{
+		hiddenButton();
+		if (typeof(window.parent.frames.userSign) == "function"){
+			window.parent.frames.userSign();
+			oFingerTip.innerHTML = "指纹无效，请重新录指纹或电子签名！";
+	    }else{
+			window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_FINGER_FAILED, "硬件故障，指纹授权失败");
+		}
+	}
+	
+	/*电子签名认证*/
+	ESig = function()
+	{
+		top.sigCameras.display("Extra","Create");//打开电子签名面板
+		oFingerTip.innerHTML = "";
+	}
+	
+	/*电子签名相关回调函数*/
+	//电子签名预览成功
+	onPreviewComplete = function()
+	{
+	    top.pool.set("SigCloseFlag","1");//签名板打开标志
+		window.parent.frames.oSigFinger.style.visibility = "hidden";
+		window.parent.frames.oESign.style.visibility = "hidden";
+		window.parent.frames.oSigAgain.style.visibility = "visible";//重签按钮
+		window.parent.frames.oSigConfirm.style.visibility = "visible";//签名板打开显示确定按钮
+		// 播放提示音
+	   try{top.soundPlayer.playback("/Sound/UserSign.mp3");}catch(e){}
+	}
+	
+	//电子密码签名硬件故障
+	onDeviceError_cameras = function()
+	{
+		hiddenButton();
+		window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_FINGER_FAILED, "硬件故障，电子签名模块故障");
+	}
+	 
+	 /*电子密码签名预览窗体销毁的事件响应*/
+	onPreviewWindowDestroy = function()
+	{
+		hiddenButton();
+	    top.pool.set("SigCloseFlag","");//签名板打开标志
+		if(top.pool.get("SigCloseEnter") !="" && top.pool.get("SigCloseEnter") != null && top.pool.get("SigCloseEnter")=="1"){
+			//alert("电子版关闭成功-确定按钮关闭签名板");
+			top.pool.set("SigCloseEnter","");//确定按钮关闭签名板标志
+			top.sigEncryptor.sigEncryptECB();//保存签名
+		}
+		
+	}
+	
+	 /*电子签名未落笔的回调函数*/
+	onSignError = function()
+	{
+	   //alert("未签名");
+	   // 播放提示音
+	   try{top.soundPlayer.playback("/Sound/UserSign.mp3");}catch(e){}
+	   top.sigCameras.sigCamerasEvents.clearAll();
+	   oFingerTip.innerHTML = "您尚未签名，请在电子签名板上签名！";
+	   //清空签名面板
+	   if(!forceCloseSign){
+		   top.sigCameras.display("Extra","Create");//打开电子签名面板
+		   forceCloseSign=true;
+	   }
+	}
+	
+	 /*SigEncryptECB完成后的回调函数*/
+	onSigEncryptECBComplete = function()
+	{
+	   var ret = new top.FileControl().fileCopy(top.COLS_SIGCAMERAS_FILEPATH,top.COLS_ZNGYPHOTOS_FILEPATH,top.COLS_SIGCAMERAS_FILENAME);//复制签名照片
+	   if(!ret){
+	        hiddenButton();
+			window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_CARD_FAILED, "签名照片上传失败"); 
+	   }
+	   top.pool.set("copyFileType","signatute");//上传的类型
+	   window.parent.frames.oSigAgain.style.visibility = "hidden";//重签按钮
+       window.parent.frames.SignNextStep(); //返回主页面执行下一步流程
+	}
+	/*装载密钥时硬件故障*/
+	onLoadLocalKeyDeviceError = function()
+	{
+	  hiddenButton();
+	  window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_FINGER_FAILED, "硬件故障，签名加密失败"); 
+	}
+	
+	/*按钮回调函数*/
+	onKey_F99 = onKey_Enter = function()
+    {
+	  forceCloseSign = false;
+	  top.pool.set("SigCloseEnter","1");//确定按钮关闭签名板标志
+	  top.sigCameras.display("Extra","Destroy");//关闭电子签名面板
+    }
+	onKey_Cancel = onKey_F98 = function()
+    {
+	  hiddenButton();
+	  if(top.pool.get("FingerCloseFlag") !="" && top.pool.get("FingerCloseFlag") != null && top.pool.get("FingerCloseFlag")=="1"){
+			//alert("返回-指纹仪打开了");
+			//关闭指纹仪
+			try {top.YHAXFingerScanner.CancelRead();} catch (e){}
+		}
+	  if(top.pool.get("SigCloseFlag") !="" && top.pool.get("SigCloseFlag") != null && top.pool.get("SigCloseFlag")=="1"){
+		    //alert("返回-签名面板打开了");
+			//关闭签名面板
+			try {top.sigCameras.display("Extra","Destroy");} catch (e){}
+			top.sigCameras.sigCamerasEvents.clearAll();
+		}
+	  
+      //上一步
+	  window.parent.frames.SignPrevStep(); //返回主页面执行返回流程
+    }
+	onKey_F7 = function()
+    {
+	  //清空签名面板
+	  top.sigCameras.display("Extra","Create");//打开电子签名面板
+    }
+	
+	onTimeout = function()
+	{
+	   hiddenButton();
+	   if(top.pool.get("SigCloseFlag") !="" && top.pool.get("SigCloseFlag") != null && top.pool.get("SigCloseFlag")=="1"){
+		    //alert("超时-签名面板打开了");
+			//关闭签名面板
+			try {top.sigCameras.display("Extra","Destroy");} catch (e){}
+			top.sigCameras.sigCamerasEvents.clearAll();
+		}
+			
+	  if(top.pool.get("fingerCloseFlag") !="" && top.pool.get("fingerCloseFlag") != null && top.pool.get("fingerCloseFlag")=="1"){
+			//alert("超时-指纹仪打开了");
+			//关闭指纹仪
+			try {top.YHAXFingerScanner.CancelRead();} catch (e){}
+		}
+	   top.serviceCtrl.navigate2QuitMV();
+	}
+	
+	hiddenButton = function()
+	{
+		window.parent.frames.oSigFinger.style.visibility = "hidden";
+		window.parent.frames.oESign.style.visibility = "hidden";
+		window.parent.frames.oSigAgain.style.visibility = "hidden";//重签按钮
+		window.parent.frames.oSigConfirm.style.visibility = "hidden";//签名板打开显示确定按钮
+		top.serviceCtrl.stopUserTimeout();
+	    top.wins.stopProcessingTimeout();
+	}
+	
+}
+
+</script>
+</head>
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<span class="oFingerTip" id="oFingerTip"></span>
+</body>
+</html>

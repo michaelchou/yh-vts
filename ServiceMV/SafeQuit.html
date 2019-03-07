@@ -1,0 +1,73 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>安全退出页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script src="../JavaScript/jquery-1.12.1.min.js"></script> 
+<script src="../JavaScript/slideunlock.js"></script>	
+<script type="text/javascript">
+   $(function () {
+	  var slider = new SliderUnlock("#slider",{
+		  successLabelTip : "滑动退出"	
+	  },function(){
+	    top.journalPrinter.addJournalWithTime("客户滑动安全退出");
+	    top.inputmethod.Close();//隐藏虚拟键盘
+		
+		if (typeof(top.YHAXSigCameras) != "undefined")//电子密码签名
+        {
+			if(top.pool.get("SigCloseFlag") !="" && top.pool.get("SigCloseFlag") != null && top.pool.get("SigCloseFlag")=="1"){
+				//关闭签名面板
+				try {
+					top.journalPrinter.addJournalWithTime("尝试关闭电子签名板 安全退出");
+					top.sigCameras.display("Extra","Destroy");//关闭电子签名面板
+					top.sigCameras.sigCamerasEvents.clearAll();
+				} catch (e){}
+			}
+		}
+		if (typeof(top.YHAXCameras) != "undefined")//摄像头
+        {
+			if(top.pool.get("PhotoCloseFlag") !="" && top.pool.get("PhotoCloseFlag") != null && top.pool.get("PhotoCloseFlag")=="1"){
+				//关闭摄像头
+				try {
+					top.journalPrinter.addJournalWithTime("尝试关闭摄像头预览窗口 安全退出");
+					top.cameras.display("Person","Destroy");
+					top.cameras.camerasEvents.clearAll();
+				} 
+				catch (e){}
+			}
+		}
+		if (typeof(top.YHAXFingerScanner) != "undefined")//指纹仪
+        {
+			//关闭指纹仪
+			try {
+				   //top.journalPrinter.addJournalWithTime("尝试关闭指纹仪 安全退出");
+				   top.fingerScanner.cancelRead();
+				   top.fingerScanner.FingerEvents.clearAll();
+			} 
+			catch (e){}
+		}
+		if (typeof(top.YHAXBarcodeReader) != "undefined")//二维码
+        {
+			//取消二维码
+			try {
+			       //top.journalPrinter.addJournalWithTime("尝试关闭二维码扫描 安全退出");
+				   top.barcodeReader.cancelRead();
+				   top.barcodeReader.BarcodeEvents.clearAll();
+			} 
+			catch (e){}
+		}
+		top.serviceCtrl.navigate2QuitMV();
+	  });
+	  slider.init();
+   })
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="slider">
+    <div id="slider_bg"></div>
+    <span id="label"></span>
+	<span id="labelTip" >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;滑动退出</span> 
+  </div>
+</body>
+</html>

@@ -1,0 +1,958 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>柜员现金存款界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  function doMouseDown(){
+	//top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+//是否进入存款确认
+var isDepositConfirm = false;
+//存款交易标志位 true:为可以发送  false:为不可发送 20180414 
+var send909120Flag = true;
+//柜员号输入次数
+var isTellerNumber = 0;
+//清钞信息查询
+var isCashSettleCycLogStatus = 0;
+//查询机增加禁止页面其他空间获得焦点的方法
+document.attachEvent("onclick",checkEvent);
+document.attachEvent("ondblclick",checkEvent);
+document.attachEvent("onfocusin",checkEvent);
+document.attachEvent("onkeypress",checkEvent);
+function checkEvent() {
+	//如果光标停留在输入框上,更新last
+	try{
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text"){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	}catch(e){}
+}
+
+// 服务流程处理入口
+function serverEntrance()
+{
+	top.serviceCtrl.stopUserTimeout();
+	isTellerNumber = 0;
+	isCashSettleCycLogStatus = 0;
+	top.pool.set("strFSNFlag", "DEP");
+	top.pool.set("printType", "");
+	//初始化数据
+	top.pool.set("str1DepCount", "0");    //1元金额数量
+	top.pool.set("strC50DepCount", "0");  //5角金额数量
+	top.pool.set("strC10DepCount", "0");  //1角金额数量
+	top.pool.set("strC5DepCount", "0");   //5分金额数量
+	top.pool.set("strC1DepCount", "0");   //1分金额数量
+	top.pool.set("strTotalAmount", "0");  //存款金额
+	top.pool.set("strY100Count", "0");    //100元张数
+	top.pool.set("strY50Count", "0"); 	  //50元张数	
+	top.pool.set("strY20Count", "0");     //20元张数
+	top.pool.set("strY10Count", "0");     //10元张数
+	top.pool.set("strY5Count", "0");      //5元张数
+	
+	//判断现金模块
+	if(typeof(top.YHAXCashAcceptor) == "undefined") {
+		onCashServiceFailed("柜员现金存款失败", "", top.langcur.oNoCashAccept);
+	}else if(top.deposit.checkAvai() != "true") {
+		onCashServiceFailed("柜员现金存款失败", "", "存取款模块故障(" + top.deposit.checkAvai() + ")");
+	}else if(top.YHAXCashAcceptor.LastAcceptStatus != "ACCEPTED" && top.YHAXCashAcceptor.LastAcceptStatus != "UNKNOWN") {
+		onCashServiceFailed("柜员现金存款失败", "", "存款周期异常，请执行复位存取款模块");
+	}else{
+		//柜员存款金额输入
+		inputAmount();
+	}
+}
+//柜员存款金额输入
+function inputAmount()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Enter = onKey_F6 = function()
+    {
+		//判断输入金额
+		top.inputmethod.Close();
+		if(input_Amount.value == "" || input_Amount.value == null){
+			error_InputAmount.innerHTML = "存款金额输入非法,请输入存款金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+			return;
+		}
+		else if(parseInt(input_Amount.value)%5 != 0){
+			error_InputAmount.innerHTML = "输入的金额必须是5的整数倍,请重新输入金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+			return;
+		}
+		else{
+		    top.serviceCtrl.stopUserTimeout();
+			top.pool.set("AmountCheck", input_Amount.value);
+			top.pool.set("Amount", new top.StringCtrl("").YuanToFen(input_Amount.value));
+			//查询输入金额与前端金额是否一致
+			top.wins.showProcessingTip(top.langcur.send909122);
+			top.trans.send909122Async();
+		}
+    }
+	onKey_F8 = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Quit();
+	}
+	onKey_Cancel = onKey_F7 = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onTimeoutInputAmount = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	input_Amount.onkeypress = function()
+ 	{
+		error_InputAmount.innerHTML = "&nbsp;";
+	}
+	top.inputmethod.ShowDigit(490,570);
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeoutInputAmount, top.iUserTimeout,oInputAmountTick);	
+	top.wins.showMain("oLInputAmountTip");
+	input_Amount.value = "";
+	input_Amount.focus();
+}
+//现金金额查询成功
+function onTelAmountQuerySuc()
+{
+	top.serviceCtrl.stopUserTimeout();
+	isCashSettleCycLogStatus = 1;
+	//查询清钞状态
+	top.wins.showProcessingTip("正在查询清机状态,请稍候...");
+	top.pool.set("strTransType", "deposit");
+	top.trans.sendCashSettleCycLogStatusAsync();
+}
+
+//清机情况查询成功
+function onAsyncCashSettleCycLogStatusComplete() {
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strTransType", "");
+	isCashSettleCycLogStatus = 0;
+	//2个柜员进行授权
+	isTellerNumber = 1;
+	error_InputTellerNum.innerHTML = "&nbsp;";
+ 	error_InputTellerPassword.innerHTML = "&nbsp;";
+ 	oFailedTitle.innerHTML = "&nbsp;";
+	showInputTellerNum();
+}
+//输入柜员号
+function showInputTellerNum(){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Enter = onKey_F99 = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+	    //判断输入的柜员号是否有效
+		if (new top.StringCtrl(input_TellerNum.value.substring(0,8)).isAllDigit2() && input_TellerNum.value.length == 7 )
+		{
+			top.inputmethod.Close();
+			top.pool.set("strTellerum", input_TellerNum.value);//柜员
+			error_InputTellerNum.value = "";
+			if(isTellerNumber == 1){
+				top.pool.set("strTransTellNum", input_TellerNum.value);
+			}
+			//对比交易柜员与审核柜员
+			if(isTellerNumber == 2 && input_TellerNum.value == top.pool.get("strTransTellNum")){
+				  error_InputTellerNum.innerHTML = top.langcur.oInputCheckTellerNum;
+				  input_TellerNum.value = "";
+				  input_TellerNum.focus();
+			}else{
+				//查询柜员的权限
+				top.wins.showProcessingTip(top.langcur.send910207);
+				top.trans.send910207Async();
+			}
+		}
+		else
+		{ 
+		  error_InputTellerNum.innerHTML = top.langcur.oInputRightTellerNum;
+		  input_TellerNum.value = "";
+		  input_TellerNum.focus();
+		}
+	}
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.stopUserTimeout();
+		inputAmount();
+	}
+	onTimeoutInputTellerNum = function(){
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeoutInputTellerNum, top.iUserTimeout,oInputTellerNumTick);
+	if(isTellerNumber == 1){
+		oInputTellerNum.innerHTML = "请输入交易柜员号";
+	}else if(isTellerNumber == 2){
+		oInputTellerNum.innerHTML = "请输入复核柜员号";
+	}
+
+	top.wins.showMain("oLInputTellerNum");
+	input_TellerNum.value = "";
+	input_TellerNum.focus();	
+	top.inputmethod.ShowDigit(490,570);
+}
+//柜员信息查询失败
+function onTellerQueryFailed(title, retcode, retdesc)
+{
+	top.serviceCtrl.stopUserTimeout();
+	error_InputTellerNum.innerHTML = retdesc;
+	showInputTellerNum(); 
+}
+ 
+//柜员信息查询成功，判断指纹方式还是密码方式
+function TellerQuerySucess()
+{
+	 top.serviceCtrl.stopUserTimeout();
+	if(top.pool.get("strLoginType") == "0"){
+		//柜员进行指纹授权
+		if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY"){
+			error_InputTellerNum.innerHTML = "指纹仪故障";
+			showInputTellerNum();
+		}else{
+			fingerInScanner();
+		}
+	}else if(top.pool.get("strLoginType") == "1"){
+		//柜员进行密码授权
+		inputTellerPassword();
+	}else{
+		error_InputTellerNum.innerHTML = "柜员登入方式未知";
+		showInputTellerNum();
+	}
+}
+//柜员进行密码验证
+function inputTellerPassword()
+{
+	top.serviceCtrl.stopUserTimeout();
+	window.operateCtrl.disableInput(true);
+	onKey_Enter = onKey_F99 = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+	    //判断输入的柜员号是否有效
+		if (input_TellerPassword.value.length > 0 )
+		{
+			top.inputmethod.Close();
+			top.pool.set("strTellerPwd", input_TellerPassword.value);//柜员
+			error_InputTellerPassword.value = "";
+			//验证柜员密码
+			top.wins.showProcessingTip(top.langcur.send910208);
+			top.trans.send910208Async();
+		}
+		else
+		{ 
+		  error_InputTellerPassword.innerHTML = top.langcur.oInputRightTellerPwd;
+		  input_TellerPassword.value = "";
+		  input_TellerPassword.focus();
+		}
+	}
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.inputmethod.Close();
+		oTellerPwdTick.innerHTML = "&nbsp";
+		top.serviceCtrl.stopUserTimeout();
+		error_InputTellerNum.innerHTML = "&nbsp;";
+	 	error_InputTellerPassword.innerHTML = "&nbsp;";
+		showInputTellerNum();
+	}
+	onTimeout  = function(){
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	input_TellerPassword.onkeypress = function() {
+		error_InputTellerPassword.innerHTML = "&nbsp;";
+	}
+	window.operateCtrl.enableInput();
+	if(isTellerNumber == 1){
+		oInputTellerPwd.innerHTML = "请输入交易柜员密码";
+	}else if(isTellerNumber == 2){
+		oInputTellerPwd.innerHTML = "请输入复核柜员密码";
+	}
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oTellerPwdTick);
+	top.wins.showMain("oLInputTellerPwd");
+	input_TellerPassword.value = "";
+	input_TellerPassword.focus();	
+	top.inputmethod.ShowFullEnglish(280, 570);
+}
+//指纹验证
+function fingerInScanner()
+ {
+   window.operateCtrl.disableInput(true);
+	onReadTellerFingerCompleted = function(strFeatureData)
+   {
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strFeatureData",strFeatureData);	
+		//进行指纹验证
+		top.wins.showProcessingTip(top.langcur.send910206);
+		top.trans.send910206Async();
+   }
+	onDeviceError_Finger = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		error_InputTellerNum.innerHTML = "指纹仪故障";
+		showInputTellerNum();
+	}	
+	onInvalidFinger = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		error_InputTellerNum.innerHTML = "无效指纹";
+		showInputTellerNum();
+	}
+	
+	onKey_Cancel = onKey_F98 = function(){
+		top.serviceCtrl.stopUserTimeout();
+		top.YHAXFingerScanner.CancelRead();
+		oFingerInTick.innerHTML = "&nbsp";
+		//返回至柜员号输入界面
+		inputAmount();
+	}		
+	onTimeout = function(){
+		top.serviceCtrl.navigate2Maintenance();	
+	}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oFingerInTick);
+	top.fingerScanner.readTellerFinger();
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/Finger.mp3");}catch(e){}
+   top.wins.showMain("oLFingerInTip");
+}
+//柜员密码验证失败
+function onTellerCheckFailed(title, retcode, retdesc)
+{
+	top.serviceCtrl.stopUserTimeout();
+	error_InputTellerNum.innerHTML = retdesc;
+	showInputTellerNum();  
+}
+//指纹授权失败
+ function onServiceFailed(title, retcode, retdesc)
+ {
+	if(isCashSettleCycLogStatus == 1){
+		top.pool.set("strTransType", "");
+		isCashSettleCycLogStatus = 0;
+		onCashServiceFailed("柜员现金存款失败", "", retdesc);
+	}else{
+		top.serviceCtrl.stopUserTimeout();
+		error_InputTellerNum.innerHTML = retdesc;
+		showInputTellerNum();
+	}
+ }
+ //指纹授权成功
+ function checkFingerSucess()
+ {
+	//第一个柜员验证成功后
+	if(isTellerNumber == 1){
+		isTellerNumber = 2;
+		error_InputTellerNum.innerHTML = "&nbsp;";
+	 	error_InputTellerPassword.innerHTML = "&nbsp;";
+	 	oFailedTitle.innerHTML = "&nbsp;";
+		showInputTellerNum();
+	}else if(isTellerNumber == 2){
+		isTellerNumber = 0;
+		top.wins.showProcessingTip("正在开启存款周期,请稍候...");
+		//开始存款周期
+		prepareCash();
+	}
+ } 
+ //开始存款周期
+ function prepareCash()
+ {
+	top.serviceCtrl.stopUserTimeout();
+	onDeviceError_Ac  = function() {
+		onCashServiceFailed("现金存款失败", "", "现金存款周期开启失败");
+	}
+	onCashPrepared = function() {
+		//设置大额定额参数
+		top.YHAXCashAcceptor.SetCashInLimitSync("CNY",top.pool.get("AmountCheck"));
+		startDeposit();
+	}
+	onTimeout_prepare= function() {
+		onCashServiceFailed("现金存款失败", "", "现金存款周期开启超时");
+	}
+	top.deposit.prepare();
+ }
+//开始存钞子流程
+function startDeposit() {
+	top.serviceCtrl.stopUserTimeout();
+	startCashin();
+}
+//开始存钞
+function startCashin() {
+	top.serviceCtrl.stopUserTimeout();
+	
+	if(parseInt(top.pool.get("strTotalAmount"))>0){
+		oLReturn.style.visibility = "hidden";
+	}
+	onCashInserted = function() {
+		top.serviceCtrl.stopUserTimeout();
+		oCashInTick.style.visibility = "hidden";
+		oLReturn.style.visibility = "hidden";
+		oLDepTitle.innerHTML = "正在存钞，请稍候...";
+		try{top.soundPlayer.playback("/Sound/CashInBox.mp3");}catch(e){}
+		oLDepMsgTip.innerHTML = "提示：存钞过程中您可以持续放钞，<br>如有不可识别的钞券，请及时取走。";
+	}
+	onIndentifyCash = function(count, amount) {
+		top.pool.set("str100DepCount", top.pool.get("strY100Count"));
+		top.pool.set("str50DepCount", top.pool.get("strY50Count"));		
+		top.pool.set("str20DepCount", top.pool.get("strY20Count"));
+		top.pool.set("str10DepCount", top.pool.get("strY10Count"));
+		top.pool.set("str5DepCount", top.pool.get("strY5Count"));
+		top.pool.set("strTotalAmount", amount);
+		//存款确认
+		depositConfirm();
+	}
+	onKey_F98 = function() {
+		top.serviceCtrl.stopUserTimeout();
+		top.journalPrinter.addJournalWithTime("放钞页面柜员选择返回");
+		onCashAcceptCancelled = function() {
+			top.serviceCtrl.navigate2Maintenance();
+		}
+		//取消存款
+		top.wins.showProcessingTip("正在取消存款，请稍候...");
+		top.deposit.CancelAcceptCash();
+	}
+	onDeviceError_Ac = onDeviceError_Ejr = function() {
+		//打印凭条，暂停服务，发送Pad，记录设备端流水
+		onDepositOutOfService("暂停服务", "机具存钞故障，请等待银行工作人员处理！", "活期存款存钞故障");
+	}
+	onTimeout = function() {
+		onCashAcceptCancelled = function() {
+			if(top.pool.get("strTotalAmount") != "" && top.pool.get("strTotalAmount") != null && parseFloat(top.pool.get("strTotalAmount")) > 0) {
+				//打印凭条，暂停服务，发送Pad，记录设备端流水
+				onDepositOutOfService("暂停服务", "放钞页面超时，请等待银行工作人员处理！", "放钞超时 已存入" + top.pool.get("strTotalAmount") + ".00元 未入账");
+			}else {
+				top.serviceCtrl.navigate2Maintenance();
+			}
+		}
+		//取消存款
+		top.wins.showProcessingTip("正在取消存款，请稍候...");
+		top.deposit.CancelAcceptCash();
+	}
+	oCashInTick.style.visibility = "";
+	oLDepTitle.innerHTML = "请在存钞口放入钞券";
+	oLDepMsgTip.innerHTML = "提示：本机仅支持100元、50元、20元、10元、5元纸币票面存钞。<br>存钞口最多容纳300张钞券，如钞券较多，可在清点过程中持续放钞";
+	try{top.soundPlayer.playback("/Sound/InputCash.mp3");}catch(e){}
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oCashInTick);
+	top.wins.showMain("oLCashInTip");
+	top.deposit.accept();
+}
+//存款确认
+function depositConfirm() {
+	top.serviceCtrl.stopUserTimeout();
+	
+	onKey_Enter = onKey_F99 = function() {
+		top.journalPrinter.addJournalWithTime("存款确认页面柜员选择 确认存款");
+		if(top.YHAXCashAcceptor.StInputOutputStatus == "EMPTY") {
+			//确认存款
+			if(top.pool.get("strTotalAmount") == "" || top.pool.get("strTotalAmount") == null || parseFloat(top.pool.get("strTotalAmount")) <= 0){
+				stopDeposit();
+			}else{
+				//如果存入金额与输入金额一致
+				if(parseFloat(top.pool.get("strTotalAmount")) == parseFloat(top.pool.get("AmountCheck"))){
+					stopDeposit();
+				}else{
+					error_DepConfirm.innerHTML = "验钞金额小于输入金 额，请继续放钞！";
+				}	
+			}
+		}else {
+			error_DepConfirm.innerHTML = "请您取走拒钞口的钞票！";
+		}
+	}
+	onKey_F98 = function() {
+		top.journalPrinter.addJournalWithTime("存款确认页面 柜员选择 继续放钞");
+		if(top.YHAXCashAcceptor.StInputOutputStatus == "EMPTY") {
+			//继续存款
+			startDeposit();
+		}else {
+			error_DepConfirm.innerHTML = "请您取走拒钞口的钞票！";
+		}
+	}
+/*
+	onTimeout = function() {
+		error_DepConfirm.innerHTML = "&nbsp;";
+		if(top.pool.get("strTotalAmount") == "" || top.pool.get("strTotalAmount") == null || parseFloat(top.pool.get("strTotalAmount")) <= 0) {
+			top.serviceCtrl.navigate2Maintenance();
+		}else {
+			//打印凭条，暂停服务，发送Pad，记录设备端流水
+			onDepositOutOfService("暂停服务", "存款确认页面超时，请等待银行工作人员处理！", "存款确认超时 已存入" + top.pool.get("strTotalAmount") + ".00元 未入账");
+		}
+	}*/
+	
+	if(top.pool.get("str100DepCount") == "" || top.pool.get("str100DepCount") == null) {
+		top.pool.set("str100DepCount", "0");
+	}
+	if(top.pool.get("str50DepCount") == "" || top.pool.get("str50DepCount") == null) {
+		top.pool.set("str50DepCount", "0");
+	}
+	if(top.pool.get("str20DepCount") == "" || top.pool.get("str20DepCount") == null) {
+		top.pool.set("str20DepCount", "0");
+	}
+	if(top.pool.get("str10DepCount") == "" || top.pool.get("str10DepCount") == null) {
+		top.pool.set("str10DepCount", "0");
+	}
+	if(top.pool.get("str5DepCount") == "" || top.pool.get("str5DepCount") == null) {
+		top.pool.set("str5DepCount", "0");
+	}
+	oRMBAmt1.innerHTML = top.pool.get("str100DepCount") + " 张";
+	oRMBAmt2.innerHTML = top.pool.get("str50DepCount") + " 张";		
+	oRMBAmt3.innerHTML = top.pool.get("str20DepCount") + " 张";
+	oRMBAmt4.innerHTML = top.pool.get("str10DepCount") + " 张";
+	oRMBAmt5.innerHTML = top.pool.get("str5DepCount") + " 张";
+	oRMBAmt1_1.innerHTML = parseFloat(top.pool.get("str100DepCount")) * 100 + ".00 元";
+	oRMBAmt2_1.innerHTML = parseFloat(top.pool.get("str50DepCount")) * 50 + ".00 元";		
+	oRMBAmt3_1.innerHTML = parseFloat(top.pool.get("str20DepCount")) * 20 + ".00 元";
+	oRMBAmt4_1.innerHTML = parseFloat(top.pool.get("str10DepCount")) * 10 + ".00 元";
+	oRMBAmt5_1.innerHTML = parseFloat(top.pool.get("str5DepCount")) * 5 + ".00 元";
+	oTotalAmount.innerHTML = top.pool.get("strTotalAmount") + ".00 元";
+	oLastAmount.innerHTML =  parseFloat(top.pool.get("AmountCheck")-top.pool.get("strTotalAmount")) + ".00 元";
+	oContinueDep.style.visibility = "";
+	if(top.pool.get("strTotalAmount") == "" || top.pool.get("strTotalAmount") == null || parseFloat(top.pool.get("strTotalAmount")) <= 0) {
+		oConfirmDep.innerHTML = "取消存款";
+	}else {
+		oConfirmDep.innerHTML = "确认存款";
+	}
+	if(parseFloat(top.pool.get("strTotalAmount")) >= parseFloat(top.pool.get("AmountCheck"))) {
+		oContinueDep.style.visibility = "hidden";
+	}
+
+	error_DepConfirm.innerHTML = "&nbsp;";
+	isDepositConfirm = true;
+	try{top.soundPlayer.playback("/Sound/DepConfirm.mp3");}catch(e){}
+//	top.serviceCtrl.startUserTimeout(onTimeout, null, null);
+	top.wins.showMain("oLDepConfirmTip");
+}
+
+//存款确认
+function stopDeposit() {
+	top.serviceCtrl.stopUserTimeout();	
+	onStoreEscrowedCashEnd = function() {
+		top.serviceCtrl.stopUserTimeout();
+		//关闭钞门
+		top.deposit.CloseShutter();
+		//FSN冠字号上传
+		top.pool.set("DepositAcceptorAmount", top.pool.get("strTotalAmount"));
+		new top.FileControl().createFSNFile();
+		
+		if(top.pool.get("strTotalAmount") == "" || top.pool.get("strTotalAmount") == null || parseFloat(top.pool.get("strTotalAmount")) <= 0) {
+			//存款金额为0，返回介质菜单
+			top.serviceCtrl.navigate2Maintenance();
+		}else {
+			//发起柜员存款交易
+			if(send909120Flag){
+				//存款交易
+				top.wins.showProcessingTip("正在发起柜员现金存款交易，请稍候...");
+				//标志设置为false，表示已经发送存款交易。
+				send909120Flag = false;
+			 	top.trans.send909120Async();
+			}else{
+				//理论上永远走不到，为避免重复发送存款交易
+				top.journalPrinter.addCashJournalWithTime("send909120Flag:" + send909120Flag);
+			}
+		}
+		
+	}
+	onDeviceError_Store = function() {
+		top.serviceCtrl.stopUserTimeout();
+		//关闭钞门
+		top.deposit.CloseShutter();
+		//FSN冠字号上传
+		top.pool.set("DepositAcceptorAmount", top.pool.get("strTotalAmount"));
+		new top.FileControl().createFSNFile();
+
+		if(top.pool.get("strTotalAmount") == "" || top.pool.get("strTotalAmount") == null || parseFloat(top.pool.get("strTotalAmount")) <= 0) {
+			//存款金额为0，返回介质菜单
+			top.serviceCtrl.navigate2Maintenance();
+		}else {
+			//发起柜员存款交易
+			if(send909120Flag){
+				//存款交易
+				top.wins.showProcessingTip("正在发起柜员现金存款交易，请稍候...");
+				//标志设置为false，表示已经发送存款交易。
+				send909120Flag = false;
+			 	top.trans.send909120Async();
+			}else{
+				//理论上永远走不到，为避免重复发送存款交易
+				top.journalPrinter.addCashJournalWithTime("send909120Flag:" + send909120Flag);
+			}
+		}		
+	}
+	//随机数
+	var strTransRandom = new top.StringCtrl(top.terminal.strTerminalNum).prefixStr('0',8)+""+new top.StringCtrl("").getRandom();
+	top.pool.set("strBatchId",strTransRandom);
+	top.pool.set("strDepAccount",top.pool.get("strTransTellNum"));
+	//结束存款周期
+	top.wins.showProcessingTip("正在结束存款周期，请稍候...");
+	top.deposit.storeEscrowedCash();
+}
+//柜员现金存款成功
+function onServiceSuccessful()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	if (top.receiptprinter.ReceiptPrinterStatus() != "true") {
+		oPrintReceipt.style.visibility = "hidden";
+	}else {
+		onKey_Enter = onKey_F99 = function() {
+			oPrintReceipt.style.visibility = "hidden";
+			top.pool.set("strDepositResult", "交易成功");
+			top.pool.set("printType", "TelDepositSucc");
+			top.receiptprinter.printAndEject();
+		}
+	}
+	onKey_Cancel = onKey_F98 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	
+	onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	onTimeout = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	//更新尾箱余额
+	top.pool.set("TransCode", "909120");
+	top.pool.set("AmountCheck", top.pool.get("strTotalAmount"));
+	top.trans.sendUpdateSettleCycleLogDB();
+	
+	Tip_Title.innerHTML = "柜员现金存款成功";
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+//柜员现金存款失败
+function onDepositFailed()
+{
+	onDepositOutOfService("暂停服务", "存款交易失败，请等待银行工作人员处理！", "存款交易失败 已存入" + top.pool.get("strTotalAmount") + ".00 元 未入账");
+}
+//交易失败
+function onCashServiceFailed(title, retcode, retdesc)
+{
+   window.operateCtrl.disableInput(true);
+   onKey_Enter = onKey_F7 = function()
+   {
+      top.serviceCtrl.navigate2Maintenance();
+   }
+
+   onKey_Cancel = onKey_F8 = function()
+   {
+	   top.serviceCtrl.navigate2Maintenance();
+   }
+
+   oFailed.innerHTML = title;
+   oFailedRetDesc.innerHTML = retdesc;
+
+   window.operateCtrl.enableInput();
+   top.serviceCtrl.startUserTimeout(onKey_Cancel, null, null);
+   top.wins.showMain("oLServiceFailedTip");
+}
+//打印凭条，暂停服务，发送Pad，记录设备端流水
+function onDepositOutOfService(strDepTitle, strDepRetdesc, strDepPadDesc) {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strDepositResult", "交易异常");
+	oDepositOutOfServiceTitle.innerHTML = strDepTitle;
+	oDepositOutOfServiceRetDesc.innerHTML = strDepRetdesc;
+	
+	//1、发pad帮助
+	top.pool.set("strbusinessName", strDepPadDesc);
+	top.trans.sendExchange910304Async();
+	//2、打印凭条
+	onDeviceError_rpt_Print = onDeviceError_rpt_Eject = function() {
+		oDepositOutOfServiceTitle.innerHTML = strDepTitle + "(凭条打印失败-凭条打印机故障)";
+	}
+	if (top.receiptprinter.ReceiptPrinterStatus() != "true") {
+		oDepositOutOfServiceTitle.innerHTML = strDepTitle + "(凭条打印失败-凭条打印机故障)";
+	}else {
+		top.pool.set("printType", "TelDepositSucc");
+		top.receiptprinter.printAndEject();
+	}
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	//3、记录终端流水
+    var strJrn = new top.StringCtrl(strDepPadDesc + new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+    top.journalPrinter.addCashJournalWithTime(strJrn);
+	top.wins.showMain("oLDepositOutOfServiceTip");
+}
+//校验柜员密码
+function input_checkTellerPwd()
+{
+	 error_InputTellerPassword.innerHTML = "&nbsp;";
+	if (!new top.StringCtrl(input_TellerPassword.value).isDigitOrLetter())
+	{
+		error_InputTellerPassword.innerHTML = top.langcur.oInputRightTellerPwd;
+		input_TellerPassword.value = "";
+		input_TellerPassword.focus();
+	}
+}
+
+//校验金额
+function input_checkAmount()
+{
+	error_InputAmount.innerHTML ="";
+	var Amountlen = (input_Amount.value).length;
+	//判断金额是否是数字
+	if(Amountlen == 1){
+		var regex = /^(0)/;
+		if (regex.test(input_Amount.value)) {
+			error_InputAmount.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+		}
+	}
+	if (!new top.StringCtrl(input_Amount.value).isValidAmount()) {
+		error_InputAmount.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+	}
+}
+//校验柜员号
+function input_checkTellerNum(){
+	if (!new top.StringCtrl(input_TellerNum.value).isDigitOrLetter())
+	{
+		error_InputTellerNum.innerHTML = top.langcur.oInputRightTellerNum;
+		input_TellerNum.value = "";
+		input_TellerNum.focus();
+	}
+}
+
+//打开数字键盘
+function ShowKeyboard(){
+	top.inputmethod.ShowDigit(490,570);
+}
+
+function ShowKeyboard2(){
+	top.inputmethod.ShowFullEnglish(280, 570);
+}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLInputAmountTip" class="FULLSCR" style="visibility: hidden;">
+  <div class="FULLSCR">
+  	<span class="Tip_Tick" id="oInputAmountTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center">
+          <pre class="Tip_Title">请输入存款金额</pre>
+          <br/>
+          <input name="input_Amount" id="input_Amount" class="input_long3" onclick="javascript:ShowKeyboard();" maxlength="9" onkeyup="return input_checkAmount()"/>
+          <br/>
+          <br/>
+          <pre class="TickCount_Title" id="error_InputAmount">&nbsp;</pre>
+        </td>
+      </tr>
+   </table> 
+  </div>  
+  <span class="MMENU6"><button onclick="javascript:onKey_F6();" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+  <span class="MMENU7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+  <span class="MMENU8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+
+  <div id="oLInputTellerNum" class="FULLSCR"  style="visibility: hidden;">
+    <div class="FULLSCR">
+    <span class="Tip_Tick" id="oInputTellerNumTick"></span>
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0" background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg">
+        <tr><td align="center">
+           <pre class="Tip_Title" id="oInputTellerNum"></pre>
+           <br />
+           <input name="input_TellerNum" id="input_TellerNum" class="input_long3" maxlength="7" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkTellerNum()" />
+           <br />
+           <br />
+           <pre class="Error_Title" id="error_InputTellerNum">&nbsp;</pre>
+        </td></tr>
+      </table>
+    </div>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F98,100);" class="ADMReturn" name="oReturn"></button></span>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F99,100);" class="ADMConfirm" name="confirm"></button></span>
+</div>
+ 
+ <div id="oLInputTellerPwd" class="FULLSCR">
+  <div class="FULLSCR">
+  	  <span class="Tip_Tick" id="oTellerPwdTick"></span>
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0" background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg">
+        <tr><td align="center">
+           <pre class="Tip_Title" id="oInputTellerPwd"></pre>
+           <br />
+           <input  type="password" name="input_TellerPassword" id="input_TellerPassword" class="input_long3" maxlength="6" onclick="javascript:ShowKeyboard2();" onkeyup="return input_checkTellerPwd()" />
+           <br />
+           <br />
+           <pre class="Error_Title" id="error_InputTellerPassword">&nbsp;</pre>
+        </td></tr>
+      </table>
+    </div>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F98,100);" class="ADMReturn" name="oReturn"></button></span>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F99,100);" class="ADMConfirm" name="confirm"></button></span>
+</div> 
+
+  <div id="oLFingerInTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0" background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg">
+	  <tr>
+		<td></td>
+	  </tr>
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <!--<img src="../Terminal/Style/Default/Img/LOGO.gif" width="130" height="130" />-->
+		   </br></br>
+		   <span class="Tip_Title" id="">请将手指在指纹仪上长按&nbsp;<span class=\"TickCount_Title\">3</span>&nbsp;秒后抬起!</span>
+			</br></br></br></br></br></br></br>
+		   <pre class="Error_Title" id="error_FingerIn">&nbsp;</pre>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+  </div>
+  <span class="Tip_Tick" id="oFingerInTick"></span>
+ <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F98,100);" class="ADMReturn" name="oReturn"></button></span>	
+</div>
+
+<div id="oLCashInTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oCashInTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center"><br/><br/><br/><br/><br/><br/>
+					<pre id="oLDepTitle" class="Tip_Title"></pre><br/>
+					<img src="../Image/TellAcceptCash.gif" width="790px" height="490px" /><br/>
+					<table width="80%" height="30%" border="0" cellpadding="0" cellspacing="0">
+						<tr><td align="center"><span id="oLDepMsgTip" class="Tip_Title"></span></td></tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+    <span class="MMENU8" id="oLReturn"><button onmousedown="doMouseDown();setTimeout(onKey_F98,100);" class="ADMReturn" name="oReturn"></button></span>	
+</div>
+
+<div id="oLDepConfirmTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oDepConfirmTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center"><br/><br/>
+					<span class="Tip_Title">请确认已存入钞券<br>可选择确认存款或继续放钞</span><br><br>
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="50%">
+				       	<tr class="Table_Head"><td align="center">已存入券别</td><td align="center">张数</td><td align="center">金额</td></tr>
+				       	<tr class="Table_Record"><td>100元</td><td class="Digit_Normal" id="oRMBAmt1"></td><td class="Digit_Normal" id="oRMBAmt1_1"></td></tr>
+				       	<tr class="Table_Record"><td>50元</td><td class="Digit_Normal" id="oRMBAmt2"></td><td class="Digit_Normal" id="oRMBAmt2_1"></td></tr>
+				       	<tr class="Table_Record"><td>20元</td><td class="Digit_Normal" id="oRMBAmt3"></td><td class="Digit_Normal" id="oRMBAmt3_1"></td></tr>
+				       	<tr class="Table_Record"><td>10元</td><td class="Digit_Normal" id="oRMBAmt4"></td><td class="Digit_Normal" id="oRMBAmt4_1"></td></tr>
+				       	<tr class="Table_Record"><td>5元</td><td class="Digit_Normal" id="oRMBAmt5"></td><td class="Digit_Normal" id="oRMBAmt5_1"></td></tr>
+	        		</table><br><br>
+	        		<table>
+						<tr>
+							<td align="center">
+								<table align="center">
+									<tr><td class="Tip_Content" align="right">已存入总金额：&nbsp;&nbsp;</td><td id="oTotalAmount" class="Tip_Content" align="left"></td></tr>
+									<tr><td class="Tip_Content" align="right">还可存入金额：&nbsp;&nbsp;</td><td id="oLastAmount" class="Tip_Content" align="left"></td></tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+	        		<table><tr><td class="Error_Title" id="error_DepConfirm"></td></tr></table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span id="oContinueDep" class="MMENU8"><button  onmousedown="javascript:onKey_F98()" class="ADMButton">继续放钞</button></span>
+    <span class="MMENU6"><button  onmousedown="javascript:onKey_F99()" class="ADMButton" id="oConfirmDep">确认存款</button></span>	
+</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0"cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center">
+					<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+					<span class="Tip_Title" id="Tip_Title"></span>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+	<span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F98,100);" class="ADMReturn" name="oReturn"></button></span>
+    <span class="MMENU6"><button  onmousedown="javascript:onKey_F99()" class="ADMButton" name="oPrintReceipt" id="oPrintReceipt"></button></span>		
+</div>
+			
+<div id="oLTellServiceFailedTip" class="FULLSCR"  style="visibility: hidden;">
+    <div class="FULLSCR">
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0" background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg">
+        <tr><td align="center">
+           <span class="Tip_Title" id="oFailedTitle"></span>
+        </td></tr>
+      </table>
+    </div>
+</div>
+ 
+<div id="oLServiceFailedTip" class="FULLSCR">
+	<div class="FULLSCR">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="ADMTable_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oFailed"></td>
+						</tr>
+						<tr class="ADMTable_Record">
+							<td id="oDescription"></td>
+							<td>
+								<span id="oFailedRetDesc"></span>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLDepositOutOfServiceTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="ADMTable_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oDepositOutOfServiceTitle"></td>
+						</tr>
+						<tr class="ADMTable_Record">
+							<td id="oDescription"></td>
+							<td>
+								<span id="oDepositOutOfServiceRetDesc"></span>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	 </div>
+	 <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F98,100);" class="ADMReturn" name="oReturn"></button></span>
+</div>
+   
+</body>
+</html>

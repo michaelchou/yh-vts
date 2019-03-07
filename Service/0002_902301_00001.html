@@ -1,0 +1,792 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>存折补登</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script language="javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+var changePage = false;
+var changePassbook = false;
+var currentPage = 1;
+var insertTime = 0;
+var startNumber = -1;
+
+var voucherNo = "";
+var bookNo = "";
+var option = "";
+			
+var index = 0;
+var startUndo = 0;
+var recordArr = new Array();
+var isUndo = false;//避免冲正两次
+var isPassbookReader = false; //刷折标志  默认为false，
+
+// 服务流程处理入口
+function serverEntrance()
+{
+    if(typeof(top.YHAXPassbook) == "undefined"){
+            showInfoTipNoEj(top.langcur.oNoPassbook);
+            return;
+    }else{
+        if(top.YHAXPassbook.StDeviceStatus != "HEALTHY"){
+            showInfoTipNoEj(top.langcur.oPassbookErro);
+            return;
+        }
+    }
+    if(typeof(top.YHAXPassbook) != "undefined"){
+        if(top.YHAXPassbook.StMediaStatus == "PRESENT"){
+            top.passbookprinter.eject();    
+            showInfoTipNoEj(top.langcur.oPassbookErro);
+        }else{
+		    //readPassbook();
+			//增加刷折和插折两种选择方式
+			PassTypeSelect();
+        }
+    }
+    //oLSafeQuit.style.visibility = "hidden";
+	//oLGoHome.style.visibility = "hidden";
+}
+
+//介质选择：插存折、刷存折
+	function PassTypeSelect() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+
+		onKey_F7 = function() {
+			top.journalPrinter.addJournalWithTime("选择插折");
+			if (top.YHAXPassbook.StDeviceStatus != "HEALTHY" || top.YHAXPassbook.StMediaStatus != "NOTPRESENT") {
+				onServiceFailed("交易失败", "", "存折模块故障");
+			}else {
+				readPassbook();
+			}
+		}
+		
+		//刷折
+		onKey_F9 = function() {
+		    top.journalPrinter.addJournalWithTime("选择刷折");
+		    if(typeof(top.YHAXPassbookReader) == "undefined"){
+		    	onServiceFailed("交易失败",top.TERMRETCODE_CARD_FAILED, top.langcur.oNoPassbookReader);
+		    }else{
+				if (top.YHAXPassbookReader.StDeviceStatus != "HEALTHY") {
+					//无存折模块
+					onServiceFailed("交易失败", "", "刷折模块故障");
+				}else {
+					passbookReader();
+				}	
+		    }
+		}
+		onKey_Cancel = onKey_F98 = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		
+		//显示安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		try{top.soundPlayer.playback("/Sound/SelectMediaType.mp3");}catch(e){}
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTypeSelectTick);
+		top.wins.showMain("oLTypeSelect");
+	}
+	//刷折功能
+	function passbookReader(){
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		insertTime++;
+		onMediaInserted = function() {
+			top.serviceCtrl.stopUserTimeout();
+			top.wins.showProcessingTip(top.langcur.oReadPassbookInfo);
+		}
+		onMediaInvalid = function() {
+			top.serviceCtrl.stopUserTimeout();
+			onServiceFailed("刷折失败","",top.langcur.oPassbookErro2);
+		}
+		notSupportPassbook = function() {
+			top.serviceCtrl.stopUserTimeout();
+			onServiceFailed("刷折失败","",top.langcur.oReadPassbookNotSupport);
+		}
+		onDeviceError_Pbp = function() {
+			top.serviceCtrl.stopUserTimeout();
+			onServiceFailed("刷折失败","",top.langcur.oPassbookErro1);
+		}
+		onMediaAccepted = function(track2Val) {
+			
+			if(track2Val != null && track2Val != "")
+			{
+				if(track2Val.length > 104){
+					track2Val = track2Val.substr(0,104);
+				}
+				top.pool.set("TRACK2", track2Val);
+				if(track2Val.split("=").length<4){
+					notSupportPassbook();
+					return;
+				}
+				top.pool.set("voucherNo",track2Val.split("=")[3].substr(16,8));
+				top.pool.set("voucherType",track2Val.split("=")[3].substr(0,4));
+				track2Val = track2Val.split("=")[2].substr(0,17);
+			
+				//2201活期一本通  2202定期一本通
+				if("2201" == top.pool.get("voucherType")){
+					//标记为刷折
+					isPassbookReader = true;
+					//标记重置
+					changePage = false;
+					changePassbook = false;
+					top.pool.set("OrgCUACNO",track2Val);
+					top.pool.set("CUACNO",  track2Val);//客户账号
+					window.operateCtrl.disableInput(true);
+					top.serviceCtrl.stopUserTimeout();
+					sendQueryPassbookRecord();
+					
+				}else{
+					notSupportPassbook();
+				}
+			
+			}
+		}
+		onKey_F98 = onKey_Cancel = onTimeout = function() {
+			top.passbookreader.cancelAccept();
+			top.serviceCtrl.navigate2Quit();
+		}
+		
+		//屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.passbookreader.accept();
+		// 播放提示音
+		try {top.soundPlayer.playback("/Sound/PlsReadPass.mp3");} catch (e) {}
+		top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout, oReadPassTick);
+		// 在广告加载完成前显示默认空闲提示
+		top.wins.showMain("oLPassReaderTip");
+	}
+
+//审核超时处理
+function onProcessingTimeout(){
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.navigate2Quit();  
+}
+
+//打开提示窗口
+function showInfoTipNoEj(str){
+      top.serviceCtrl.stopUserTimeout();
+      top.wins.showMain("cLInfoTip2");
+      try{document.all.item("cLInfoContent2").innerHTML = str;}catch(e){}
+      top.serviceCtrl.startUserTimeout(backIdleNoEj, top.iUserTimeout, oInfoTip2Tick);
+}
+//打开提示窗口,超时有退折动作
+
+function showInfoTipMXEj(str){
+      top.serviceCtrl.stopUserTimeout();
+      top.serviceCtrl.startUserTimeout(backIdleAndUndo,top.iUserTimeout, oInfoTip2Tick);
+      top.wins.showMain("cLInfoTip2");
+      try{document.all.item("cLInfoContent2").innerHTML = str;}catch(e){}
+}
+
+function backIdle(){
+top.serviceCtrl.stopUserTimeout();
+    if(typeof(top.YHAXPassbook) != "undefined"){
+        if(top.YHAXPassbook.StDeviceStatus == "HEALTHY" && top.YHAXPassbook.StMediaStatus == "PRESENT"){
+            showInfoTipNoEj(top.langcur.oTakePassbook);
+            top.passbookprinter.eject();        
+        }else{
+            top.serviceCtrl.navigate2Idle();
+        }
+    }else{
+            top.serviceCtrl.navigate2Idle();
+    }
+    onAcceptCancelled=function(){
+        top.serviceCtrl.navigate2Idle();
+    }
+    onPrintTaken=function(){
+    	
+        top.serviceCtrl.navigate2Idle();
+    }
+    onTimeout=function(){//退折操作超时
+        top.serviceCtrl.navigate2Idle();
+    }
+}
+
+function backIdleAndUndo(){
+	passbookUndo();
+	setTimeout("backIdle()",500);
+}
+
+
+//打开提示窗口
+function showInfoTipMX(str){
+      top.serviceCtrl.stopUserTimeout();
+      top.wins.showFrm(top.MainFrm.document,"cLInfoTip","");
+      try{document.all.item("cLInfoContent").innerHTML = str;}catch(e){}
+      top.serviceCtrl.startUserTimeout(backIdle, 10, null);
+}
+
+function backIdleNoEj(){//返回IDLE页面无退折动作
+    top.serviceCtrl.navigate2Idle();
+}
+
+//打开提示窗口并需要退折
+function showInfoTipAndEject(str,time){
+      top.serviceCtrl.stopUserTimeout();
+		onPrintEjected = function() {
+		}
+      onPrintTaken=function(){
+		top.serviceCtrl.navigate2Idle();
+      }
+      onTimeout=function(){//退折操作超时
+		top.serviceCtrl.navigate2Idle();
+      }
+	  
+	  if(parseInt(time,10)>0){
+		top.serviceCtrl.startUserTimeout(backIdleNoEj, time, oInfoTipTick);
+	  }else{
+		top.serviceCtrl.startUserTimeout(backIdleNoEj, top.iUserTimeout, oInfoTipTick);
+	  }
+	  
+      top.wins.showMain("cLInfoTip");
+      try{document.all.item("cLInfoContent").innerHTML = str;}catch(e){}
+      if(top.YHAXPassbook.StDeviceStatus=="HEALTHY"){
+        if(top.YHAXPassbook.StMediaStatus == "PRESENT" 
+          || top.YHAXPassbook.StMediaStatus == "INJAWS" ){
+            top.passbookprinter.eject();
+        }
+      }     
+}
+
+//打开提示窗口
+function showPassBookTip(str){
+      top.serviceCtrl.stopUserTimeout();
+      onKey_Cancel = onKey_F98 = function() {
+		top.passbookprinter.cancelAccept();
+		passbookUndo();
+		top.serviceCtrl.navigate2Quit();
+	  }
+      onMediaInserted = function()
+      {
+    	top.serviceCtrl.stopUserTimeout();
+		top.wins.showNewProcessingTip("");
+  	  }
+      try{document.all.item("tipContent").innerHTML = str;}catch(e){}
+      // 播放提示音
+			try {top.soundPlayer.playback("/Sound/InPutbankbook.mp3");} catch (e) {}
+      top.wins.showMain("oLPassBookTip");
+	  top.serviceCtrl.startUserTimeout(backIdleAndUndo, top.iUserTimeout, oPassBookTick);
+}
+
+function readPassbook()
+{
+	insertTime++;
+	top.serviceCtrl.stopUserTimeout();
+	onMediaAccepted=function(track2Val){
+		showInfoTipMXEj(top.langcur.oProcessingTipDef);
+		if(track2Val != null && track2Val != "" && track2Val.length > 104){
+			track2Val = track2Val.substr(0,104);
+		}
+		if( track2Val != null && track2Val != "")
+		{
+			top.pool.set("TRACK2", track2Val);
+			if(track2Val.split("=").length<4){
+				notSupportPassbook();
+				return;
+			}
+			top.pool.set("voucherNo",track2Val.split("=")[3].substr(16,8));
+			top.pool.set("voucherType",track2Val.split("=")[3].substr(0,4));
+			track2Val = track2Val.split("=")[2].substr(0,17);
+			if(top.pool.get("OrgCUACNO") != null 
+				&& top.pool.get("OrgCUACNO") != ""
+				&& top.pool.get("OrgCUACNO") != track2Val){
+				onPrintTaken = function() {
+					//允许放入存折
+					top.serviceCtrl.startUserTimeout(readPassbook,2,null);
+				}
+				onPrintEjected = function() {
+					showInfoTipMXEj("请插入您的原存折！并翻至第" + currentPage + "页！");
+					//top.serviceCtrl.startUserTimeout(backIdle, 60, null);
+				}
+				//换页  先退折  在等待插折（加超时）
+				top.passbookprinter.eject();
+				return;
+			}
+			if(insertTime > 1){
+				printPassbook();
+			}else{
+				//2201活期一本通  2202定期一本通
+				if("2201" == top.pool.get("voucherType")){
+					//标记重置
+					changePage = false;
+					changePassbook = false;
+					top.pool.set("OrgCUACNO",track2Val);
+					top.pool.set("CUACNO",  track2Val);//客户账号
+					window.operateCtrl.disableInput(true);
+					top.serviceCtrl.stopUserTimeout();
+					sendQueryPassbookRecord();
+				}else{
+					notSupportPassbook();
+				}
+				
+			}
+		}
+	}
+	onDeviceError_Pbp=function(){
+		//故障冲正
+		passbookUndo();
+		showInfoTipAndEject(top.langcur.oPassbookErro,top.iFailedTimeout);//存折打印机故障
+		//top.passbookprinter.eject();
+		//top.serviceCtrl.startUserTimeout(backIdle, top.iFailedTimeout, oInfoTipTick);
+	}
+	onMediaInvalid=function(){
+		//无效冲正
+		passbookUndo();
+		showInfoTipAndEject(top.langcur.oPassbookErro1,top.iFailedTimeout);//存折打印机故障
+		//top.serviceCtrl.startUserTimeout(backIdle, top.iFailedTimeout, oInfoTipTick);
+	}
+	notSupportPassbook = function(){
+		passbookUndo();
+		showInfoTipAndEject(top.langcur.oReadPassbookNotSupport,top.iFailedTimeout);//存折打印机故障
+	}
+	onTimeout = function() {
+		//超时冲正
+		passbookUndo();
+		showInfoTipAndEject(top.langcur.oReadPassbookOutTime,top.iFailedTimeout);//存折打印机故障
+		
+		//top.passbookprinter.eject();
+		//backIdle();
+	}
+	onPrintEjected = function() {
+		passbookUndo();
+		showInfoTipNoEj(top.langcur.oTakePassbook);
+		//top.serviceCtrl.startUserTimeout(backIdle, top.iUserTimeout, oInfoTip2Tick);
+	}
+	onPrintTaken = function() {
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Idle();
+		return;
+	}
+	
+	//屏蔽安全退出及返回Home的功能
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	//允许放入存折
+	top.passbookprinter.accept();
+	if (top.YHAXPassbook.StMediaStatus != "PRESENT") {
+		showPassBookTip(top.langcur.oReadPassbookTip);//提示放入存折
+	} else {
+		showInfoTipMXEj(top.langcur.oProcessingTipDef);//提示放入存折
+		top.passbookprinter.onMediaAccepted();
+	}
+	top.serviceCtrl.startUserTimeout(backIdleAndUndo, top.iUserTimeout, null);
+}
+
+//查询补登数据
+function sendQueryPassbookRecord(){
+	top.serviceCtrl.doWithProcessingAd(top.trans.send902301Async);
+}
+
+//查询成功
+function onQuerySuccessful() {
+	voucherNo = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/voucherNo");
+	bookNo = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/bookNo");
+	option = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/option");
+			
+	var count = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+	count = parseInt(count, 10);
+	if(count == 0){
+		onServiceFailed(top.langcur.oPassbookInqFailed, top.exchxmlasync.strTermRetCode, top.exchxmlasync.strTermRetDesc);
+		return;
+	}
+	for (var i = 1 ; i <= count; i++) {
+		var transDate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/transDate");
+		var zhaiyao = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/transDesc");
+		var Curr   = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/currCode");
+		var chaohui = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/cashRemitFlag");
+		var shouzhi = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/crDbFlag");
+		var transAmt = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/transAmt");
+		var balance = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/acctBalance");
+		var subBankNo = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/subBankNo");
+		var teller = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/tellerId");
+		var acctBank = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[" + i+ "]/acctBank");
+		
+		if(null != balance) balance = balance.replace(/,/g,"");
+		if("A"==shouzhi){
+			if( transAmt.indexOf("-") > 0) {
+				shouzhi = "-" + transAmt.replace(new RegExp("-","g"),"");
+			}else{
+				shouzhi = "+" + transAmt.replace(new RegExp("-","g"),"");
+			}
+		}else if("C"==shouzhi){
+			if( transAmt.indexOf("-") > 0) {
+				shouzhi = "+" + transAmt.replace(new RegExp("-","g"),"");
+			}else{
+				shouzhi = "-" + transAmt.replace(new RegExp("-","g"),"");
+			}
+		}
+		
+		var rowDataArr = new Array();
+		rowDataArr[rowDataArr.length] = transDate;
+		rowDataArr[rowDataArr.length] = zhaiyao;
+		rowDataArr[rowDataArr.length] = Curr;
+		rowDataArr[rowDataArr.length] = chaohui;
+		rowDataArr[rowDataArr.length] = shouzhi;
+		rowDataArr[rowDataArr.length] = balance;
+		rowDataArr[rowDataArr.length] = subBankNo;
+		rowDataArr[rowDataArr.length] = teller;
+		rowDataArr[rowDataArr.length] = acctBank;
+		
+		recordArr[recordArr.length] = rowDataArr;
+	}
+
+	if(count>=10){
+		//防止最后一笔失败，冲正时无法冲正
+		top.pool.set("tempOrgTsns",top.pool.get("strOrgTsns"));
+		sendQueryPassbookRecord();
+	}else if(isPassbookReader){
+		//刷折不需要退折
+		var acctBank = recordArr[0][8];
+		if(acctBank > 10)
+			currentPage = Math.ceil(Math.ceil((acctBank-10)/20)) + 1;
+		showInfoTipNoEj("请将您的存折翻至第" + currentPage + "页,待提示后插折！");
+		
+		top.serviceCtrl.startUserTimeout(readPassbook, top.iFailedTimeout, oInfoTip2Tick);
+	
+	}else{
+		//首次退折提示页数
+		firstEjectPassbook();
+	}
+}
+
+//首次退折提示页数
+function firstEjectPassbook(){
+
+	onPrintTaken = function() {
+		//允许放入存折
+		top.serviceCtrl.startUserTimeout(readPassbook,2,null);
+	}
+	onPrintEjected = function() {
+		var acctBank = recordArr[0][8];
+		if(acctBank > 10)
+			currentPage = Math.ceil(Math.ceil((acctBank-10)/20)) + 1;
+		showInfoTipMXEj("请取回您的存折！并翻至第" + currentPage + "页！");
+	}
+	 //换页  先退折  在等待插折（加超时）
+	 top.passbookprinter.eject();
+}
+
+//打印数据
+function printPassbook(){
+	var strPrintDate = "";
+	startUndo = index;
+	changePage = false;
+	changePassbook = false;
+	for(; index < recordArr.length; index++){
+		var rowDataArr = recordArr[index];
+		//行数
+		var idx = parseInt(rowDataArr[8], 10);
+		//组装补登数据
+		//下标
+		var down = idx;
+		if(down > 10){
+			down = (down - 10)%20 - 1;  //打印时角标从1开始
+			if(down > 9) down = down + 3;   //下半页从13开始
+			if(down < 0) down = 22;
+		}else{
+			down = down + 10 -1 + 3;
+		}
+		
+		strPrintDate += "Date[" + down + "]=<" + rowDataArr[0] 
+			+ ">,zhaiyao[" + down + "]=<"+ rowDataArr[1] 
+			+ ">,Curr[" + down + "]=<"+ rowDataArr[2] 
+			+ ">,chaohui[" + down + "]=<"+ rowDataArr[3] 
+			+ ">,shouzhi[" + down + "]=<"+ rowDataArr[4]
+			+ ">,bal[" + down + "]=<" + rowDataArr[5] 
+			+ ">,wd[" + down + "]=<" + rowDataArr[6]
+			+ ">,teller[" + down + "]=<" + rowDataArr[7] + ">,";	
+
+		if(idx == 120 ){
+			changePassbook = true;
+			index++;
+			break;
+		} 
+		
+		if(recordArr.length==(index+1)){
+			index++;
+			break;
+		}
+		
+		if(idx%20 ==10){
+			changePage = true;
+			index++;
+			//更新下一页提示
+			if(parseInt(recordArr[index][8],10) > 10){
+				currentPage = Math.ceil((parseInt(recordArr[index][8],10)-10)/20)+1;
+			}
+			
+			break;
+		}
+		
+	}
+	//开始打印
+	top.passbookprinter.print(strPrintDate.substring(0,strPrintDate.length-1));
+	
+	onDeviceError_Pbp=function(){
+		passbookUndo();
+		top.passbookprinter.eject();
+		top.passbookprinter.PassbookEvents.clearAll();
+		showInfoTipAndEject(top.langcur.oPassbookErro,top.iFailedTimeout);//存折打印机故障
+		//top.serviceCtrl.startUserTimeout(backIdle, top.iFailedTimeout, oInfoTipTick);
+	}
+	
+	onPrintEjected = function() {
+		showInfoTipNoEj(top.langcur.oTakePassbook);
+		top.serviceCtrl.startUserTimeout(backIdle, top.iUserTimeout, oInfoTip2Tick);
+	}
+
+	onPrintTaken = function() {
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Idle();
+		return;
+	}
+	
+	onPrintComplete = function() {
+		//更新冲正点
+		startUndo = index - 1;
+		//换折
+		if (changePassbook) {
+			onPrintTaken = function() {
+				backIdleNoEj();
+				return;
+			}
+			onPrintEjected = function() {
+				if(startUndo < recordArr.length-1){
+					passbookUndo();
+				}
+				showInfoTipNoEj(top.langcur.oPlsChangePassbook);
+				top.serviceCtrl.startUserTimeout(backIdle, 60, null);
+			}
+			//换折  直接退折
+			top.passbookprinter.eject();
+		}
+		else if (changePage) {//换页
+			onPrintTaken = function() {
+				//允许放入存折
+				top.serviceCtrl.startUserTimeout(readPassbook,2,null);
+			}
+			onPrintEjected = function() {
+				//showInfoTipNoEj(top.langcur.oPlsPassbookNextPage);
+				showInfoTipNoEj("请取回您的存折！并翻至第" + currentPage + "页！");
+				top.serviceCtrl.startUserTimeout(backIdle, top.iUserTimeout, null);
+			}
+			//换页  先退折  等待插折
+			top.passbookprinter.eject();
+		} else {
+			onPrintTaken = function() {
+				backIdle();
+			}
+			onPrintEjected = function() {
+				//showInfoTipNoEj(top.langcur.oPlsPassbookNextPage);
+				showInfoTipNoEj(top.langcur.oTakePassbook1);
+				top.serviceCtrl.startUserTimeout(backIdle, top.iUserTimeout, null);
+			}
+			
+			top.passbookprinter.eject();
+		}
+
+	}
+}
+/*
+存折补登冲正
+*/
+function passbookUndo(){
+	//防止重复发送冲正
+	if(isUndo) return;
+	isUndo = true;
+	//冲正前将最后一笔成功的原交易流水赋值
+	if(top.pool.get("tempOrgTsns").length > 0){
+		top.pool.set("strOrgTsns",top.pool.get("tempOrgTsns"));
+	}
+	if(recordArr.length < 1) return;
+	var count = 0;
+	if(startUndo == 0){
+		count = recordArr.length;
+	}else{
+		count = (recordArr.length -1) - startUndo;
+	}
+	if( count < 1 ) return ;
+	
+	var strCount = new top.StringCtrl(count).prefixStr("0",3);
+	var strFiled57 =  strCount
+		+ new top.StringCtrl(voucherNo).suffixStr(" ",20) 
+		+ new top.StringCtrl(bookNo).prefixStr("0",3) 
+		+ new top.StringCtrl(option).prefixStr(" ",0);
+	var Curr   = recordArr[startUndo][2];
+	var chaohui = recordArr[startUndo][3];
+	if(Curr.length < 3){
+		for(;Curr.length < 3;)Curr = Curr + " "; 
+	}
+	if(top.langcur.oPreChao == chaohui){
+		chaohui = "1";	
+	}else if(top.langcur.oPreHui == chaohui){
+		chaohui = "2";	
+	}else{
+		chaohui = "0";	
+	}
+		
+	strFiled57 += Curr + chaohui + "" + strCount;
+	top.pool.set("DestPan",top.pool.get("CUACNO"));
+	top.pool.set("strField57",strFiled57);
+	top.trans.send900002Async();
+}
+
+//查询失败
+function onServiceFailed(title, retcode, retdesc) {
+	if(recordArr.length > 0){
+		//开始打印
+		firstEjectPassbook();
+		return;
+	}
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onPrintEjected = function() {
+		showInfoTipNoEj(top.langcur.oTakePassbook);
+	}
+	onPrintTaken = function() {
+		backIdleNoEj();
+		return;
+	}
+	onTimeout = function()
+    {
+		top.passbookprinter.eject();
+		//top.serviceCtrl.navigate2Quit();
+    }
+	//oLSafeQuit.style.visibility = "visible";
+	//oLGoHome.style.visibility = "visible";
+
+	oPayFailed.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+	
+	top.wins.showMain("oLServiceFailedTip");
+}
+</script>
+</head>
+  
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  
+<div id="cLInfoTip2" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oInfoTip2Tick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <br/><br/>
+        <span class="Tip_Title" ID="cLInfoContent2">&nbsp;<br/><br/><br/></span>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="cLInfoTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oInfoTipTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <br/><br/>
+        <span class="Tip_Title" ID="cLInfoContent">&nbsp;<br/><br/><br/></span>
+      </td></tr>
+    </table>
+  </div>
+<!--   <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span> -->
+</div>
+
+<div id="oLPassBookTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oPassBookTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine"><td align="center">
+        <br/><br/><span class="Tip_Title" id="tipContent"></span><br/><br/>
+        <img width="870px" height="520px" alt="" src="../Image/InputPassBookTip.gif" />
+      </td></tr>
+      <tr><td>&nbsp;</td></tr>
+      <tr><td>&nbsp;</td></tr>
+      <tr><td>&nbsp;</td></tr>
+      <tr><td>&nbsp;</td></tr>
+      <tr><td>&nbsp;</td></tr>
+    </table>
+  </div>
+  <span class="MENU98" ><button onmousedown="setTimeout(onKey_F98,1000);" class="return" name="oReturn"></button></span>	
+</div>
+
+<div id="oLTypeSelect" class="FULLSCR">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oTypeSelectTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr>
+					<td align="center"><br/><br/><br/><br/><br/><br/><br/><br/>
+						<pre class="Tip_Title" id="oSelectType"></pre>
+						<span class="MENU6_1"><button onclick="javascript:onKey_F7()" class="Menu_Passbook" name="oPassbook"></button></span>
+						<span class="MENU7_1"><button onclick="javascript:onKey_F9()" class="Menu_Passreader" name="oPassreader"></button></span>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPassReaderTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oReadPassTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center"><br/><br/>
+					<pre class="Tip_Title" id="oReaderPass"></pre><br/>
+					<img src="../Image/ReadPassBookTip.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oServiceFailedTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oPayFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oFailedRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+  
+</div>
+
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+</body>
+</html>

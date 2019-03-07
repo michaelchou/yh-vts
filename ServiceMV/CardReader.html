@@ -1,0 +1,124 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>读卡页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  top.serviceCtrl.stopUserTimeout();
+  top.pool.set("strICFlag", "0");
+  // 允许插卡
+  acceptCard();
+}
+
+// 允许用户插卡
+function acceptCard()
+{
+  onCardAcceptCancelled = function()
+  {
+     top.serviceCtrl.navigate2QuitMV();
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    if (top.cardreader.isCardPresent()){
+	   return;
+	}
+    top.cardreader.cancelAccept();
+  }
+  onTimeout = function()
+  {
+    top.serviceCtrl.navigate2QuitMV();
+  }
+  onCardInserted = function()
+  {
+	
+  }
+  onCardInvalid = function()
+  {
+	onServiceFailed("读卡失败","","对不起，您插入的卡为无效卡！");
+  }
+  onICCardInitFailed = function()
+  {
+	onServiceFailed("读卡失败","","对不起，IC卡初始化失败！");
+  }
+  onDeviceError_Idc = function()
+  {
+    // 记录终端流水
+    var strJrn = new top.StringCtrl("读卡器故障 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+    top.journalPrinter.addJournal(strJrn);
+    //返回退卡页面
+    top.serviceCtrl.navigate2QuitMV();
+  }
+  onCardAccepted = function()
+  {
+      top.serviceCtrl.stopUserTimeout();
+	  top.serviceCtrl.navigate2("/ServiceMV/InputPin.html");
+  }
+  // 播放提示音
+  try{top.soundPlayer.playback("/Sound/InsertCardTip.mp3");}catch(e){}
+  top.cardreader.accept(120);
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oInpCardTick);
+  // 在广告加载完成前显示默认空闲提示
+  top.wins.showMain("oLIdleTip");
+}
+
+function onServiceFailed(title, retcode, retdesc)
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2QuitMV();
+	}
+	oChgPwdFailed.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip");
+}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLIdleTip" class="FULLSCR" style="visibility:hidden;">
+ <div class="FULLSCR">
+  <span class="Tip_Tick" id="oInpCardTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr><td align="center">
+      <br/><br/><pre class="Tip_Title">请插入您的银行卡...</pre><br/>
+      <img src="../Image/InsertCardTip.gif" width="870px" height="520px"/>
+    </td></tr>
+  </table>
+  </div>
+<span class="MENU98"><button onmousedown="setTimeout(onKey_F98,1000);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oServiceFailedTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oChgPwdFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oFailedRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>

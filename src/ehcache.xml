@@ -1,0 +1,435 @@
+<ehcache>
+  <diskStore path="java.io.tmpdir"/>
+
+  <defaultCache
+  maxElementsInMemory="200000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+
+  <!--Org的查询缓存配置-->
+  <cache name="OrgQueries"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--Org类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.Org"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--Module的查询缓存配置-->
+  <cache name="ModuleQueries"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--Module类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.Module"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--Misc的查询缓存配置-->
+  <cache name="MiscQueries"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--Misc类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.Misc"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--Terminal的查询缓存配置-->
+  <cache name="TerminalQueries"
+  maxElementsInMemory="4000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--Terminal类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.Terminal"
+  maxElementsInMemory="4000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--Terminal的查询缓存配置-->
+  <cache name="DevManuQueries"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--Terminal类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.DevManu"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--DevModel的查询缓存配置-->
+  <cache name="DevModelQueries"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--DevModel类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.DevModel"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--DevType的查询缓存配置-->
+  <cache name="DevTypeQueries"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--DevType类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.DevType"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--DevModelModule的查询缓存配置-->
+  <cache name="DevModelModuleQueries"
+  maxElementsInMemory="3000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--DevModelModule类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.DevModelModule"
+  maxElementsInMemory="3000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  
+  <!--TerminalModule的查询缓存配置-->
+  <cache name="TerminalModuleQueries"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--TerminalModule类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.TerminalModule"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  
+  <!--TemplateMenu的查询缓存配置-->
+  <cache name="TemplateMenuQueries"
+  maxElementsInMemory="3000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--TemplateMenu类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.TemplateMenu"
+  maxElementsInMemory="3000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  
+  <!--TemplateMenuRelation的查询缓存配置-->
+  <cache name="TemplateMenuRelationQueries"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--TemplateMenuRelation类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.TemplateMenuRelation"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  
+  <!--TerminalService的查询缓存配置-->
+  <cache name="TerminalServiceQueries"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--TerminalService类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.TerminalService"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--HostRetCode的查询缓存配置-->
+  <cache name="HostRetCodeQueries"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--HostRetCode类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.HostRetCode"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  
+  <!--ServiceMenu的查询缓存配置-->
+  <cache name="ServiceMenuQueries"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--ServiceMenu类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.ServiceMenu"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  
+  <!--Trial的查询缓存配置-->
+  <cache name="TrialQueries"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--Trial类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.Trial"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--City的查询缓存配置-->
+  <cache name="CityQueries"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--City类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.City"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--Province的查询缓存配置-->
+  <cache name="ProvinceQueries"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--Province类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.Province"
+  maxElementsInMemory="1000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  
+  <!--Bank的查询缓存配置-->
+  <cache name="BankQueries"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--Bank类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.Bank"
+  maxElementsInMemory="5000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--PadCheck的查询缓存配置-->
+  <cache name="PadCheckQueries"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--PadCheck类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.PadCheck"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--CardTypeService的查询缓存配置-->
+  <cache name="CardTypeServiceQueries"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--CardTypeService类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.CardTypeService"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--RouteBank的查询缓存配置-->
+  <cache name="RouteBankQueries"
+  maxElementsInMemory="300000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--RouteBank类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.RouteBank"
+  maxElementsInMemory="300000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--BrunchRegister的查询缓存配置-->
+  <cache name="BrunchRegisterQueries"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--BrunchRegister类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.BrunchRegister"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+  
+  <!--BranchMap的查询缓存配置-->
+  <cache name="BranchMapQueries"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  <!--BranchMap类的缓存配置-->
+  <cache name="com.yihuacomputer.cols.entity.BranchMap"
+  maxElementsInMemory="10000"
+  eternal="true"
+  timeToIdleSeconds="0"
+  timeToLiveSeconds="0"
+  overflowToDisk="true"
+  />
+
+  
+</ehcache>

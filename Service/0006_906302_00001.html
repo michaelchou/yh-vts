@@ -1,0 +1,1283 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>外汇结汇</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+	var indexID = 0;
+	var isAmount = false;
+	var indexImage =0;
+	var secs = 10;
+	//美元汇率
+	var remitusdBidRate=0;
+	var timeoutBtn = null;//计数器
+	//Pad审核
+	var	isPadCheck = false;
+	var changeCheckNoticeBoxFlag =false;//是否阅读告知书标志
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function() {serverEntrance();});
+
+	// 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+
+	function checkEvent() {
+		try {
+			var arr = new Array(
+				new Array(oLTransMsgTip, "input_amt")
+			);
+			for (var i = 0; i < arr.length; i++) {
+				if (arr[i][0].style.visibility.toLowerCase() == "visible") {
+					top.wins.checkEvent(event.srcElement, arr[i][1]);
+					break;
+				}
+			}
+		} catch (e) {
+		}
+	}
+
+	// 服务流程处理入口
+	function serverEntrance() {
+		isAmount = false;
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		if (typeof(top.YHAXIDCardReader) == "undefined")
+		{
+			onServiceFailed(top.langcur.oFxTerminateFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, oNoIDCardReader);
+		}else if(new top.CheckCard().cardSignStatus() !="true"){
+			onServiceFailed(top.langcur.oFxTerminateFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, new top.CheckCard().cardSignStatus());
+		}else {
+			if (top.cardreader.isCardPresent()) {
+				if(top.pool.get("strCardType") != "1"){
+					InsertCard();//提示插入本行借记卡
+				}else{
+					top.pool.set("strNavigate2Url", "");
+					acceptIDCard();
+				}
+			}else{
+				top.serviceCtrl.navigate2InsertCard();
+			}
+		}
+	}
+
+	function InsertCard() {
+		top.serviceCtrl.stopUserTimeout();
+		onCardEjected = function() {
+			top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeInvalCardTick);
+			// 播放提示音
+			try {
+				top.soundPlayer.playback("/Sound/TakeCardTip.mp3");
+			} catch (e) {
+			}
+			top.wins.showMain("oLTakeInvalCardTip");
+		}
+		onCardTaken = function() {
+			top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+		}
+		onDeviceError_Idc = function() {
+			if (top.cardreader.isCardPresent()) {
+				top.YHAXCardReader.Capture();
+			}
+			onServiceFailed(top.langcur.oFxTerminateFailed, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError);
+		}
+		onCardCapturedTipEnd = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onCardCaptured = function() {
+			top.pool.set("printType","3");//选择打印的凭条类型
+	        top.receiptprinter.printAndEject();
+			top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+			top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+		}
+		//退卡前屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.cardreader.eject();
+	}
+
+	// 允许读取身份证
+	function acceptIDCard() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onDeviceError_ID = onCardInvalid_ID = function() {
+			onServiceFailed(top.langcur.oFxTerminateFailed, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDReaderFailed);
+		}
+		onCardReaded = function() {
+			idCardEject();
+		}
+		onCardInserted_ID = function() {
+			top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+		}
+		//退出身份证读取流程
+		onKey_Cancel = onKey_F98 = function() {
+			top.idCardReader.cancelAccept();
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		onTimeout_ID =onTimeout = function()
+		{
+			top.serviceCtrl.navigate2Quit();
+		}
+		//插入身份证页面屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oIdCardTick);
+		top.idCardReader.accept();
+		top.serviceCtrl.changeNaviStatus('1');
+		// 播放提示音
+		try {
+			top.soundPlayer.playback("/Sound/PutIDCard.mp3");
+		} catch (e) {
+		}
+		top.wins.showMain("oLIDCardTip");
+	}
+
+	// 提示取走二代身份证
+	function idCardEject() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("isPersonal","1");//人证合一
+		onDeviceError_ID = onTimeout_ID = function() {
+			onServiceFailed(top.langcur.oFxTerminateFailed, top.TERMRETCODE_ID_EJECTFAILED, top.langcur.oEjectIDFailed);
+		}
+		onCardTaken_ID = function()
+		{
+		}
+		    //超时退出
+	    onTimeout = function()
+	    {
+	    	top.idCardReader.IDCardEvents.clearAll();
+			//进行联网核查流程
+	        top.idCardReader.idCardTakenComplete();
+	    }
+
+	    top.serviceCtrl.changeNaviStatus('2');
+		top.serviceCtrl.startUserTimeout(onTimeout, 10, oIdCardTakeTick);
+		window.operateCtrl.enableInput();
+		top.idCardReader.eject();
+		// 播放提示音
+		try {
+			top.soundPlayer.playback("/Sound/TakeIDCard.mp3");
+		} catch (e) {
+		}
+		top.wins.showMain("oLIDCardTakeTip");
+	}
+
+	function onNetworkVirificationSuccessful(){
+		//查看有无客户号。
+		if(top.pool.get("customNo") == null || top.pool.get("customNo") == "") {
+			onServiceFailed(top.langcur.oReLostFail, top.TERMRETCODE_ID_READFAILED, "您在我行无客户号，无法为您办理该业务");
+			return;
+		}
+		top.serviceCtrl.stopUserTimeout();
+		//开始影像文件上传交易
+		top.pool.set("strImageType", "IDType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+    }
+
+	//影像文件上传成功回调函数
+	function onImageFileSuccessful(){
+		top.serviceCtrl.stopUserTimeout();
+		var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+		top.pool.set("strBatchId", strBatchId);
+		if(indexID == 0)
+		{
+			//发起额度查询交易
+			top.wins.showNewProcessingTip("正在账户额度查询，请稍候...");
+			top.trans.send906101Async();
+		}
+		else if(indexID == 1)
+		{
+			//发起外币子账户查询交易
+			top.wins.showNewProcessingTip("正在查询外币子账户，请稍候...");
+			top.trans.send902109Async();
+		}
+		else if(indexID == 2)
+		{
+			var htmlstr = infoToPic.innerHTML;
+			top.pool.set("htmlstr",htmlstr);
+			oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+			infoToPic.style.visibility = "hidden";
+			top.wins.showNewProcessingTip("交易处理中，请稍候...");
+			top.trans.sendBusinessApplicationAsync();
+		}
+	}
+	//额度查询成功
+	function onInqFxBalanceSuccess() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		changeCheckNoticeBoxFlag = false;
+		checkNoticeBox.className = "uncheckBox";
+		oSelect.style.visibility = "hidden";//阅读告知书标志
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		document.getElementById("oLConfirm").disabled = true;
+		timeoutBtn = top.MainFrame.setInterval(updateTime,1000);
+		updateTime();//首先执行一次，避免空等一次间隔
+		var transHtml = "";
+		var curDate = new Date(); // new 一个Date对象
+		var strYear = curDate.getFullYear(); // 当前年份
+		var strMonth = curDate.getMonth()+1;//当前月份
+		var strDate = curDate.getDate();
+		var currentDate= strYear +"年" + new top.StringCtrl(strMonth).prefixStr('0', 2) + "月" + new top.StringCtrl(strDate).prefixStr('0', 2)+ "日";
+		if(top.pool.get("status")=="03" && top.pool.get("signPayFlag")=="0"){
+			//关注名单未阅读告知书
+			top.pool.set("strCuststat","03");
+			transHtml = "<p align='center'>个人外汇业务“关注名单”告知书  </p><br>"
+				+ "<p>"+top.pool.get("customerName")+"&nbsp;&nbsp;&nbsp;&nbsp;"+top.pool.get("strIDCardNum")+"&nbsp;:</p><br>"
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;根据《国家外汇管理局关于进一步完善个人结售汇业务管理的通知》（汇发【2009】56号）等相关规定，</p>"
+				+ "<p>你办理的个人外汇业务，涉嫌再次出借本人额度协助他人或以借用他人额度等方式规避额度及真实性管理，</p>"
+				+ "<p>已被外汇局列入“关注名单”，列入期限自"+top.pool.get("focussDate") +"&nbsp;至 "+top.pool.get("focuseDate") +"，在关注期限内，你应凭本人有效</p>"
+				+ "<p>身份证件和有交易额的相关证明材料到银行办理个人结售汇业务，如你对被列入“关注名单”有异议，可</p>"
+				+ "<p>联系当地外汇局。</p><br><br>" 
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;特此告知。</p><br><br>"
+				+ "<p style='padding-left:450px'>告知日期："+currentDate+"</p>";
+				NoticeBookContent.innerHTML = transHtml;
+		}else if(top.pool.get("isCheck")=="Y" && top.pool.get("isNotice")=="N"){
+			//待说明个人未阅读告知书
+			top.pool.set("strCuststat","04");
+			transHtml = "<p align='center'>个人外汇业务风险告知书</p><br>"
+				+ "<p>"+top.pool.get("customerName")+"&nbsp;&nbsp;&nbsp;&nbsp;"+top.pool.get("strIDCardNum")+"&nbsp;:</p><br>"
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;根据《国家外汇管理局关于进一步完善个人结售汇业务管理的通知》（汇发【2009】56号）等相关规定，</p>"
+				+ "<p>你办理的个人外汇业务，涉嫌出借本人额度协助他人规避额度及真实性管理，若再次出现上述行为，将被</p>"
+				+ "<p>外汇局列入“关注名单”管理。</p><br><br>"
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;特此告知。</p><br><br>"
+				+ "<p style='padding-left:450px'>告知日期："+currentDate+"</p>";
+				NoticeBookContent.innerHTML = transHtml;
+		}else if(top.pool.get("status")=="02" && top.pool.get("signPayFlag")=="0"){
+				//预关注名单,如果是预关注名单而且未签署告知书
+				top.pool.set("strCuststat","02");
+				transHtml = "<p align='center'>国家外汇管理局风险提示函</p><br>"
+					+ "<p>"+top.pool.get("customerName")+"&nbsp;&nbsp;&nbsp;&nbsp;"+top.pool.get("strIDCardNum")+"&nbsp;:</p><br>"
+					+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;根据个人外汇管理相关规定，您办理的个人外汇业务，涉嫌出借本人额度协助他人规避额度及真实性管</p>"
+					+ "<p>理，若再次出现上述行为，将被外汇局列为“关注名单”管理。</p><br><br>"
+					+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;特此提示。</p>";
+					NoticeBookContent.innerHTML = transHtml;
+		} 
+		onKey_F99 = function() {
+			top.serviceCtrl.stopUserTimeout();
+			top.wins.showNewProcessingTip("正在签署确认书，请稍候...");
+			top.trans.send906104Async();
+		}
+		
+		onTimeout = function()
+		{
+			top.serviceCtrl.navigate2Quit();
+		}
+		top.serviceCtrl.changeNaviStatus('2');
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oReadNoticeBookTip);
+		top.wins.showMain("NoticeBookTip");
+	}
+	
+	//关闭当前页面的计数器
+	function stopCurPageTick()
+	{
+	   if (timeoutBtn != null)
+	   {
+	      top.MainFrame.clearInterval(timeoutBtn);
+	      timeoutBtn = null;
+	   }
+	}
+	
+	//10秒倒计时方法
+	function updateTime() { 
+	if(parseInt(secs) == 0) {
+		stopCurPageTick(); 
+		document.getElementById("oLConfirm").innerHTML = "确认";
+		document.getElementById("oLConfirm").disabled = false;
+	} 
+	else { 
+            var printnr = parseInt(secs);
+ 		    document.getElementById("oLConfirm").innerHTML = "确认" + "(" + printnr +")";
+ 		    secs--;
+		}
+	}
+	
+	//签署确认书成功回调返回
+	function onConfirmBookSuccess(){
+		top.serviceCtrl.stopUserTimeout();
+		if(top.pool.get("status")=="02"){//判断主体交易状态  01-正常  02-重点关注对象  03-关注名单
+			//预关注名单
+			TakePic();
+		}
+		if(top.pool.get("status")=="03"|| top.pool.get("isCheck")=="Y"){
+			onServiceFailed(top.langcur.oFxTerminateFailed, top.exchxmlasync.strTermRetCode, "请持本人身份证件和真实性证明材料去柜面办理。");
+		}
+	}
+	
+	//拍照
+	function TakePic()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		onTimeout = function()
+		{
+			top.cameras.display("Person","Destroy");//关闭摄像头
+			top.serviceCtrl.navigate2Quit();
+		}
+		window.operateCtrl.enableInput();
+		window.frames["ifreamPhoto"].CamerasLoad();//加载子页面摄像头相关方法
+		top.serviceCtrl.changeNaviStatus('3');
+		top.wins.showMain("oLTakePicTip");
+	}
+
+	function PhotoPrevStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2SecondMenu();//拍照返回后步骤
+		window.operateCtrl.enableInput();
+	}
+
+	function PhotoNextStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+
+	function onQueryCurrentSubAccountSuccessful() {//查询活期子账户返回
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onKey_F98 = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		viewMultiRecord();
+		top.serviceCtrl.changeNaviStatus('4');
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oAccountListTick);
+		top.wins.showMain("oLAccountListTip");
+		if(strRecordArr.length == 0) {
+			onServiceFailed(top.langcur.oFxTerminateFailed, "1202", "无汇户的外币子账户");
+		}
+	}
+
+	var strRecordArr = new Array();
+	function viewMultiRecord() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		var mrv = new top.MultiRecordView();
+		strRecordArr = new Array();
+		var strHeadingArr = new Array(
+				top.langcur.oSerialNumber,
+				top.langcur.oCurrency,
+				"子账户类型",
+				top.langcur.oAcbl,
+				top.langcur.oAvbl,
+				"开户日期");
+		var strAlignArr = new Array("center", "center", "center", "center", "center", "center");
+
+		var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+		itemCount = parseInt(itemCount, 10);
+		for (var i = 1; i <= itemCount; i++) {
+			var currType = "其他";
+			var currCode = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/currCode");
+			var subAcctType = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/subAcctType");
+			var acctBalance = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/acctBalance");
+			var availBalance = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/availBalance");
+			var openDate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/openDate");
+			if(currCode == "CNY") {
+				continue;
+			}
+			if(subAcctType != "" && subAcctType != null) {
+				if(subAcctType.substring(subAcctType.length - 1, subAcctType.length) == "1") {
+					currType = "钞户";
+				}else if(subAcctType.substring(subAcctType.length - 1, subAcctType.length) == "2") {
+					currType = "汇户";
+				} 
+			}
+			if(currType == "钞户"){
+				continue;
+			}else{
+				strRecordArr[strRecordArr.length] = new Array(
+						strRecordArr.length + 1,
+						currCode,
+						currType,
+						acctBalance,
+						availBalance,
+						openDate,
+						i);
+			}
+			
+		}
+
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+
+		mrv.oTHead = oTHead;
+		mrv.oTBody = oTBody;
+		//mrv.oTablePageTip = oTablePageTip;
+		mrv.oMFirstPage = oMFirstPage;
+		mrv.oMPrevPage = oMPrevPage;
+		mrv.oMNextPage = oMNextPage;
+		mrv.oMEndPage = oMEndPage;
+		mrv.strRecordArr = strRecordArr;
+		mrv.strHeadingArr = strHeadingArr;
+		mrv.iRowsPerPage = 5;
+		onKey_F1 = function() {
+			mrv.onFirstPage();
+			top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oAccountListTick);
+		}
+		onKey_F2 = function() {
+			mrv.onPrevPage();
+			top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oAccountListTick);
+		}
+		onKey_F3 = function() {
+			mrv.onNextPage();
+			top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oAccountListTick);
+		}
+		onKey_F4 = function() {
+			mrv.onEndPage();
+			top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oAccountListTick);
+		}
+		mrv.show();
+	}
+	
+	
+
+	//确认外汇购汇交易信息
+	function confirmTransInfo(record) {
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strCurrency", record[1]);
+		top.pool.set("text_balance", record[4]);
+		top.pool.set("text_openDate", record[5]);
+		/* //发起额度查询交易
+		top.wins.showNewProcessingTip("正在账户额度查询，请稍候...");
+		top.trans.send906101Async(); */
+		// usdSuccess();//美元汇率查询
+		top.wins.showNewProcessingTip("正在汇率查询，请稍候...");
+		top.trans.sendUsd906201Async();
+	}
+
+	//查出美元的汇率
+	function usdSuccess(){
+		top.serviceCtrl.stopUserTimeout();
+		top.trans.sendUsd906201Async();
+	}
+	function inqUsdFxRateSuccess(){
+		top.serviceCtrl.stopUserTimeout();
+		var remitBidRate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[1]/remitBidRate");
+		remitusdBidRate = remitBidRate/100;
+		//发起汇率查询交易
+		top.pool.set("Amount", "100");
+		top.pool.set("strTateType", "02");
+		top.trans.send906201Async();
+	}
+	
+
+	//汇率查询返回结汇信息填写
+	function inqFxRateSuccess() {
+		document.getElementById("text_fxAttribute").options[0].selected = true;
+		oFxAttributeDetail.innerHTML = "";
+		text_rmbNum.innerHTML = "";
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		document.getElementById("text_currency").innerHTML = sellCurrencychina(top.pool.get("strCurrency"));
+		document.getElementById("text_accBalance").innerHTML = top.pool.get("text_balance");
+		document.getElementById("text_openDate").innerHTML = top.pool.get("text_openDate");
+		document.getElementById("text_outerUseBalance").innerHTML = "等值 " + top.pool.get("usedBalance") + " 美元";
+		document.getElementById("text_outerReBalance").innerHTML = "等值 " + top.pool.get("limitBalance") + " 美元";
+
+		var count = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+		count = parseInt(count, 10);
+		if(count == 0){
+			onServiceFailed(top.langcur.oFxTerminateFailed, top.exchxmlasync.strTermRetCode, "无汇率信息");
+			return;
+		}
+		var remitBidRate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[1]/remitBidRate");
+		//text_exRate.innerHTML = remitBidRate/100;//当前汇率
+		if(remitBidRate != null && remitBidRate !=""){
+			var Rate= parseFloat(remitBidRate)/100;
+		}else{
+			remitBidRate = 0.00;
+			var Rate= parseFloat(remitBidRate)/100;
+		}
+		var text_Rate = Rate +""; 
+		var remitBid = text_Rate.substring(0,text_Rate.indexOf(".")+5);
+		text_exRate.innerHTML = new top.StringCtrl(remitBid).formatNumber(4);
+		onKey_F99 = onKey_Enter = function() {
+			top.inputmethod.Close();
+			if(document.getElementById("text_fxAttribute").value == "999") {
+				error_TXTFXJH.innerHTML = "请选择结汇属性!";
+				return;
+			}
+			if(document.getElementById("text_fxAttribute").value == "666"){
+				error_TXTFXJH.innerHTML = "请持本人身份证件和真实性证明材料去柜面办理";
+				return;
+			}
+			if(parseFloat(input_amt.value,10)>parseFloat(top.pool.get("text_balance"))) {
+				error_TXTFXJH.innerHTML = "结汇金额必须小于或等于活期子账户余额";
+				return;
+			}
+			if(parseFloat(input_amt.value*parseFloat(text_exRate.innerHTML)/remitusdBidRate)>parseFloat(top.pool.get("limitBalance"))) {
+				error_TXTFXJH.innerHTML = "结汇金额必须小于等于外管系统剩余结汇额度";
+				return;
+			}
+			if(!new top.StringCtrl(input_amt.value).isValidAmount() || input_amt.value <= 0) {
+				error_TXTFXJH.innerHTML = "请输入正确的结汇金额!";
+				return;
+			}
+			top.pool.set("Amount", input_amt.value);
+			isAmount = false;
+			error_TXTFXJH.innerHTML = "";
+			top.inputmethod.Close();
+			top.pool.set("strUsage", document.getElementById("text_fxAttribute").value)
+			userSign();
+		}
+
+		onKey_F98 = function() {
+			top.inputmethod.Close();
+			error_TXTFXJH.innerHTML = "&nbsp;";
+			top.serviceCtrl.stopUserTimeout();
+			//发起外币子账户查询交易
+			top.wins.showNewProcessingTip("正在查询外币子账户，请稍候...");
+			top.trans.send902109Async();
+		}
+
+		input_amt.onkeypress = function()
+		{
+			error_TXTFXJH.innerHTML = "&nbsp;";
+		    top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTransMsgTick);
+		}
+
+		onTimeout = function()
+		{
+			top.inputmethod.Close();
+			error_TXTFXJH.innerHTML = "&nbsp;";
+		    top.serviceCtrl.navigate2Quit();
+		}
+
+		top.serviceCtrl.changeNaviStatus('5');
+		isAmount = true;
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTransMsgTick);
+		top.wins.showMain("oLTransMsgTip");
+		input_amt.value = "";
+		input_amt.focus();
+	}
+
+	//用户签名
+	function userSign()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+		oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+		oSigFinger.style.visibility = "visible";
+		oESign.style.visibility = "visible";
+		text_pid2.innerHTML = top.pool.get("strIDCardNum");
+		text_name2.innerHTML = top.pool.get("strIDName");
+		text_ethnic2.innerHTML = top.pool.get("strIDNation");
+		text_address2.innerHTML = top.pool.get("strIDAddress");
+
+		text_strPan.innerHTML = top.pool.get("strPan");
+		text_strUsage.innerHTML = strUsageExchange(top.pool.get("strUsage"));
+		text_curr.innerHTML = sellCurrencychina(top.pool.get("strCurrency"));
+		text_amount.innerHTML =new top.StringCtrl(parseFloat(top.pool.get("Amount"))).formatNumber(2);
+		text_chaohui.innerHTML = top.langcur.oPreHui;
+
+		text_date.innerHTML = new top.DateTimeCtrl().getYYYYMMDD2();
+		text_time.innerHTML = new top.DateTimeCtrl().getHHmmSSWithSep();
+		text_term.innerHTML = top.terminal.strTerminalNum;
+		window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(window.frames['ifreamSign'].onTimeout, top.iUserTimeout,oSigFingerTick);
+		Tip_UserSign.innerHTML = top.langcur.oUserSign;
+		top.serviceCtrl.changeNaviStatus('6');
+		top.wins.showMain("oLUserSignTip");
+	}
+
+	function SignPrevStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";
+		oSigAgain.style.visibility = "hidden";
+		oSigFinger.style.visibility = "hidden";
+		oESign.style.visibility = "hidden";
+		inqFxRateSuccess();
+		window.operateCtrl.enableInput();
+	}
+
+	function SignNextStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+
+	//业务办理单上传成功
+	function onSuccessful()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		//身份证图片查询
+		top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+		top.pool.set("strImageType","IDType");
+		top.trans.sendImageFileQueryAsync();
+	}
+
+	//图片查询结果
+	function onImageFileQuerySuccessful()
+	{
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		if(indexImage == 0){
+			top.pool.set("idPhotoBackUrl",top.pool.get("back"));//反
+			top.pool.set("idPhotoUrl",top.pool.get("Front"));//正
+			//进行查询
+			indexImage ++;
+			top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+			top.pool.set("strImageType","ZNGYType");
+			top.trans.sendImageFileQueryAsync();
+		}else if(indexImage == 1){
+			isPadCheck = true;
+			top.pool.set("scenePhotoUrl",top.pool.get("cameras"));//现场
+	        var Msg = new top.JSONCtrl();
+			Msg.setJson("customerName", "账户名称：" + top.pool.get("strIDName"));
+			Msg.setJson("customerNum", "卡号：" + top.pool.get("strPan"));
+			Msg.setJson("strUsage","结汇资金属性：" +strUsageExchange(top.pool.get("strUsage")));
+			Msg.setJson("sellCurrency", "结汇币种：" +sellCurrencychina(top.pool.get("strCurrency")));
+			Msg.setJson("sellAmount", "结汇金额：" + new top.StringCtrl(parseFloat(top.pool.get("Amount"))).formatNumber(2));
+			Msg.setJson("strChaoHui", "钞汇标识：现汇");
+			top.pool.set("strCheckContent", Msg.jsonStr);
+			top.pool.set("strbusinessCode", "906302");
+			top.pool.set("strbusinessName", "外汇结汇");
+			//进行审核
+			top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+			top.trans.send910301Async();
+		}
+	}
+	//将币种的英文名称改为英文加中文显示。
+	function sellCurrencychina(strCurrencymoney){
+		if(strCurrencymoney=="HKD"){
+			return strCurrencymoney+"-港元";
+		}else if(strCurrencymoney=="USD"){
+			return strCurrencymoney+"-美元";
+		}else if(strCurrencymoney=="AUD"){
+			return  strCurrencymoney+"-澳元";
+		}else if(strCurrencymoney=="SGD"){
+			return  strCurrencymoney+"-新加坡元";
+		}else if(strCurrencymoney=="GBP"){
+			return strCurrencymoney+"-英镑";
+		}else if(strCurrencymoney=="JPY"){
+			return strCurrencymoney+"-日元";
+		}else if(strCurrencymoney=="CAD"){
+			return strCurrencymoney+"-加拿大元";
+		}else if(strCurrencymoney=="EUR"){
+			return  strCurrencymoney+"-欧元";
+		}else{
+			return "";
+		}
+	}
+
+	//审核超时处理
+	function onProcessingTimeout() {
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	//审核成功
+	function onCheckLoadingSuccessful()
+	{
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		//发起结汇交易
+		top.wins.showNewProcessingTip("正在发起外汇结汇交易，请稍候...");
+		top.trans.send906302Async();
+	}
+
+	// 显示成功信息
+	function onServiceSuccess() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+		{
+			oPrintReceipt.style.visibility = "hidden";
+		}else{
+			onKey_F99 = onKey_Enter = function() {
+				//打印凭条
+				var ExchRate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/takeDownExchRate");
+				top.pool.set("Amount", top.pool.get("Amount") * 100);
+				ExchRate = parseFloat(ExchRate)/100;
+				var ExchRate = ExchRate + "";
+				var tDExchRate  =ExchRate.substring(0,ExchRate.indexOf(".")+5);
+				var takeDownExchRate = new top.StringCtrl(tDExchRate).formatNumber(4);
+				top.pool.set("takeDownExchRate",takeDownExchRate);
+				top.pool.set("printType", "20");
+				top.serviceCtrl.navigate2PrintReceipt();
+			}
+		}
+		onKey_F98 = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		//交易成功后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccessTick);
+		Tip_Title.innerHTML = top.langcur.oFxTerminateSucc;
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.changeNaviStatus('7');
+		top.wins.showMain("oLServiceSuccessTip");
+	}
+
+	function onServiceFailed(title, retcode, retdesc) {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onTimeout = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		oTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+
+		//交易失败后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+		top.wins.showMain("oLServiceFailedTip");
+	}
+
+	//用密码键盘输入时输入框校验
+	function CheckValue() {
+		if(isAmount){
+			input_checkAmount();
+		}
+	}
+
+	//校验金额
+	function input_checkAmount() {
+		if ((input_amt.value).indexOf(".") > 0) {
+			if(text_currency.innerHTML == "JPY-日元") {
+				error_TXTFXJH.innerHTML = top.langcur.oPlsInputRightAmt;
+				input_amt.value = "";
+				input_amt.focus();
+			}else {
+				var str = (input_amt.value).substr(find_str((input_amt.value), ".", 1) + 1, (input_amt.value).length);
+				if (str.indexOf(".") > 0) {
+					error_TXTFXJH.innerHTML = top.langcur.oPlsInputRightAmt;
+					input_amt.value = "";
+					input_amt.focus();
+				} else {
+					if (str.length == 0) {
+					}else if (str.length >2)
+	 					{
+						error_TXTFXJH.innerHTML = "金额只支持两位小数";
+						input_amt.value = input_amt.value.substr(0,input_amt.value.length-1);
+						input_amt.focus();
+	 					}else if(!new top.StringCtrl(input_amt.value).isValidAmount()) {
+						error_TXTFXJH.innerHTML = top.langcur.oPlsInputRightAmt;
+						input_amt.value = "";
+						input_amt.focus();
+					}
+				}
+			}
+		}else if((input_amt.value).indexOf("00") ==0){
+			error_TXTFXJH.innerHTML = top.langcur.oPlsInputRightAmt;
+				input_amt.value = "";
+				input_amt.focus();
+			}else {
+			if (!new top.StringCtrl(input_amt.value).isValidAmount()) {
+				error_TXTFXJH.innerHTML = top.langcur.oPlsInputRightAmt;
+				input_amt.value = "";
+				input_amt.focus();
+			}
+		}
+		var fxRate = parseFloat(text_exRate.innerHTML);
+ 		if(input_amt.value == "" || input_amt.value == null || fxRate == "" || fxRate == null) {
+ 			text_rmbNum.innerHTML = "";
+		}else {
+			text_rmbNum.innerHTML =  new top.StringCtrl(input_amt.value * fxRate).formatNumber(2);
+		}
+	}
+
+	//阅读告知书标志
+	function selectNoticeCheck() {
+		if (!changeCheckNoticeBoxFlag) {
+			changeCheckNoticeBoxFlag = true;
+			checkNoticeBox.className = "checkBox";
+			oSelect.style.visibility = "";
+		} else {
+			changeCheckNoticeBoxFlag = false;
+			checkNoticeBox.className = "uncheckBox";
+			oSelect.style.visibility = "hidden";
+		}
+	}
+	//检验select选中的option是否有value值
+	function checkOptValue(){
+		if(document.getElementById("text_fxAttribute").value == "666") {
+			oFxAttributeDetail.innerHTML = "";
+			text_rmbNum.innerHTML = "";
+			input_amt.value = "";
+			input_amt.disable = true;						
+			error_TXTFXJH.innerHTML = "请持本人身份证件和真实性证明材料去柜面办理";
+			return;
+		}else{
+			error_TXTFXJH.innerHTML = "";
+		}
+		if(document.getElementById("text_fxAttribute").value == "999") {
+			oFxAttributeDetail.innerHTML = "";
+		}else if(document.getElementById("text_fxAttribute").value == "122") {
+			oFxAttributeDetail.innerHTML = "指从事跨境商务、探亲、留学、就医、<br>观光、朝觐等活动取得的外汇收入，以<br>及境内居民出境旅游节余外汇结汇";
+		}else if(document.getElementById("text_fxAttribute").value == "125") {
+			oFxAttributeDetail.innerHTML = "指提供与法律、会计（含会计师事务所<br>审计）、管理、技术等相关的服务取得<br>的外汇收入";
+		}else if(document.getElementById("text_fxAttribute").value == "131") {
+			oFxAttributeDetail.innerHTML = "职工报酬指在境外工作的我国居民个人<br>取得的外汇收入；赡家款指我国居民个<br>人接受境外亲属提供的用以赡养亲属的<br>外汇收入";
+		}else if(document.getElementById("text_fxAttribute").value == "270") {
+			oFxAttributeDetail.innerHTML = "其他经主管部门核准的资本项目外汇收<br>入及外币储蓄账户资金结汇";
+		}
+	}
+	//根据特定字符查找所在位置
+	function find_str(str,f_str,n){
+		var arr_str;
+	    var tmp_str=0;
+	    var arr_str=str.split(f_str);
+	    if(arr_str.length<n){n=arr_str.length}
+	    for(i=0;i<n;i++){
+	       tmp_str=arr_str[i].length+tmp_str;
+	    }
+	    return tmp_str+i-1;
+	}
+
+	function ShowKeyboard() {
+			top.inputmethod.ShowDigit(870, 650);
+	}
+    //将结汇属性的数字转化为中文。
+	function strUsageExchange(strUsage){
+		if(strUsage=="110"){
+			return "货物贸易";
+		}else if(strUsage=="121"){
+			return "运输";
+		}else if(strUsage=="122"){
+			return "旅游";
+		}else if(strUsage=="123"){
+			return "金融和保险服务";
+		}else if(strUsage=="124"){
+			return "专有权利使用费和特许费";
+		}else if(strUsage=="125"){
+			return "咨询服务";
+		}else if(strUsage=="126"){
+			return "其他服务";
+		}else if(strUsage=="131"){
+			return "职工报酬和赡家款";
+		}else if(strUsage=="132"){
+			return "投资收益";
+		}else if(strUsage=="133"){
+			return "其他经常转移";
+		}else if(strUsage=="210"){
+			return "资本账户";
+		}else if(strUsage=="221"){
+			return "投资资本金";
+		}else if(strUsage=="222"){
+			return "直接投资撤资";
+		}else if(strUsage=="223"){
+			return "房地产";
+		}else if(strUsage=="22A"){
+			return "其他直接投资";
+		}else if(strUsage=="231"){
+			return "对境外证券投资撤回";
+		}else if(strUsage=="232"){
+			return "证券筹资";
+		}else if(strUsage=="24A"){
+			return "其他投资";
+		}else if(strUsage=="250"){
+			return "国内外汇贷款";
+		}else if(strUsage=="270"){
+			return "经批准的资本其他";
+		}
+	}
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+	<div class="divFlowPage" id="divFlowPage">
+	   <table border="0" cellpadding="0" cellspacing="0">
+		 <tr>
+		   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+		   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+		   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+		   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td><div class="stepLine" id="nodeline41"></div></td>
+		   <td><div class="stepLine" id="nodeline42"></div></td><td width="34" class="stepStatusIcon" id="node5"></td><td><div class="stepLine" id="nodeline51"></div></td>
+		   <td><div class="stepLine" id="nodeline52"></div></td><td width="34" class="stepStatusIcon" id="node6"></td><td><div class="stepLine" id="nodeline61"></div></td>
+		   <td><div class="stepLine" id="nodeline62"></div></td><td width="34" class="stepStatusIcon" id="node7"></td><td width="38"></td>
+		 </tr>
+		 <tr height="70">
+		   <td class="font25" align="center" colspan="3">读取身份证</td>
+		   <td class="font25" align="center" colspan="3">取身份证</td>
+		   <td class="font25" align="center" colspan="3">拍照认证</td>
+		   <td class="font25" align="center" colspan="3">子账户选择</td>
+		   <td class="font25" align="center" colspan="3">信息录入</td>
+		   <td class="font25" align="center" colspan="3">签名确认</td>
+		   <td class="font25" align="center" colspan="3">完成</td>
+		 </tr>
+	  </table>
+    </div>
+
+	<div id="oLIDCardTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oIdCardTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br /> <br /> <span id="oInsertID" class="Tip_Title"></span>
+						<br /> <img src="../Image/ID_in.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	</div>
+
+	<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oIdCardTakeTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br /> <br /> <span id="oIDCardTake" class="Tip_Title"></span>
+						<br /> <img src="../Image/id_out.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="oLTakePicTip" class="oLTakePicTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="100%">
+				<td align="center"><iframe id="ifreamPhoto" src="../Service/TakePhoto.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			</tr>
+		</table>
+	</div>
+
+	<div id="oLAccountListTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oAccountListTick"></span>
+			<br/><br/>
+			<table width="100%" height="80%" border="0" cellpadding="0" cellspacing="0">
+	            <tr>
+	                <td align="center">
+	                    <span class="Tip_Title" id="oFxSonAccList"></span>
+	                    <br/>
+	                    <br/>
+	                    <table cellpadding="2" cellspacing="1" class="Table_Ob" id="oTable" width="85%" height="55%">
+	                        <thead class="Table_Head" id="oTHead"></thead>
+	                        <tbody id="oTBody">
+	                        </tbody>
+	                    </table>
+	                </td>
+	            </tr>
+       		</table>
+		</div>
+		<span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+    	<span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+    	<span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+    	<span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	</div>
+	<div id="NoticeBookTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oReadNoticeBookTip"></span>
+			<table width="40%" height="50%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td colspan="2" align="left">
+					<div id="NoticeBookContent" class="scrollText1"></div>
+					</td>
+				</tr>
+				<tr><td height="5px"></td></tr>
+				<tr>
+					<td width="5%" align="right"><div id="checkNoticeBox" class="uncheckBox" onclick="selectNoticeCheck()"></div></td>
+					<td width="95%" align="left"><div class="Tip_Content">&nbsp;&nbsp;<span id="">本人已知晓</span></div></td>
+				</tr>
+			</table>
+		</div>	
+		<span class="MENU99" id="oSelect"><button id="oLConfirm" class="Menu_Right" onclick="javascript:onKey_F99()" ></button></span>
+	</div>
+	
+	<div id="oLTransMsgTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oTransMsgTick"></span>
+			<table width="80%" height="50%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td colspan="2" align="center" class="Tip_Title">外汇结汇信息</td>
+				</tr></br></br></br>
+				<tr>
+					<td align="right" class="Tip_Content"><span id="oCurrency"></span>：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="text_currency"></span></td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content"><span id="oCurrAccBalance"></span>：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="text_accBalance"></span></td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content">开户日期：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="text_openDate"></span></td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content">外管系统已用结汇额度：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="text_outerUseBalance"></span></td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content">外管系统剩余结汇额度：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="text_outerReBalance"></span></td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content"><span id="oFxTerminateStatus"></span>：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Content">
+						<select id="text_fxAttribute" class="input_long13" onchange="javascript:checkOptValue()">
+							<option id="oPlsChoose" value="999"></option>
+							<option value="666" id="oCargoTrade"></option>
+							<option value="666">运输</option>
+							<option id="oTravel" value="122"></option>
+							<option value="666">金融和保险服务</option>
+							<option value="666">专有权利使用费和特许费</option>
+							<option id="oReferService" value="125"></option>
+							<option value="666">其他服务</option>
+							<option value="131">职工报酬和赡家款</option>
+							<option value="666">投资收益</option>
+							<option value="666">其他经常转移</option>
+							<option value="666">资本账户</option>
+							<option value="666">投资资本金</option>
+							<option value="666">直接投资撤资</option>
+							<option value="666">房地产</option>
+							<option value="666">其他直接投资</option>
+							<option value="666">对境外证券投资撤回</option>
+							<option value="666">证券筹资</option>
+							<option value="666">其他投资</option>
+							<option value="666">国内外汇贷款</option>
+							<option value="270">经批准的资本其他</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content">结汇资金属性说明：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="oFxAttributeDetail"></span></td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content"><span id="oFxTerminateAmt"></span>：&nbsp;&nbsp;</td>
+					<td align="left"><input type="text" class="input_short3" name="input_amt" id="input_amt" maxlength="12" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkAmount()"/></td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content">预计兑得人民币：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="text_rmbNum" style="color:gray"></span></td>
+				</tr>
+				<tr>
+					<td align="right" class="Tip_Content"><span id="oPreRate"></span>：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="text_exRate"></span></td>
+				</tr>
+				<tr>
+                    <td align="center" colspan="2" class="Tip_Content"><span style="color:red">该汇率仅供参考，以最终成交汇率为准</span></td>
+				</tr>
+			</table>
+			<table width="60%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td align="center"><span class="Error_Title" id="error_TXTFXJH"></span></td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+		<span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+	</div>
+
+	<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+    	<div class="FULLSCR">
+    	<span class="Tip_Tick" id="oSigFingerTick"></span>
+		<br><br><br><br><br><br><br><br>
+		   <table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+					<tr>
+						<td height="20px" align="center" class="Error_Title" id="Tip_UserSign"></td>
+					</tr>
+		   </table>
+		   <div id="infoToPic">
+			<table width="75%" height="20%" border="0" bgcolor="#FFFFFF" cellpadding="0" cellspacing="0" align="center">
+			<tr><td height="20px"></td></tr>
+
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%">
+				<fieldset>
+				<legend><span id="oUserTip1"></span></legend>
+				<table>
+				<tr>
+					<td>&nbsp;&nbsp;<span id="oTextName"></span>&nbsp;&nbsp;<span id="text_name2"></span></td>
+					<td>&nbsp;&nbsp;<span id="oTextEth"></span>&nbsp;&nbsp;<span id="text_ethnic2"></span></td>
+
+				</tr>
+				<tr>
+					<td colspan="4">&nbsp;&nbsp;<span id="oTextPid"></span>&nbsp;&nbsp;<span id="text_pid2"></span></td>
+				</tr>
+				<tr>
+					<td colspan="4">&nbsp;&nbsp;<span id="oTextAddr"></span>&nbsp;&nbsp;<span id="text_address2"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+
+			<tr><td height="20px"></td></tr>
+
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%">
+			  <fieldset>
+			  <legend><span id="oUserTip2"></span></legend>
+			  <table>
+			  	<tr>
+				    <td nowrap colspan="2">&nbsp;&nbsp;<span id="oTextStrPan"></span>&nbsp;&nbsp;<span id="text_strPan"></span></td>
+				    <td nowrap>&nbsp;&nbsp;结汇资金属性:&nbsp;&nbsp;<span id="text_strUsage"></span></td>
+				</tr>
+                <tr>
+				    <td nowrap>&nbsp;&nbsp;<span id="oCurrency"></span>:&nbsp;&nbsp;<span id="text_curr"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oFxTerminateAmt"></span>:&nbsp;&nbsp;<span id="text_amount"></span></td>
+					<td nowrap>&nbsp;&nbsp;钞汇标识:&nbsp;&nbsp;<span id="text_chaohui"></span></td>
+				</tr>
+				<tr>
+				    <td nowrap>&nbsp;&nbsp;<span id="oTextDate"></span>&nbsp;&nbsp;<span id="text_date"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTime"></span>&nbsp;&nbsp;<span id="text_time"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTerm"></span>&nbsp;&nbsp;<span id="text_term"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			<tr><td height="20px"></td></tr>
+			</table>
+			</div>
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+			<tr>
+		        <td colspan="2" ><iframe id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		    </tr>
+			</table>
+
+</div>
+    <span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>
+	 <span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+     <span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+     <span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span>
+     <span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+</div>
+
+	<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<br/><br/><br/><br/><br/><br/><br/><br/>
+				<tr class="FirstLine">
+					<td align="center" colspan="2">
+						<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+						<span class="Tip_Title" id="Tip_Title"></span>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	    <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" id="oPrintReceipt" name="oPrintReceipt"></button></span>
+	</div>
+
+	<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr>
+					<td align="center">
+						<table cellpadding="10" cellspacing="1" class="Table_Ob"
+							width="55%">
+							<tr class="Table_Head">
+								<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+							</tr>
+							<tr class="Table_Record">
+								<td id="oDescription"></td>
+								<td><span id="oFailedRetDesc"></span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="oLTakeInvalCardTip" class="FULLSCR"
+		style="visibility: hidden;">
+		<span class="Tip_Tick" id="oTakeInvalCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center"><span id="oReInsertDebCard" class="Tip_Title"></span><br />
+				<br /> <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+				</td>
+			</tr>
+		</table>
+	</div>
+
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+</body>
+</html>

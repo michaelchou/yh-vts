@@ -1,0 +1,826 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>管理员菜单界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script language="javascript">
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+    top.serviceCtrl.stopUserTimeout();
+   	top.document.body.background =  "../Terminal/Style/Default/Img/Bg_Main_ADM.jpg";
+  	//管机员所有交易凭条按照界面定义凭条格式打印
+   	top.pool.set("printType", "");
+   	// 显示菜单界面
+    top.wins.showMain("oLMenuTip");
+    var strUsername=top.pool.get("maintenance_username");
+    var strUserlevel=top.pool.get("maintenance_userlevel");
+    if(strUserlevel=="0"){
+    	strUserlevel="管机员";
+    }else
+    {
+    	strUserlevel="系统管理员";
+    }
+
+    var strTellerInfo ="";
+    if(top.terminal.signTellerNum.length > 4){
+    	strTellerInfo = top.terminal.signTellerNum;
+    }else{
+    	strTellerInfo = "未签到";
+    }
+    var message=top.document.getElementById('message');
+    message.innerHTML="<p>"+new top.DateTimeCtrl().getYYYYMMDD2() + " " + "终端号:" + top.terminal.strTerminalNum + "</p>";
+    message.innerHTML+="<p>签到柜员:" + strTellerInfo + " " +  "网点号:" + top.terminal.strOrgNum + " " + strUserlevel + ":" + top.pool.get("maintenance_username") + "</p>";
+    message.style.visibility="visible";
+
+    //接收参数
+    var params= window.location.search;
+    if(params != null && params.length > 0){
+		if(params.substring(1) == 'sys'){
+		   sysCtrl();
+		}
+		else{
+		   showMenu(); 
+		}
+    }else{
+      showMenu();
+    }
+  }
+  var CurrentStatus = new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_SERVICESTATUS_CURRENTSTATUS, "");
+  var menus;
+  var  userlevel="";
+  userlevel=top.pool.get("maintenance_userlevel");
+  function showMenu()
+  {
+    
+    //定义服务菜单数组
+    menus = new Array();
+	menus[menus.length] = new Array("设备<br/>管理<br/>", 'deviceManager()');
+	if(userlevel=="1")
+	menus[menus.length] = new Array("密钥<br/>管理<br/>", 'keyManager()');
+	if(userlevel=="0" && top.terminal.isSmartTeller){
+		if(typeof(top.YHAXCashDispenser) != "undefined" 
+				|| typeof(top.YHAXCashAcceptor) != "undefined"
+				|| typeof(top.YHAXCashDispenserFen) != "undefined"){
+			menus[menus.length] = new Array("现金<br/>管理<br/>", 'cashManager()');
+		}
+		menus[menus.length] = new Array("重空<br/>管理<br/>", 'pzManager()');
+		menus[menus.length] = new Array("轧账<br/>管理<br/>", 'gzManager()');
+		menus[menus.length] = new Array("异常<br/>清机<br/>", 'abPzManager()');
+   }
+    if(userlevel=="1")
+    menus[menus.length] = new Array("用户<br/>管理<br/>", 'userManager()');
+	
+	menus[menus.length] = new Array("修改<br/>密码<br/>", 'changhePWD()');
+   	menus[menus.length] = new Array("系统<br/>管理<br/>", 'sysCtrl()');
+    var btn = document.all("oLMenuTip").getElementsByTagName("button");
+    //初始化按钮菜单
+    for(var i=0; i<btn.length-2; i++)
+    {
+  	   btn[i].style.visibility = "hidden";
+  	   btn[i].innerHTML = "";
+  	   btn[i].name = "";
+  	   btn[i].onclick = function() { 
+  	   };
+    }
+    for(var i=0; i<menus.length; i++)
+    {
+  	   btn[i].style.visibility = "";
+  	   btn[i].innerHTML = menus[i][0];
+  	   btn[i].name = menus[i][1];
+  	   btn[i].onclick = function() {
+  		 top.journalPrinter.addJournalWithTime("客户选择 " 
+  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+  	     eval(this.name);
+  	   };
+    }
+	onKey_F8 = onKey_Cancel = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	document.getElementById('oReturn').style.visibility="hidden";
+   }
+    //设备管理
+   function deviceManager()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("设备<br/>检测<br/>", 'statusList()');
+	  menus[menus.length] = new Array("设备<br/>维护<br/>", 'deviceMenu()');
+	  menus[menus.length] = new Array("设备<br/>签退<br/>", 'signOut()');
+	  if(top.terminal.isSmartTeller){
+		  menus[menus.length] = new Array("吞卡<br/>明细<br/>", 'listCardExpLog()');
+		  menus[menus.length] = new Array("清吞<br/>卡数<br/>", 'resetBinCount()');
+	  }
+	  //获取排队叫号开关状态
+	  var strQueueNumberSign = new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_SWITCH_QUEUENUMBER, "F");
+	  if("F" == strQueueNumberSign){
+		  //获取失败，设置默认值（默认开通）
+		  new top.XmlManage().setXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_SWITCH_QUEUENUMBER, "1");
+		  strQueueNumberSign = "1";
+	  }
+	  //当前状态为关闭则显示打开
+	  if("1" == strQueueNumberSign){
+		  top.pool.set("strQueueNumberSign","0");
+		  menus[menus.length] = new Array("关闭<br/>叫号<br/>", 'setQueueNumber()');
+	  }else{
+		  top.pool.set("strQueueNumberSign","1");
+		  menus[menus.length] = new Array("开通<br/>叫号<br/>", 'setQueueNumber()');
+	  }
+	 
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+     //凭证管理
+   function pzManager()
+   {
+	//定义服务菜单数组
+    menus = new Array();
+	if (typeof(top.YHAXCardDispenser) != "undefined"){
+	   menus[menus.length] = new Array("设备<br/>加卡<br/>", 'addCardDispenser()');
+	   menus[menus.length] = new Array("设备<br/>清卡<br/>", 'clearCardDispenser()');  
+	}
+	if (typeof(top.YHAXUkeyDispenser) != "undefined"){
+	   menus[menus.length] = new Array("设备<br/>加UKEY<br/>", 'addUkeyDispenser()');
+	    menus[menus.length] = new Array("设备<br/>清UKEY<br/>", 'clearUkeyDispenser()');
+ 	}
+	 if (typeof(top.YHAXDocumentScanner) != "undefined"){
+	   menus[menus.length] = new Array("设备<br/>加存单<br/>", 'addDepositCertificate()');
+	   menus[menus.length] = new Array("设备<br/>清存单<br/>", 'clearDepositCertificate()');
+	}
+	 
+	  
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+
+       //异常清机
+   function abPzManager()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  if (typeof(top.YHAXCardDispenser) != "undefined"){
+	  menus[menus.length] = new Array("异常<br/>清卡<br/>", 'abClearCardDispenser()');
+		   
+	}
+	if (typeof(top.YHAXUkeyDispenser) != "undefined"){
+	
+	    menus[menus.length] = new Array("异常<br/>清UKEY<br/>", 'abClearUkeyDispenser()');
+ 	}
+	 if (typeof(top.YHAXDocumentScanner) != "undefined"){
+	
+	   menus[menus.length] = new Array("异常<br/>清存单<br/>", 'abClearDepositCertificate()');
+	}
+	 
+	  
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+       //轧账管理
+   function gzManager()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  if (typeof(top.YHAXDocumentScanner2) != "undefined"){
+	   menus[menus.length] = new Array("受理<br/>存单<br/>", 'successfulAcceptedCDS()');
+	   menus[menus.length] = new Array("异常<br/>存单<br/>", 'unsuccessfulAcceptedCDS()');
+	}
+	  if (typeof(top.YHAXCardDispenser) != "undefined"){
+   	   menus[menus.length] = new Array("发卡<br/>明细<br/>", 'queryCardDispenserDetail()');
+   	  }
+   	  if (typeof(top.YHAXUkeyDispenser) != "undefined"){
+ 	   menus[menus.length] = new Array("发UKEY<br/>明细<br/>", 'queryUkeyDispenserDetail()');
+	  }
+	
+		  
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+   //密钥管理
+   function keyManager()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("设置主密钥<br/>(DES)<br/>", 'MasterKey()');
+	  menus[menus.length] = new Array("设置主密钥<br/>(国密)<br/>", 'SM4MasterKey()');
+	  menus[menus.length] = new Array("密钥<br/>分发器<br/>", 'KDMLoadKey()');
+	  menus[menus.length] = new Array("更新<br/>工作密钥<br/>", 'UpdateWorkingKey()');
+	  menus[menus.length] = new Array("激活<br/>密钥<br/>", 'ActivateKey()');//F53域赋值：国际是06  国密是04
+	  
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+     //用户管理
+   function userManager()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("新增<br/>用户<br/>", 'addUser()');
+	  menus[menus.length] = new Array("删除<br/>用户<br/>", 'deleteUser()');
+	  menus[menus.length] = new Array("查询<br/>用户<br/>", 'listUsers()');
+	 
+	  
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+   //系统管理
+   function sysCtrl()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  if(CurrentStatus !=null && CurrentStatus !="" && CurrentStatus !="0"){//只有暂停状态的时候才显示暂停按钮
+	     menus[menus.length] = new Array("启动<br/>服务<br/>", 'start()');
+	  }
+	  if(CurrentStatus !=null && CurrentStatus !="" && CurrentStatus =="0"){//只有启用状态的时候才显示暂停按钮
+	     menus[menus.length] = new Array("暂停<br/>服务<br/>", 'pause()');
+	  }
+	  menus[menus.length] = new Array("重启<br/>机器<br/>", 'Restart()');
+	  menus[menus.length] = new Array("关闭<br/>机器<br/>", 'Shutdown()');
+	  menus[menus.length] = new Array("关闭<br/>应用<br/>", 'exitApp()');
+	  menus[menus.length] = new Array("禁用<br/>USB<br/>", 'closeUsb()');
+	  menus[menus.length] = new Array("开启<br/>USB<br/>", 'openUsb()');
+	  
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+  }
+   
+ //现金管理
+   function cashManager()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("设备<br/>清钞<br/>", 'ClearCashDispenser()');
+	  menus[menus.length] = new Array("设备<br/>加钞<br/>", 'AddCashType()');
+	  menus[menus.length] = new Array("平账<br/>查询<br/>", 'coreCashBalance()');
+	  menus[menus.length] = new Array("钞箱<br/>激活<br/>", 'cashBoxActivate()');
+	  //menus[menus.length] = new Array("异常<br/>清钞<br/>", 'ABClearCashDispenser()');
+	  menus[menus.length] = new Array("正常<br/>开锁<br/>", 'OpenEleLock()');
+	  menus[menus.length] = new Array("应急<br/>开锁<br/>", 'ABOpenEleLock()');
+	  menus[menus.length] = new Array("现金<br/>交接<br/>", 'TellerCashChange()');
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+   //现金管理
+   function AddCashType()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("按金额<br/>加钞<br/>", 'AddCash_Amount()');
+	  menus[menus.length] = new Array("按张数<br/>加钞<br/>", 'AddCash_Count()');
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+   //现金柜员现金交接
+   function TellerCashChange()
+   {
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("尾箱<br/>存款<br/>", 'TellerCashAcceptor()');
+	  menus[menus.length] = new Array("尾箱<br/>取款<br/>", 'TellerCashDispenser()');
+	  var btn = document.all("oLMenuTip").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+      }  
+	  for(var i=0; i<menus.length; i++)
+	  {
+		btn[i].style.visibility = "";
+		btn[i].innerHTML = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() {
+			top.journalPrinter.addJournalWithTime("客户选择 " 
+	  				 + this.innerHTML.replace(new RegExp("<br/>","gm"),"").replace(new RegExp("<BR>","gm"),""));
+			eval(this.name);
+		};
+	  }
+	  onKey_F7 = function()
+	  {
+		 showMenu();
+	  }
+	  onKey_F8 = onKey_Cancel = function()
+	  {
+		 top.serviceCtrl.navigate2Quit();
+	  }
+	  document.getElementById('oReturn').style.visibility="visible";
+   }
+  //加卡
+  function addCardDispenser()
+  {
+   top.serviceCtrl.navigate2("/Maintenance/AddCardDispenser.html");
+     
+  }
+    //清卡
+  function clearCardDispenser()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ClearCardDispenser.html");
+  }
+  //加UKEY
+  function addUkeyDispenser()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/AddUkeyDispenser.html");
+  }
+   //清UKEY
+  function clearUkeyDispenser()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ClearUkeyDispenser.html");
+  }
+   //加存单
+  function addDepositCertificate()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/AddDepositCertificate.html");
+  }
+   //清存单
+  function clearDepositCertificate()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ClearDepositCertificate.html");
+  }
+	//按金额加钞
+  function AddCash_Amount()
+  {
+	top.pool.set("AddCashType","1");	//按金额加钞
+   top.serviceCtrl.navigate2("/Maintenance/AddCashDispenser.html");  
+  }
+	//按张数加钞
+  function AddCash_Count()
+  {
+	top.pool.set("AddCashType","2");	//按张数加钞
+	top.serviceCtrl.navigate2("/Maintenance/AddCashDispenser.html");  
+  }
+    //清钞
+  function ClearCashDispenser()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ClearCashDispenser.html");
+  }
+  	//异常清钞
+  function ABClearCashDispenser()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ABClearCashDispenser.html");
+  }
+  //正常开锁
+  function OpenEleLock()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/OpenEleLock_Maintenance.html");
+  }
+  //应急开锁
+  function ABOpenEleLock()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ABOpenEleLock_Maintenance.html");
+  }
+  //平账查询
+  function coreCashBalance(){
+	 top.serviceCtrl.navigate2("/Maintenance/QueryCoreCashBalance.html");
+  }
+  //钞箱激活
+  function cashBoxActivate()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ActivateCashBox_Maintenance.html");
+  }
+
+  //柜员现金存款交接
+  function TellerCashAcceptor()
+  {
+	  top.serviceCtrl.navigate2("/Maintenance/TellerCashAcceptor.html");
+  }
+  //柜员现金取款交接
+  function TellerCashDispenser()
+  {
+	  top.serviceCtrl.navigate2("/Maintenance/TellerWithdrawal.html");
+  }
+     //异常清卡
+  function abClearCardDispenser()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ABClearCardDispenser.html");
+  }
+    //异常清UKEY
+  function abClearUkeyDispenser()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ABClearUkeyDispenser.html");
+  }
+    //异常清存单
+  function abClearDepositCertificate()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ABClearDepositCertificate.html");
+  }
+    //正常受理存单轧账
+  function successfulAcceptedCDS()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/SuccessfulAcceptedCDS.html");
+  }
+    //异常受理存单轧账
+  function unsuccessfulAcceptedCDS()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/UnsuccessfulAcceptedCDS.html");
+  }
+  
+    //发卡明细
+  function queryCardDispenserDetail()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/queryCardDispenserDetail.html");
+  }
+  
+      //发UKEY明细
+  function queryUkeyDispenserDetail()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/queryUkeyDispenserDetail.html");
+  }
+  
+  //设备检测
+  function statusList()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/StatusList_Maintenance.html");
+  }
+  //设备维护
+  function deviceMenu()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/DeviceMenu_Maintenance.html");
+  }
+    //设备签退
+  function signOut()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/TerminalSignOut.html");
+  }
+   //吞卡记录
+  function listCardExpLog()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/listCardExpLog_Maintenance.html");
+  }
+  //清吞卡数
+  function resetBinCount()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ResetBinCount_Maintenance.html");
+  }
+  //呼叫功能开关
+  function setQueueNumber()
+  {
+	  top.serviceCtrl.navigate2("/Maintenance/setQueueNumber_Maintenance.html");
+  }
+  
+  //密钥管理(DES)
+  function MasterKey()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/MasterKey_Maintenance.html");
+  }
+  //密钥管理(SM4)
+  function SM4MasterKey()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/SM4MasterKey_Maintenance.html");
+  }
+  //更新工作密钥
+  function UpdateWorkingKey()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/UpdateWorkingKey_Maintenance.html");
+  }
+  
+   //密钥分发器
+  function KDMLoadKey()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/KDMLoadKey_Maintenance.html");
+  }
+  //激活密钥
+  function ActivateKey()
+  {
+    top.serviceCtrl.navigate2("/Maintenance/ActivateKey_Maintenance.html");
+  }
+   //新增用户
+  function addUser()
+  {
+	 top.serviceCtrl.navigate2("/Maintenance/AddUser_Maintenance.html");
+  }
+   //删除用户
+  function deleteUser()
+  {
+	 top.serviceCtrl.navigate2("/Maintenance/DeleteUser_Maintenance.html");
+  }
+  
+   //查询用户
+  function listUsers()
+  {
+	 top.serviceCtrl.navigate2("/Maintenance/ListUsers_Maintenance.html");
+  }
+  //重启机器
+  function Restart()
+  {
+	top.serviceCtrl.navigate2("/Maintenance/Reboot_Maintenance.html");
+  }
+  //启动服务
+  function start()
+  {
+	 top.serviceCtrl.navigate2("/Maintenance/Start_Maintenance.html");
+  }
+  //暂停服务
+  function pause()
+  {
+	 top.serviceCtrl.navigate2("/Maintenance/Pause_Maintenance.html");
+	 
+  }
+  //修改密码
+  function changhePWD()
+  {
+	 top.serviceCtrl.navigate2("/Maintenance/PasswordModify_Maintenance.html");
+  }
+  //关闭机器
+  function Shutdown()
+  {
+	 top.serviceCtrl.navigate2("/Maintenance/Shutdown_Maintenance.html");
+  }
+  //关闭应用
+  function exitApp()
+  {
+	 top.serviceCtrl.navigate2("/Maintenance/ExitApp_Maintenance.html");
+  }
+  //禁用USB
+  function closeUsb()
+  {
+	top.serviceCtrl.navigate2("/Maintenance/CloseUsb_Maintenance.html");
+  }
+  //开启USB
+  function openUsb()
+  {
+	top.serviceCtrl.navigate2("/Maintenance/OpenUsb_Maintenance.html");
+  }
+</script>
+</head>	
+<body  oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLMenuTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr class="FirstLine"><td align="center" colspan="2">
+				<span class="Tip_Title">请选择服务菜单</span>
+			  </td></tr>
+			<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+	    </table>
+	</div>
+	<span class="MENU1"><button  class="ADMenu" style="visibility:hidden;"></button></span>
+	<span class="MENU2"><button  class="ADMenu" style="visibility:hidden;"></button></span>
+	<span class="MENU3"><button  class="ADMenu" style="visibility:hidden;"></button></span>
+	<span class="MENU4"><button  class="ADMenu" style="visibility:hidden;"></button></span>
+	<span class="MENU5"><button  class="ADMenu" style="visibility:hidden;"></button></span>
+	<span class="MENU6"><button  class="ADMenu" style="visibility:hidden;"></button></span>
+	<span class="MENU7"><button  class="ADMenu" style="visibility:hidden;"></button></span>
+	<span class="MENU8"><button  class="ADMenu" style="visibility:hidden;"></button></span>
+	
+	<span class="MMENU7"><button  onmousedown="javascript:onKey_F7()" class="ADMReturn" style="visibility:hidden;"  name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button  onmousedown="javascript:onKey_F8()" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+</body>
+</html>
+

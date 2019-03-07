@@ -1,0 +1,1075 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<style></style>
+<title>服务空闲页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+//禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick", checkEvent);
+document.attachEvent("ondblclick", checkEvent);
+document.attachEvent("onfocusin", checkEvent);
+document.attachEvent("onkeypress", checkEvent);
+
+function checkEvent() {
+	try {
+		//如果光标停留在输入框上,更新last
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	}
+	catch (e) {}
+}
+var bCardReaderStatus =  false;//读卡器状态
+var strPinKey ="";//工作密钥（DES）
+var strMacKey ="";//mac密钥（DES）
+var strSM4PinKey ="";//工作密钥（国密）
+var strSM4MacKey ="";//mac密钥（国密）
+var isExcTellerload = true; //是否执行签到查询
+function doMouseDown(){
+  top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+/*页面流程处理入口*/
+function serverEntrance()
+{
+  top.journalPrinter.addJournalWithTime("回到空闲页面");
+  top.serviceCtrl.sendAgentFlag = true;
+  bCardReaderStatus  = false;
+  isExcTellerload = true; //是否执行签到查询
+  /*隐藏界面鼠标*/
+  try{window.external.SetCursorOn(false);}catch(e){}
+  new top.HtmlUtil(document).initDocObjLangHtml();
+  // 清空临时参数
+  top.pool.clearAll();
+  top.pool.set("customStatus","0");
+  // 刷新空闲信息
+  if (top.idle.sendIdle() != top.RESULT_SUCCESSFUL)
+  {
+    try{top.onServerErr_Def("MainFrame", "刷新空闲缓存失败.");}catch(e){}
+    return;
+  }
+  //输入法选择
+  var hanwangFlag = top.misc.getValueByName("HanwangInputFlag");
+  var strOrgNum = top.terminal.strOrgNum;
+  if (hanwangFlag != "" && hanwangFlag != undefined && hanwangFlag != null
+	&& strOrgNum != "" && strOrgNum != undefined && strOrgNum != null
+	&& hanwangFlag.indexOf(strOrgNum) != -1) {
+	// 记录终端流水
+    var strJrn = new top.StringCtrl("使用汉王输入法 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+    top.journalPrinter.addJournal(strJrn);
+	top.inputmethod.UseFlag = true;
+  }else {
+	// 记录终端流水
+	var strJrn = new top.StringCtrl("使用怡化输入法 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	top.journalPrinter.addJournal(strJrn);
+	top.inputmethod.UseFlag = false;
+  }
+
+  if(!top.pinpad.bGetWorkingKey){//不需要签到，直接走开始检测服务功能
+     //开始进行服务检测
+	 startSvcCheck();
+  }else{
+     //获取工作密钥(签到)
+     getWorkingKey();
+  }
+}
+
+//开始进行服务检测
+function tellerload()
+{
+	isExcTellerload = false;
+   if(top.terminal.signTellerNum.length > 4){
+       onIdleReady();
+   }else{
+       //查询柜员签到状态
+       top.trans.send911205Async();
+       //startSvcCheck2();
+   }
+}
+
+function on911205Successful(){
+//0-未签到(pad也未签到)1-未签到（pad已签到）2-已签到
+top.journalPrinter.addJournalWithTime("on911205Successful");
+ var flag = top.pool.get("terminal_sign_flag");
+ if(flag == '0' ){
+ //如果柜员未签到，提示去pad签到
+  oFailedTitle.innerHTML = "请先在PAD端进行签到";
+  top.wins.showMain("oLServiceFailedTip");
+  top.journalPrinter.addJournalWithTime("请先在PAD端进行签到");
+ }else if(flag == '1'){
+	//如果设备未签到，录入工号，指纹签到
+	top.journalPrinter.addJournalWithTime("pad已签到  设备未签到");
+	top.serviceCtrl.navigate2("/Service/tellerload.html")
+ }else if(flag == '2'){
+	//已签到
+	onIdleReady();
+ }else{
+	showServiceFailedTip("设备签到状态未知");
+ }
+
+}
+
+//暂时错误提示。
+function showServiceFailedTip(errorMessage){
+	oFailedTitle.innerHTML = errorMessage;
+	top.wins.showMain("oLServiceFailedTip");
+}
+
+function on911205Failed(title, retcode, retdesc){
+	showServiceFailedTip(title +"：" + retdesc);
+}
+
+//开始进行服务检测
+function startSvcCheck()
+{
+   //关闭所有的指示灯
+   try{top.guidelights.setEnvelopeDispenserLight("OFF");}catch(e){}//身份证灯
+   try{top.guidelights.setReceiptPrinterLight("OFF");}catch(e){}//凭条打印机灯
+   try{top.guidelights.setCoinDispenserLight("OFF");}catch(e){}//UKey灯
+   try{top.guidelights.setCashOutLight("OFF");}catch(e){}//存单受理灯
+   try{top.guidelights.setChequeUnitLight("OFF");}catch(e){}//存单开户灯
+   try{top.guidelights.setPassBookLight("OFF");}catch(e){}//存折补登灯
+   try{top.guidelights.setFingerLight("OFF");}catch(e){}//指纹仪灯
+   try{top.cashguidelights.setENVDepositoryLight("OFF");}catch(e){} //迎宾灯
+   try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //出钞口灯&拒钞口灯
+   try{top.cashguidelights.setCashAcceptorLight("OFF");}catch(e){} //进钞口灯
+   try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //硬币出口灯
+   try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //硬币内侧照明灯
+   // 检查模块状态
+   checkDeviceStatus();
+}
+
+//获取工作密钥
+function getWorkingKey()
+{
+   onLocalKeyLoaded = function()
+   {
+	 //生产使用
+	 top.trans.send911201Async();
+	 //测试使用
+	 //top.pinpad.loadKey("MasterKey","2A37E659C2EB2E9918F0B78E3219A072","KEYENCKEY");
+	 //top.pinpad.cancelUserEntry();//关闭明文输入
+	 //strPinKey = "2A37E659C2EB2E9918F0B78E3219A072";
+	 //strMacKey = "106B8E31465ED568D9F6D4353B7AA787";
+	 //setTimeout(loadPinKey, 500);
+   }
+
+   onLoadLocalKeyDeviceError = function()
+   {
+	 oFailedTitle.innerHTML = "下装电子签名本地密钥失败！";
+	 top.wins.showMain("oLServiceFailedTip");
+	 return;
+   }
+
+   if (typeof(top.YHAXSigCameras) != "undefined")//电子密码签名
+   {
+     //装载本地密钥，主要用于电子密码签名
+     top.sigEncryptor.loadLocalKey(top.sigEncryptor.strLocalMasterKey,top.sigEncryptor.LocalMaster,"KEYENCKEY,CRYPT,FUNCTION");
+   }else {
+	 oFailedTitle.innerHTML = "未配置电子签名模块！";
+	 top.wins.showMain("oLServiceFailedTip");
+	 return;
+   }
+}
+
+/*
+  加载PinKey（DES）
+ */
+function loadPinKey()
+{
+  onLoadKeyDeviceError = function()
+  {
+     // 设置密钥失序状态
+     top.serviceCtrl.setSvcStatus(top.TTSTATUS_INVALID);
+	 oFailedTitle.innerHTML = "下装国际工作密钥失败（密码键盘故障）！";
+     top.wins.showMain("oLServiceFailedTip");
+     return;
+  }
+  onKeyLoaded = function()
+  {
+    setTimeout(loadMacKey, 500);
+  }
+  top.pinpad.loadPinKey(strPinKey);
+}
+
+/*
+  加载MacKey（DES）
+ */
+function loadMacKey()
+{
+  onLoadKeyDeviceError = function()
+  {
+    // 设置密钥失序状态
+    top.serviceCtrl.setSvcStatus(top.TTSTATUS_INVALID);
+	oFailedTitle.innerHTML = "下装国际Mac密钥失败（密码键盘故障）！";
+    top.wins.showMain("oLServiceFailedTip");
+	return;
+  }
+  onKeyLoaded = function()
+  {
+	//判断密码键盘是否有支持国密的能力
+    var isSuportSM4 = top.YHAXPinPad.CpSuportSM4;
+    strSM4PinKey = top.exchxmlasync.msgxmldomResp.getElementValue("F60_1_5");//国密SM4算法pin密钥
+    strSM4MacKey = top.exchxmlasync.msgxmldomResp.getElementValue("F60_1_7");//国密SM4算法mac密钥
+    if(isSuportSM4 && strSM4PinKey !="" && strSM4PinKey !=null && strSM4MacKey !="" && strSM4MacKey !=null){
+	   // 加载PinKey（SM4）
+       setTimeout(loadSM4PinKey, 500);
+    }else{
+	   //签到成功标识
+	   top.pinpad.userEntry();//打开明文输入
+	   top.pinpad.bGetWorkingKey = false;
+       startSvcCheck();
+	}
+  }
+  top.pinpad.loadMacKey(strMacKey);
+}
+
+/*
+  加载PinKey（SM4）
+ */
+function loadSM4PinKey()
+{
+  onLoadKeyDeviceError = function()
+  {
+    // 设置密钥失序状态
+    top.serviceCtrl.setSvcStatus(top.TTSTATUS_INVALID);
+	oFailedTitle.innerHTML = "下装国密工作密钥失败（密码键盘故障）！";
+    top.wins.showMain("oLServiceFailedTip");
+	return;
+  }
+  onKeyLoaded = function()
+  {
+    setTimeout(loadSM4MacKey, 500);
+  }
+  top.pinpad.loadSM4PinKey(strSM4PinKey);
+}
+
+/*
+  加载MacKey（SM4）
+ */
+function loadSM4MacKey()
+{
+  onLoadKeyDeviceError = function()
+  {
+    // 设置密钥失序状态
+    top.serviceCtrl.setSvcStatus(top.TTSTATUS_INVALID);
+	oFailedTitle.innerHTML = "下装国密Mac密钥失败（密码键盘故障）！";
+    top.wins.showMain("oLServiceFailedTip");
+	return;
+  }
+  onKeyLoaded = function()
+  {
+    top.pinpad.userEntry();//打开明文输入
+	//签到成功标识
+	top.pinpad.bGetWorkingKey = false;
+    startSvcCheck();
+  }
+  top.pinpad.loadSM4MacKey(strSM4MacKey);
+}
+
+//获取工作密钥成功
+function onServiceSuccessful()
+{
+  top.pinpad.cancelUserEntry();//关闭明文输入
+  strPinKey = top.exchxmlasync.msgxmldomResp.getElementValue("F60_1_1");//3DES算法pin密钥
+  strMacKey = top.exchxmlasync.msgxmldomResp.getElementValue("F60_1_3");//3DES算法mac密钥
+  // 加载PinKey（DES）
+  setTimeout(loadPinKey, 500);
+}
+
+//获取工作密钥失败
+function onServiceFailed()
+{
+    // 设置密钥失序状态
+    top.serviceCtrl.setSvcStatus(top.TTSTATUS_INVALID);
+    oFailedTitle.innerHTML = "终端初始化失败（签到失败）！";
+    top.wins.showMain("oLServiceFailedTip");
+    setTimeout(function(){getWorkingKey();}, 1*60*1000);
+    return;
+}
+
+// 服务命令检测
+function checkSvcCmd4Idle()
+{
+  //压缩设备端电子流水
+  new top.FileControl().zip();
+  //检测远程命令  //从本地获取应用状态，默认0空闲
+  if(!(top.terminal.currentCallNumber!=""&&top.terminal.currentCallNumber.length > 0)){
+	top.serviceCtrl.checkSvcCmd();
+  }
+	
+  // 检查使用状态
+  var UsingStatus = top.idle.idleExch.msgxmldomResp.getElementValue("UsingStatus");
+  if (UsingStatus != "" && UsingStatus != 1)
+  {
+    top.serviceCtrl.setSvcStatus(top.TTSTATUS_PAUSEBYMGR);
+    top.wins.showInfoTip(top.langcur.oUnavailableUsingStatus);
+    // 15分钟后再次检查使用状态。使用startUserTimeout，而非startFlowCtrlTimeout，以使远程控制可用。
+    top.serviceCtrl.startUserTimeout(function(){top.serviceCtrl.navigate2Idle();}, 15*60, null);
+    return;
+  }
+
+  if (top.serviceCtrl.CurrentStatus != top.SVCSTATUS_OK)//服务状态不正常
+  {
+     if(bCardReaderStatus){//如果读卡器已经打开，需要先关闭读卡器，
+         top.cardreader.cancelAccept();
+	 }
+	 bCardReaderStatus = false;
+     oFailedTitle.innerHTML = "对不起，暂停服务！";
+	 top.journalPrinter.addJournalWithTime("对不起，暂停服务！" + top.serviceCtrl.CurrentStatus);
+     top.wins.showMain("oLServiceFailedTip");
+  }else{
+     if(isExcTellerload){
+		top.journalPrinter.addJournalWithTime("检测签到状态");
+		tellerload();
+	 }
+  }
+  top.serviceCtrl.startFlowCtrlTimeout(checkSvcCmd4Idle, 10*1000);
+}
+
+// 检查模块状态
+var iIdcResetTimes = 0;
+var iDisResetTimes = 0;
+var iPinResetTimes = 0;
+var iUKeyResetTimes = 0;
+var iDocScanResetTimes = 0;
+var iDocPrintResetTimes = 0;
+var iDocScan2ResetTimes = 0;
+var iIdCardResetTimes = 0;
+function checkDeviceStatus()
+{
+  // 检查并尝试复位读卡器
+  if(typeof(top.YHAXCardReader) != "undefined"){
+	top.wins.showProcessingTip("正在检测读卡器状态···");
+    if (top.YHAXCardReader.StDeviceStatus != "HEALTHY" || top.YHAXCardReader.StMediaStatus != "NOTPRESENT")
+    {
+	    if (iIdcResetTimes >= 2)
+		{
+		   //设置暂停服务状态
+           top.serviceCtrl.setSvcStatus(top.TTSTATUS_PAUSEBYDEV);
+	    }
+        oFailedTitle.innerHTML = "由于设备故障，无法提供服务，<br/>给您带来不便，敬请谅解！(读卡器硬件故障)<br/><br/>Sorry, this machine cannot be<br/>used due to the mechanical failure!";
+        // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("读卡器故障复位"
+			+ "  DeviceStatus:" + top.YHAXCardReader.StDeviceStatus
+			+ "  MediaStatus:" + top.YHAXCardReader.StMediaStatus);
+        // 有卡时复位，客户一般已经离开现场，所以吞卡；无卡时复位，要防止用户新插卡被吞，所以退卡。
+        if (top.cardreader.isCardPresent())
+          top.YHAXCardReader.Reset("RETRACT");
+        else
+          top.YHAXCardReader.Reset("EJECT");
+        iIdcResetTimes++;
+        top.serviceCtrl.startUserTimeout(checkDeviceStatus, 5*iIdcResetTimes*iIdcResetTimes, null);
+        top.wins.showMain("oLServiceFailedTip");
+		return;
+    }
+	if (top.YHAXCardReader.StBinStatus !="BINOK")
+    {
+		//设置暂停服务状态
+        top.serviceCtrl.setSvcStatus(top.TTSTATUS_PAUSEBYDEV);
+        oFailedTitle.innerHTML = "由于设备故障，无法提供服务，<br/>给您带来不便，敬请谅解！(回收盒满)<br/><br/>Sorry, this machine cannot be<br/>used due to the mechanical failure!";
+        // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("读卡器回收盒满 BinStatus:" + top.YHAXCardReader.StBinStatus);
+        if (top.cardreader.isCardPresent())
+          top.YHAXCardReader.Reset("RETRACT");
+        else
+          top.YHAXCardReader.Reset("EJECT");
+        top.wins.showMain("oLServiceFailedTip");
+		return;
+    }
+  }
+  // 检查并尝试复位发卡器
+  if (typeof(top.YHAXCardDispenser) != "undefined"){
+  top.wins.showProcessingTip("正在检测发卡器状态···");
+    if (top.YHAXCardDispenser.StDeviceStatus != "HEALTHY" || top.YHAXCardDispenser.StMediaStatus != "NOTPRESENT")
+    {
+	    if (iDisResetTimes >= 2)
+		{
+		   //设置暂停服务状态
+           top.serviceCtrl.setSvcStatus(top.TTSTATUS_PAUSEBYDEV);
+	    }
+        oFailedTitle.innerHTML = "由于设备故障，无法提供服务，<br/>给您带来不便，敬请谅解！(发卡器硬件故障)<br/><br/>Sorry, this machine cannot be<br/>used due to the mechanical failure!";
+        // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("发卡器故障复位"
+			+ "  DeviceStatus:" + top.YHAXCardDispenser.StDeviceStatus
+			+ "  MediaStatus:" + top.YHAXCardDispenser.StMediaStatus);
+        top.YHAXCardDispenser.Reset("RETRACT");
+        iDisResetTimes++;
+        top.serviceCtrl.startUserTimeout(checkDeviceStatus, 5*iDisResetTimes*iDisResetTimes, null);
+        top.wins.showMain("oLServiceFailedTip");
+		return;
+    }
+  }
+
+  // 检查并尝试复位密码键盘
+  if (typeof(top.YHAXPinPad) != "undefined"){
+  top.wins.showProcessingTip("正在检测密码键盘状态···");
+    if (top.YHAXPinPad.StDeviceStatus != "HEALTHY")
+    {
+	    if (iPinResetTimes >= 2)
+		{
+		   //设置暂停服务状态
+           top.serviceCtrl.setSvcStatus(top.TTSTATUS_PAUSEBYDEV);
+	    }
+        oFailedTitle.innerHTML = "由于设备故障，无法提供服务，<br/>给您带来不便，敬请谅解！(密码键盘硬件故障)<br/><br/>Sorry, this machine cannot be<br/>used due to the mechanical failure!";
+        // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("密码键盘故障复位"
+			+ "  DeviceStatus:" + top.YHAXPinPad.StDeviceStatus);
+        top.YHAXPinPad.Reset();
+        iPinResetTimes++;
+        top.serviceCtrl.startUserTimeout(checkDeviceStatus, 5*iPinResetTimes*iPinResetTimes, null);
+        top.wins.showMain("oLServiceFailedTip");
+		return;
+    }
+  }
+
+  // 检查并尝试复位UKey
+  if (typeof(top.YHAXUkeyDispenser) != "undefined"){
+  top.wins.showProcessingTip("正在检测UKEY状态···");
+    if (top.YHAXUkeyDispenser.StDeviceStatus != "HEALTHY" || top.YHAXUkeyDispenser.StMediaStatus != "NOTPRESENT")
+    {
+	    if (iUKeyResetTimes >= 2)
+		{
+		   //设置暂停服务状态
+           top.serviceCtrl.setSvcStatus(top.TTSTATUS_PAUSEBYDEV);
+	    }
+        oFailedTitle.innerHTML = "由于设备故障，无法提供服务，<br/>给您带来不便，敬请谅解！(UKey模块硬件故障)<br/><br/>Sorry, this machine cannot be<br/>used due to the mechanical failure!";
+        // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("UKey模块故障复位"
+			+ "  DeviceStatus:" + top.YHAXUkeyDispenser.StDeviceStatus
+			+ "  MediaStatus "+ top.YHAXUkeyDispenser.StMediaStatus);
+        top.YHAXUkeyDispenser.Reset("RETAIN");
+        iUKeyResetTimes++;
+        top.serviceCtrl.startUserTimeout(checkDeviceStatus, 5*iUKeyResetTimes*iUKeyResetTimes, null);
+        top.wins.showMain("oLServiceFailedTip");
+		return;
+    }
+  }
+
+  // 检查并尝试复位存折补登模块
+  if (typeof(top.YHAXPassbook) != "undefined"){
+  top.wins.showProcessingTip("正在检测存折补登机状态···");
+    if (top.YHAXPassbook.StDeviceStatus != "HEALTHY" || top.YHAXPassbook.StMediaStatus != "NOTPRESENT")
+    {
+        // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("存折补登模块故障复位"
+			+ "  DeviceStatus:" + top.YHAXPassbook.StDeviceStatus
+			+ "  MediaStatus:" + top.YHAXPassbook.StMediaStatus);
+		top.YHAXPassbook.Reset("EJECT", 1);
+    }
+  }
+  // 检查并尝试复位身份证
+  if (typeof(top.YHAXIDCardReader) != "undefined"){
+  top.wins.showProcessingTip("正在检测身份证状态···");
+    if (top.YHAXIDCardReader.StDeviceStatus != "HEALTHY" || top.YHAXIDCardReader.StMediaStatus != "NOTPRESENT")
+    {
+	    if (iIdCardResetTimes >= 2)
+		{
+		   //设置暂停服务状态
+           top.serviceCtrl.setSvcStatus(top.TTSTATUS_PAUSEBYDEV);
+	    }
+	    oFailedTitle.innerHTML = "由于设备故障，无法提供服务，<br/>给您带来不便，敬请谅解！(身份证读卡器硬件故障)<br/><br/>Sorry, this machine cannot be<br/>used due to the mechanical failure!";
+        // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("身份证读卡器故障复位"
+			+ "  DeviceStatus:" + top.YHAXIDCardReader.StDeviceStatus
+			+ "  MediaStatus:" + top.YHAXIDCardReader.StMediaStatus);
+        top.YHAXIDCardReader.Reset();
+        iIdCardResetTimes++;
+        top.serviceCtrl.startUserTimeout(checkDeviceStatus, 5*iIdCardResetTimes*iIdCardResetTimes, null);
+        top.wins.showMain("oLServiceFailedTip");
+		return;
+    }
+  }
+
+  // 尝试复位凭条打印机
+  if(typeof(top.YHAXReceiptPrint) != "undefined"){
+  top.wins.showProcessingTip("正在检测凭条打印机状态···");
+     if (top.YHAXReceiptPrint.StDeviceStatus != "HEALTHY" || top.YHAXReceiptPrint.StPaperStatus == "JAMMED")
+     {
+	    // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("凭条打印机故障复位"
+			+ "  DeviceStatus:" + top.YHAXReceiptPrint.StDeviceStatus
+			+ "  PaperStatus:" + top.YHAXReceiptPrint.StPaperStatus);
+        top.YHAXReceiptPrint.Reset("", 1);
+     }
+  }
+
+  // 检查并尝试复位条形码
+  if (typeof(top.YHAXBarcodeReader) != "undefined"){
+  top.wins.showProcessingTip("正在检测条形码状态···");
+     if(top.YHAXBarcodeReader.StDeviceStatus !="HEALTHY"){
+	    // 记录终端流水
+	    top.journalPrinter.addJournalWithTime("条形码故障复位"
+			+ "  DeviceStatus:" + top.YHAXBarcodeReader.StDeviceStatus);
+        top.YHAXBarcodeReader.Reset();
+	 }
+  }
+  top.wins.showProcessingTip("正在加载中，请稍候···");
+  checkSvcCmd4Idle();
+}
+
+function checkContinueView(){
+	onKey_yes = function(){
+		top.serviceCtrl.stopUserTimeout();
+		//再次交易时，设置服务状态
+		top.serviceCtrl.setSvcStatus(top.TTSTATUS_INSERVICE);
+		//进入九宫格
+		onIdleReadySuccess();
+	}
+	onKey_no = function(){
+		top.serviceCtrl.stopUserTimeout();
+		//当前叫号号码置空
+		top.terminal.currentCallNumber="";
+		callNumDoTranscation();
+	}
+	onTimeout = function(){
+		callNumDoTranscation();
+	}
+	top.terminal.swipquit = "false";
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oContinueBusinessTick);
+	if(top.terminal.currentCallNumber.length>0){
+		isContinueBusinessTip.innerHTML = "当前号码：" + top.terminal.currentCallNumber + "  ";
+	}
+	top.wins.showMain("oLContinueBusiness");
+
+}
+
+//判断是否继续交易
+function checkContinue(){
+	top.serviceCtrl.stopUserTimeout();
+	//判断是否继续交易
+	if(top.terminal.currentCallNumber!=""&&top.terminal.currentCallNumber.length > 0){
+		if(top.terminal.swipquit == "true"){
+			if(top.terminal.swipquitcard == "true"){
+				top.terminal.swipquitcard = "false"
+				
+				onCardAcceptCancelled = function() {
+					checkContinueView();
+				}
+				//关闭读卡器
+				top.cardreader.cancelAccept();
+			}else{
+				checkContinueView();
+			}
+		}else{
+			top.serviceCtrl.setSvcStatus(top.TTSTATUS_INSERVICE);
+			
+			//进入九宫格
+			onIdleReadySuccess();
+		}
+	}else{
+		callNumDoTranscation();
+	}
+}
+
+//检查叫号
+function checkQueueNumberFlag(){
+	top.journalPrinter.addJournalWithTime("检查叫号开关");
+	//判断本地是否开启叫号
+	if(top.terminal.QueueNumberFlag == "1"){
+		top.journalPrinter.addJournalWithTime("开启叫号");
+		
+		checkContinue();
+	}else{
+		//进入九宫格
+		onIdleReadySuccess();
+	}
+}
+
+//开始叫号
+function callNumDoTranscation(){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oLCallingUserNum.style.visibility = "hidden";
+	window.operateCtrl.enableInput();
+	
+	//叫号前，清空上一个号码
+	top.terminal.currentCallNumber = "";
+
+	top.wins.showMain("oLUserCallingNum");
+	top.journalPrinter.addJournalWithTime("叫号");
+	top.trans.send912109Async();
+	/*****************测试模拟数据 start*************/
+	//setTimeout(onUserCallingNumSuccessful,10*1000);
+	/*****************测试模拟数据 end*************/
+
+}
+
+//重复叫号定时器
+var needReCalling;
+//重呼成功
+function onRepeatCallSuccess(){
+	reCallingInterval();
+}
+//当前重复叫号次数
+var repeatCallTimes = 0;
+var repeatInterval = [10,6]
+//重呼
+function reCallingInterval(){
+		clearInterval(needReCalling);
+		//重复叫号定时器
+		needReCalling = setInterval(function() {
+			repeatCallTimes++;
+			if (input_Verification.value == null || input_Verification.value.length == 0 ){
+				if (repeatCallTimes < 3) {
+					//重复叫号
+					top.journalPrinter.addJournalWithTime("重复叫号")
+					
+					top.trans.send912107Async();
+				}else if (repeatCallTimes == 3) {
+					//清除计时器
+					clearInterval(needReCalling);
+					//CallingUserNumNext();
+				}else{
+					//清除计时器
+					clearInterval(needReCalling);
+				}
+			}
+		}, repeatInterval[repeatCallTimes] * 1000);
+	}
+
+//叫号成功
+function onUserCallingNumSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.stopFlowCtrlTimeout();
+	//设置当前状态为服务状态
+	top.serviceCtrl.setSvcStatus(top.TTSTATUS_INSERVICE);
+
+	/*****************测试模拟数据 start*************/
+	//top.terminal.currentCallNumber="I0001";
+	//top.pool.set("verifyCodeNum","1111")
+	/*****************测试模拟数据 end*************/
+	
+	var inputNum = 2;//剩余可输入次数
+	repeatCallTimes = 0;//当前重复叫号次数
+	Error_Message.innerHTML = "";
+
+	onKey_Enter = onKey_F99 = function() {
+		if (input_Verification.value == top.pool.get("verifyCodeNum")) {
+			//验证成功后清楚定时器
+			clearInterval(needReCalling);
+			top.inputmethod.Close();
+			Error_Message.innerHTML = "";
+			onIdleReadySuccess();
+		} else if(input_Verification.value.length == 0){
+			input_Verification.value = "";
+			input_Verification.focus();
+		} else if (inputNum > 0 ) {
+			Error_Message.innerHTML = "您输入的验证码不正确,还可以输入"+ inputNum+"次,请重新输入";
+			inputNum--;
+			input_Verification.value = "";
+			input_Verification.focus();		
+		}else{
+			CallingUserNumNext();
+		}
+	}
+	onTimeout = function() {
+		CallingUserNumNext();
+	}
+
+	reCallingInterval();
+	window.operateCtrl.enableInput();
+	currentNumber.innerHTML=top.terminal.currentCallNumber;
+	//测试模拟数据
+	//verifyCodeNum.innerHTML=top.pool.get("verifyCodeNum");
+	
+	top.serviceCtrl.startUserTimeout(onTimeout, 90,oVerficatonCode);
+	top.wins.showMain("oLInputVerficatonCode");
+	top.inputmethod.ShowDigit(490, 400);
+	input_Verification.value = "";
+	input_Verification.focus();
+	
+}
+//当用户输入验证码时触发的函数。
+function input_checkUserNum() {
+	if(needReCalling!=""){
+		top.journalPrinter.addJournalWithTime("clearInterval 重复叫号");
+		clearInterval(needReCalling);
+		needReCalling="";
+	}
+}
+
+//排队查询
+function HaveCallingNumSerch() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oLCallingUserNum.style.visibility = "hidden";
+	onTimeout = function() {
+		top.journalPrinter.addJournalWithTime("超时，继续排队查询");
+		HaveCallingNumSerch();
+	}
+	window.operateCtrl.enableInput();
+	top.journalPrinter.addJournalWithTime("排队查询");
+
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iPadCheckTimeout, oLCallingUserNum);
+	top.wins.showMain("oLUserCallingNum");
+	top.trans.send912104Async();
+}
+
+//连续发送叫号的失败次数
+var send912109FailedTimes = 0
+//叫号失败，延迟10s后再次叫号
+function on912109Failed(){
+	send912109FailedTimes = send912109FailedTimes + 1;
+	//重置号码记录
+	top.terminal.currentCallNumber="";
+	top.terminal.previousCallNumber="";
+	//失败次数小于3次且叫号返回码不为P332：无排队号码  P331
+	if(send912109FailedTimes < 3 && !(top.exchxmlasync.strTermRetCode == "P332" || top.exchxmlasync.strTermRetCode == "P331" )){	
+		setTimeout(callNumDoTranscation,10*1000);
+	}else{
+		send912109FailedTimes=0;
+		setTimeout(HaveCallingNumSerch,3*1000);
+	}
+}
+
+//排队状态查询成功
+function onHaveCallingNum() {
+	top.journalPrinter.addJournalWithTime("排队查询成功");
+	callNumDoTranscation();
+}
+
+//排队状态查询失败
+function onAsync912104Faild() {
+	top.journalPrinter.addJournalWithTime("继续排队查询");
+	setTimeout(HaveCallingNumSerch,10*1000);
+}
+
+
+
+//过号顺呼
+function CallingUserNumNext() {
+	top.inputmethod.Close();
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//隐藏倒计时
+	oLCallingUserNum.style.visibility = "hidden";
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLUserCallingNum");
+	//叫号前，清空上一个号码
+	top.terminal.currentCallNumber = "";
+	top.journalPrinter.addJournalWithTime("跳号顺呼");
+	top.trans.send912108Async();
+	//callNumDoTranscation();
+
+}
+
+// 空闲状态准备完成
+function onIdleReady() {
+	checkQueueNumberFlag();
+}
+
+// 空闲状态准备完成
+function onIdleReadySuccess() {
+	// 刷新界面风格
+	var strTerminalStyle = top.idle.idleExch.msgxmldomResp
+			.getElementValue("strTerminalStyle");
+	// 是否强制打印凭条
+	var bPrintReceiptFlag = new top.StringCtrl("").str2Bool(
+			top.idle.idleExch.msgxmldomResp
+					.getElementValue("bPrintReceipt"), false);
+	top.terminal.bPrintReceipt = bPrintReceiptFlag;
+	top.wins.refreshStyle(strTerminalStyle);
+	/*刷新背景图*/
+	top.wins.chgBodyBGround("Bg_Main");
+	// 开始空闲检测
+	top.serviceCtrl.startUserTimeout(check4Idle, 60, null);
+	showOlMenu_local();
+
+
+	// 允许插卡
+	acceptCard();
+}
+
+// 允许用户插卡
+function acceptCard() {
+	onCardInserted = function() {
+		top.journalPrinter.addJournalWithTime("前插卡 正在读卡，请稍候... idle ");
+		// 设置正在服务状态
+		top.serviceCtrl.setSvcStatus(top.TTSTATUS_INSERVICE);
+		top.wins.showProcessingTip("正在读卡，请稍候...");
+	}
+	onTimeout = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	onCardInvalid = function() {
+		var strtip = "对不起，您插入的卡为无效卡！";
+		top.wins.showInfoTip(strtip);
+		top.serviceCtrl.startFlowCtrlTimeout(onTimeout, 10 * 1000);
+	}
+	onICCardInitFailed = function() {
+		var strtip = "对不起，IC卡初始化失败！";
+		top.wins.showInfoTip(strtip);
+		top.serviceCtrl.startFlowCtrlTimeout(onTimeout, 10 * 1000);
+	}
+	onDeviceError_Idc = function() {
+		// 记录终端流水
+		top.journalPrinter.addJournalWithTime("读卡器故障 Idle  DeviceError");
+
+		//返回退卡页面
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	onCardAccepted = function() {
+		top.serviceCtrl.stopUserTimeout();
+		//增加客户流水号:8位终端编号 + 8位终端流水号
+		var strSingleBusinessNum = new top.StringCtrl("").getBusinessNo();
+		top.pool.set("strSingleBusinessNum", strSingleBusinessNum);
+		top.serviceCtrl.navigate2InputPin();
+	}
+	bCardReaderStatus = true;
+	top.cardreader.accept(-1);
+}
+
+// 空闲检测
+function check4Idle() {
+	// 管理命令暂停时，不检测线路，避免线路恢复后程序跳至空闲状态
+	if (top.serviceCtrl.CurrentStatus != top.SVCSTATUS_PAUSEBYDEV
+			&& top.serviceCtrl.CurrentStatus != top.SVCSTATUS_PAUSEBYMGR) {
+		// 检测服务器是否在线
+		if (!isServerOnLine()) {
+			try {
+				top.onServerErr_Def("MainFrame", "Network offline.");
+			} catch (e) {
+			}
+			return;
+		}
+	}
+	// 后面继续检测
+	top.serviceCtrl.startUserTimeout(check4Idle, 60, null);
+}
+
+// 检测服务器是否在线
+function isServerOnLine() {
+	var bServerOnLine = true;
+	if (top.serviceCtrl.strServerIP.toString().length > 0) {
+		try {
+			bServerOnLine = top.YHAXCommonCtrl.CanConnectToServer(
+					top.serviceCtrl.strServerIP,
+					top.serviceCtrl.iServerPort);
+		} catch (e) {
+		}
+	}
+	return bServerOnLine;
+}
+
+function showOlMenu_local() //对私
+{
+	window.operateCtrl.disableInput(true);
+	window.operateCtrl.enableInput();
+	serviceMenu.innerHTML = "<iframe src=\"../Service/ServiceMenu.html\" width=\"100%\" height=\"100%\" frameborder=\"0px\" marginheight=\"0px\" marginwidth=\"0px\" allowTransparency=\"true\" scrolling=\"No\"></iframe>";
+	contextMenu.innerHTML = "<iframe src=\"../Service/ContextMenu.html\" width=\"100%\ height=\"100%\" frameborder=\"0px\" marginheight=\"0px\" marginwidth=\"0px\" allowTransparency=\"true\" scrolling=\"No\"></iframe>";
+	if(top.terminal.QueueNumberFlag == "1"){
+		oLSafeQuit.style.visibility="visible";
+		currentNumInTop.innerHTML = "当前号码：" + top.terminal.currentCallNumber + "  ";
+	}else{
+		oLSafeQuit.style.visibility="hidden";
+	}
+	
+	top.wins.showMain("oLMenu");
+}
+
+//一定要等读卡器成功关闭后才能执行
+function selectTrans(strUrl) {
+	onCardAcceptCancelled = function() {
+		//增加客户流水号:8位终端编号 + 8位终端流水号
+		var strSingleBusinessNum = new top.StringCtrl("").getBusinessNo();
+		top.pool.set("strSingleBusinessNum", strSingleBusinessNum);
+		if (top.pool.get("customStatus") == "1") {
+			// 设置进入维护状态
+			top.serviceCtrl.setSvcStatus(top.TTSTATUS_INMAINTENANCE);
+		} else {
+			// 设置正在服务状态
+			top.serviceCtrl.setSvcStatus(top.TTSTATUS_INSERVICE);
+		}
+		bCardReaderStatus = false;
+		top.serviceCtrl.navigate2(strUrl);
+	}
+	//关闭读卡器
+	top.cardreader.cancelAccept();
+
+}
+
+function ShowKeyboardUesrNum() {
+	top.inputmethod.ShowDigit(490, 400);
+}
+
+var goNextQueueNum = 0;
+//柜员可调号顺呼
+function goNextQueue(num){
+	if (goNextQueueNum == 0 && num == 3) {
+		++goNextQueueNum;
+	} else if (goNextQueueNum == 2 && num == 3) {
+		++goNextQueueNum;
+	} else if (goNextQueueNum == 1 && num == 4) {
+		++goNextQueueNum;
+	} else if (goNextQueueNum == 3 && num == 4) {
+		++goNextQueueNum;
+	} else {
+		goNextQueueNum = 0;
+	}
+	if (goNextQueueNum == 2) {
+		clearInterval(needReCalling);
+		CallingUserNumNext();
+	}
+
+}
+
+var goMagNum = 0;
+function goManager(num) {
+	if (goMagNum == 0 && num == 3) {
+		++goMagNum;
+	} else if (goMagNum == 2 && num == 3) {
+		++goMagNum;
+	} else if (goMagNum == 1 && num == 4) {
+		++goMagNum;
+	} else if (goMagNum == 3 && num == 4) {
+		++goMagNum;
+	} else {
+		goMagNum = 0;
+	}
+	if (goMagNum == 2) {
+		top.journalPrinter.addJournalWithTime(" 切换维护页面  goManage");
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.stopFlowCtrlTimeout();
+		top.pool.set("customStatus", "1");
+		top.exchxmlasync.onAsyncExchangeComplete = null;
+		if (bCardReaderStatus) {//如果读卡器已经打开，需要先关闭读卡器，再进入管机员页面
+			//跳转至管机员登录页面
+			selectTrans("/Maintenance/Login_Maintenance.html");
+		} else {
+			// 设置进入维护状态
+			top.serviceCtrl.setSvcStatus(top.TTSTATUS_INMAINTENANCE);
+			bCardReaderStatus = false;
+			top.serviceCtrl
+					.navigate2("/Maintenance/Login_Maintenance.html");
+		}
+	}
+}
+</script>
+</head>
+<body style="background-repeat:no-repeat; background-position:%0" bottommargin=0 leftmargin=0 rightmargin=0 topmargin=0  scroll="no" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLMenu" class="FULLSCR" style="visibility:visible;">
+	<div class="FULLSCR">
+	  <table width="100%" align="center" height="1024" border="0" cellpadding="0" cellspacing="0"  background="../Terminal/Style/Default/Img/Bg_Main_Menu5.jpg">
+		<tr height="90%">
+		   <td align="left"><div id="showpic" class="Ad_Tick"></div></td>
+		   <td align="center"><div id="serviceMenu"></div></td>
+		</tr>
+		<tr height="10%">
+		   <td align="left" colspan="2"><div id="contextMenu"></div>
+		   </td>
+		</tr>
+	  </table>
+	</div>
+	<span class="MENUM3" onclick="goManager(3);"></span>
+    <span class="MENUM4" onclick="goManager(4);"></span>
+	<div style="position:absolute;left:40%;top:4%;width:412px;height:46px;color:#548DD0;font-family:微软雅黑;font-size: 24px;BORDER:#FFFFFF 0px solid;cursor:pointer;background-color:transparent;letter-spacing: 6px;" visibility="visible" >
+	<span id="currentNumInTop"></span>
+	</div>
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip" style="top:87%; visibility:'hidden'" visibility="hidden" >
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+				 <td align="center"><iframe src="../Service/SafeQuitForIdel.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+		</table>
+	</div>
+  </div>
+
+   <div id="oLUserCallingNum" class="FULLSCR"  style="visibility: hidden;">
+      <div class="FULLSCR">
+      <span class="Tip_Tick" id="oLCallingUserNum"></span><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span class="Tip_Title">您好，请取号后办理业务，如有疑问可咨询大堂服务人员</span></td>
+			</tr>
+	    </table>
+      </div>
+	<span class="MENUM3" onclick="goManager(3);"></span>
+    <span class="MENUM4" onclick="goManager(4);"></span>
+  </div>
+
+  <div id="oLContinueBusiness" class="FULLSCR"  style="visibility: hidden;">
+      <div class="FULLSCR">
+      <span class="Tip_Tick" id="oContinueBusinessTick"></span><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2" class="Tip_Title" style="font-size:40px;"><span id="isContinueBusinessTip" ></span><span>是否继续办理其他业务</span>
+			  <br/>
+			  <span>若结束当前号码，再做其他交易需重新排队取号</span>
+			  </td>
+			  
+			</tr>
+	    </table>
+      </div>
+	<span class="MENU98" ><button onclick="javascript:onKey_yes()" class="Menu_Left" name="oReturn">继续</button></span>
+    <span class="MENU99"><button onclick="javascript:onKey_no();" class="Menu_Right" name="confirm" >结束</button></span>
+  </div>
+
+  <div id="oLInputVerficatonCode" class="FULLSCR" style="visibility:hidden;">
+	<div class="FULLSCR">
+	<span class="Tip_Tick" id="oVerficatonCode"></span>
+	   <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+	  <tr>
+		<td>&nbsp;&nbsp;</td>
+	  </tr>
+	   <tr>
+		<td></td>
+	  </tr>
+	     <tr class="FirstLine" height="100">
+		<td align="center">
+		   <br/>
+		   <br/>
+		   <span id="oInputVerficatonCode" class="Tip_Title">当前号码：</span>
+		   <span id="currentNumber" class="Tip_Title"></span><span id="verifyCodeNum"></span>
+		   <span class="Tip_Title">&nbsp;&nbsp;请输入您的验证码</span>
+		   <br/>
+		   <br/>
+		   <input class="input_long" type="text" name="input_Verification" id="input_Verification" maxlength="10" onclick="javascript:ShowKeyboardUesrNum();" onkeyup="return input_checkUserNum();" />
+		   <br/>
+		   <span class="Error_Title" id = "Error_Message"></span>
+		</td>
+	  </tr>
+	     <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+	 <span class="MMENU6"><button onclick="javascript:onKey_F99();" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+	 <!-- 用于柜员跳号顺呼-->
+	 <span class="MENUM3" onclick="goNextQueue(3);"></span>
+     <span class="MENUM4" onclick="goNextQueue(4);"></span>
+	</div>
+</div>
+
+  <div id="oLServiceFailedTip" class="FULLSCR"  style="visibility: hidden;">
+    <div class="FULLSCR">
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0" background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg">
+        <tr><td align="center">
+           <span class="Tip_Title" id="oFailedTitle"></span>
+        </td></tr>
+      </table>
+    </div>
+	<span class="MENUM3" onclick="goManager(3);"></span>
+    <span class="MENUM4" onclick="goManager(4);"></span>
+  </div>
+  
+
+
+</body>
+</html>

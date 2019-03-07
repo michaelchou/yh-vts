@@ -1,0 +1,124 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title></title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  top.serviceCtrl.doWithProcessingAd(doPrintAndEject);
+}
+
+// 打印凭条并送出给用户
+function doPrintAndEject()
+{
+  onReceiptEjected = function()
+  {
+	top.serviceCtrl.startUserTimeout(onKey_F8, top.iUserTimeout,oTakeReceiptTick);
+	//送凭条屏蔽安全退出及返回Home的功能 
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+    top.wins.showMain("oTakeReceiptTip");
+  }
+
+  onCaptureReceiptFailed = onReceiptCaptured = onReceiptTaken = function()
+  {	
+	if(top.pool.get("strNavigate2Url") != null && top.pool.get("strNavigate2Url") != ""){
+	   top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+	   top.pool.set("strNavigate2Url", "");
+	}else if(top.pool.get("isBookPrintFlag") == "isPassbook"){//判断存取款打印凭条成功后是否需要存折补登
+	   if(top.pool.get("strBusiness") == "取款"){
+			top.serviceCtrl.navigate2("/Service/0009_909002_00001.html");
+			top.pool.set("strPrintReceip", "1");//打印凭条后返回存取款页面标志
+	   }else{
+			top.serviceCtrl.navigate2("/Service/0009_909005_00001.html");
+			top.pool.set("strPrintReceip", "2");
+	   }
+	}else{
+	   top.serviceCtrl.navigate2SecondMenu();
+	   top.pool.set("strNavigate2Url", "");
+	}
+  }
+
+  onDeviceError_rpt_Print = onDeviceError_rpt_Eject = function()
+  {
+    window.operateCtrl.disableInput(true);
+	 top.serviceCtrl.stopUserTimeout();
+	 
+    onTimeout = function()
+    {
+      	if(top.pool.get("strNavigate2Url") != null && top.pool.get("strNavigate2Url") != ""){
+	       top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+	       top.pool.set("strNavigate2Url", "");
+	    }else{
+	       top.serviceCtrl.navigate2SecondMenu();
+	       top.pool.set("strNavigate2Url", "");
+	    }
+    }
+
+    window.operateCtrl.enableInput();
+    top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oPrintFailedTick);
+    text_FailedRetDesc.innerHTML = "本机暂不能打印凭条";
+    top.wins.showMain("oPrintFailedTip");
+  }
+  top.receiptprinter.printAndEject();
+}
+
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oTakeReceiptTip" class="FULLSCR">
+  <span class="Tip_Tick" id="oTakeReceiptTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr class="FirstLine"><td align="center">
+      <span class="Tip_Title" id="oPlsTakeReceipt1"></span><span class="Tip_Title" id="oPlsTakeReceipt2"></span><br/><br/>
+      <img src="../Image/TakeReceiptTip.gif" width="870px" height="520px" />
+    </td></tr>
+  </table>
+</div>
+
+<div id="oPrintFailedTip" class="FULLSCR">
+  <div class="FULLSCR">
+  <span class="Tip_Tick" id="oPrintFailedTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oPrintReceiptFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td id="text_FailedRetDesc"></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+</body>
+</html>

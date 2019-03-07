@@ -1,0 +1,452 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>管理员界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  showStatusList();
+}
+
+// 返回维护主菜单
+function navigate2MaintenanceMenu()
+{
+  top.serviceCtrl.navigate2Maintenance();
+}
+
+// 显示状态列表
+function showStatusList()
+{
+//参数
+  var ret = false;//是否成功标识
+  var strRecordArr = new Array();//存储当前页数据
+
+  if (typeof(top.YHAXCardReader) != "undefined"){
+  var deviceStatus="状态未知";
+  var mediaStatus="";
+  var binStatus="";
+  try{deviceStatus=top.YHAXCardReader.StDeviceStatus;
+  mediaStatus=top.YHAXCardReader.StMediaStatus;
+  binStatus=top.YHAXCardReader.StBinStatus;
+  
+  }catch(e){}
+  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  
+     if(mediaStatus=="NOTPRESENT") {mediaStatus="";}
+  else  if(mediaStatus=="PRESENT"){mediaStatus="设备有介质";}
+  else  if(mediaStatus=="INJAWS"){mediaStatus="介质在设备口";}
+  else  if(mediaStatus=="JAMMED"){mediaStatus="介质夹塞";}
+  else  if(mediaStatus=="UNKNOWN"){mediaStatus="介质状态未知";}
+  
+   if(binStatus=="BINFULL") {binStatus="吞卡盒满";}
+   else binStatus="";
+ 
+  
+  strRecordArr[strRecordArr.length] =new Array(		
+					"读卡器",
+					deviceStatus+" "+mediaStatus+" "+binStatus
+	);
+  }
+  
+  if (typeof(top.YHAXPinPad) != "undefined"){
+  var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXPinPad.StDeviceStatus;}catch(e){}
+   if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"密码键盘",
+					deviceStatus
+	);
+}
+    
+  if (typeof(top.YHAXReceiptPrint) != "undefined"){
+  var deviceStatus="状态未知";
+   var paperStatus="";
+  try{deviceStatus=top.YHAXReceiptPrint.StDeviceStatus;
+ paperStatus= top.YHAXReceiptPrint.StPaperStatus;}catch(e){}
+     if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  
+     if(paperStatus=="UNKNOW") {paperStatus="纸状态未知";}
+  else  if(paperStatus=="FULL"){paperStatus="";}
+  else  if(paperStatus=="LOW"){paperStatus="纸少";}
+  else  if(paperStatus=="OUT"){paperStatus="纸尽";}
+  
+  strRecordArr[strRecordArr.length] =new Array(		
+					"凭条打印机",
+					deviceStatus+" "+paperStatus
+	);
+  }
+  
+  if (typeof(top.YHAXPassbook) != "undefined"){
+   var deviceStatus="状态未知";
+   var mediaStatus="";
+  try{deviceStatus=top.YHAXPassbook.StDeviceStatus;
+  mediaStatus=top.YHAXPassbook.StMediaStatus;}catch(e){}
+     if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  
+   if(mediaStatus=="NOTPRESENT") {mediaStatus="";}
+  else  if(mediaStatus=="PRESENT"){mediaStatus="设备有介质";}
+  else  if(mediaStatus=="INJAWS"){mediaStatus="介质在设备口";}
+  else  if(mediaStatus=="JAMMED"){mediaStatus="介质夹塞";}
+  else  if(mediaStatus=="UNKNOWN"){mediaStatus="介质状态未知";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"存折打印机",
+					deviceStatus+" "+mediaStatus
+	);
+  }
+  if (typeof(top.YHAXIDCardReader) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXIDCardReader.StDeviceStatus;}catch(e){}
+  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"二代证读卡器",
+					deviceStatus
+	);
+  }
+  if (typeof(top.YHAXFingerScanner) != "undefined"){
+    var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXFingerScanner.StDeviceStatus;}catch(e){}
+  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"指纹仪",
+					deviceStatus
+	);
+ 
+  }
+  if (typeof(top.YHAXCardDispenser) != "undefined"){
+   var deviceStatus="状态未知";
+   var mediaStatus="";
+  try{deviceStatus=top.YHAXCardDispenser.StDeviceStatus;
+  mediaStatus=top.YHAXCardDispenser.StMediaStatus;}catch(e){}
+  
+  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+
+  if(mediaStatus=="NOTPRESENT") {mediaStatus="";}
+  else  if(mediaStatus=="PRESENT"){mediaStatus="设备有介质";}
+  else  if(mediaStatus=="INJAWS"){mediaStatus="介质在设备口";}
+  else  if(mediaStatus=="JAMMED"){mediaStatus="介质夹塞";}
+  else  if(mediaStatus=="UNKNOWN"){mediaStatus="介质状态未知";}
+  
+  strRecordArr[strRecordArr.length] =new Array(		
+					"发卡",
+					deviceStatus+" "+mediaStatus
+	);
+  
+  }
+  if (typeof(top.YHAXDocumentScanner) != "undefined"){
+   var deviceStatus="扫描未知";
+   var deviceStatus2="";
+  try{deviceStatus=top.YHAXDocumentScanner.StDeviceStatus;}catch(e){}
+  if(deviceStatus=="HEALTHY") {deviceStatus="扫描正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="扫描故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="扫描未安装";}
+  
+   try{deviceStatus2=top.YHAXDocumentPrinter.StDeviceStatus;}catch(e){}
+  if(deviceStatus2=="HEALTHY") {deviceStatus+=" 打印正常";}
+  else  if(deviceStatus2=="FATAL"){deviceStatus+=" 打印故障";}
+  else  if(deviceStatus2=="NODEVICE"){deviceStatus+=" 打印未安装";}
+  else {deviceStatus+=" 打印未知";}
+  
+  strRecordArr[strRecordArr.length] =new Array(		
+					"存单发放",
+					deviceStatus
+	);
+  
+  }
+  if (typeof(top.YHAXDocumentScanner2) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXDocumentScanner2.StDeviceStatus;}catch(e){}
+  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"存单受理",
+					deviceStatus
+	);
+	}
+	
+  if (typeof(top.YHAXUkeyDispenser) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXUkeyDispenser.StDeviceStatus;}catch(e){}
+  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"UKEY",
+					deviceStatus
+	);
+  }
+  
+  	
+  if (typeof(top.YHAXCameras) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXCameras.StDeviceStatus;}catch(e){}
+    if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"电子摄像头",
+					deviceStatus
+	);
+  }
+  
+   if (typeof(top.YHAXSigCameras) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXSigCameras.StDeviceStatus;}catch(e){}
+    if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"电子签名",
+					deviceStatus
+	);
+  }
+  
+   if (typeof(top.YHAXBarcodeReader) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXBarcodeReader.StDeviceStatus;}catch(e){}
+  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"条码/二维码",
+					deviceStatus
+	);
+  }
+  
+   if (typeof(top.YHAXCashDispenser) != "undefined"){
+	  var deviceStatus="状态未知";	//取款模块设备总状态
+	  var dispenserStatus="";		//出钞设备状态
+	  var transportStatus="";		//传输通道状态
+	  var shutterStatus="";			//钞门状态
+	  var safeDoorStatus="";		//安全门状态
+	  var inputOutputStatus="";		//钞口状态
+	  try{
+		  deviceStatus=top.YHAXCashDispenser.StDeviceStatus;
+		  dispenserStatus=top.YHAXCashDispenser.StDispenserStatus;
+		  transportStatus=top.YHAXCashDispenser.StTransportStatus;
+		  shutterStatus=top.YHAXCashDispenser.StShutterStatus;
+		  safeDoorStatus=top.YHAXCashDispenser.StSafeDoorStatus;
+		  inputOutputStatus=top.YHAXCashDispenser.StInputOutputStatus;
+		  //测试
+		  /* deviceStatus="FATAL";
+		  dispenserStatus="DEGRADED";
+		  transportStatus="UNKNOWN";
+		  shutterStatus="OPEN";
+		  safeDoorStatus="CLOSED";
+		  inputOutputStatus="NOTEMPTY"; */
+	  }catch(e){}
+	  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+	  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+	  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+
+	  if(dispenserStatus=="NODISPENSE") {dispenserStatus="出钞设备无法出钞";}
+	  else  if(dispenserStatus=="UNKNOWN"){dispenserStatus="出钞设备状态未知";}
+	  else  if(dispenserStatus=="DEGRADED"){dispenserStatus="钞箱将空";}
+	  else{dispenserStatus="";}
+	  
+	  if(transportStatus=="EMPTY") {transportStatus = "";}
+	  else if(transportStatus=="OCCUPIDE"){transportStatus="介质在传输通道";}
+	  else if(transportStatus=="UNKNOWN"){transportStatus="传输通道状态未知";}
+	  else if(transportStatus=="NOTSUPPORTED"){transportStatus="传输通道状态未知";}
+	  else{transportStatus="";}
+	  
+	  if(shutterStatus=="OPEN") {shutterStatus="钞门打开";}
+	  else if(shutterStatus=="CLOSED"){shutterStatus="";}
+	  else if(shutterStatus=="FATAL"){shutterStatus="钞门故障";}
+	  else if(shutterStatus=="UNKNOWN"){shutterStatus="钞门状态未知";}
+	  else{shutterStatus="";}
+	  
+	  if(safeDoorStatus=="OPEN"){safeDoorStatus = "安全门打开";}
+	  else if(safeDoorStatus=="FATAL"){safeDoorStatus="安全门故障";}
+	  else if(safeDoorStatus=="NOTSUPPORTED"){safeDoorStatus="安全门状态未知";}
+	  else{safeDoorStatus="";}
+	  
+	  if(inputOutputStatus=="EMPTY"){inputOutputStatus="";}
+	  else if(inputOutputStatus=="NOTEMPTY"){inputOutputStatus="介质在钞口";}
+	  else if(inputOutputStatus=="UNKNOWN"){inputOutputStatus="钞口状态未知";}
+	  else if(inputOutputStatus=="NOTSUPPORTED"){inputOutputStatus="钞口状态未知";}
+	  else{inputOutputStatus="";}
+
+	  strRecordArr[strRecordArr.length] =new Array(		
+						"取款模块",
+						deviceStatus+" "+dispenserStatus+" "+transportStatus+" "+shutterStatus+" "+safeDoorStatus+" "+inputOutputStatus
+		);
+  }
+  if (typeof(top.YHAXCashAcceptor) != "undefined"){
+	  var deviceStatus="状态未知";	//存款模块设备总状态
+	  var acceptorStatus="";		//现金接收单元状态
+	  var transportStatus="";		//传输通道状态
+	  var shutterStatus="";			//钞门状态
+	  var safeDoorStatus="";		//安全门状态
+	  var inputOutputStatus="";		//钞口状态
+	  try{
+		  deviceStatus=top.YHAXCashAcceptor.StDeviceStatus;
+		  acceptorStatus=top.YHAXCashAcceptor.StAcceptorStatus;
+		  transportStatus=top.YHAXCashAcceptor.StTransportStatus;
+		  shutterStatus=top.YHAXCashAcceptor.StShutterStatus;
+		  safeDoorStatus=top.YHAXCashAcceptor.StSafeDoorStatus;
+		  inputOutputStatus=top.YHAXCashAcceptor.StInputOutputStatus;
+	  }catch(e){}
+	  if(deviceStatus=="HEALTHY"){deviceStatus="正常";}
+	  else if(deviceStatus=="FATAL"){deviceStatus="故障";}
+	  else if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+
+	  if(acceptorStatus=="NOACCEPT"){acceptorStatus="现金接收单元无法接收";}	
+	  else if(acceptorStatus=="UNKNOWN"){acceptorStatus="现金接收单元状态未知";}
+	  else{acceptorStatus="";}
+	  
+	  if(transportStatus=="HEALTHY"){transportStatus="";}
+	  else if(transportStatus=="FATAL"){transportStatus="传输通道故障";}
+	  else if(transportStatus=="UNKNOWN"){transportStatus="传输通道状态未知";}
+	  else{transportStatus="";}
+	  
+	  if(shutterStatus=="OPEN"){shutterStatus="钞门打开";}
+	  else if(shutterStatus=="CLOSED"){shutterStatus="";}
+	  else if(shutterStatus=="FATAL"){shutterStatus="钞门故障";}
+	  else if(shutterStatus=="UNKNOWN"){shutterStatus="钞门状态未知";}
+	  else{shutterStatus="";}
+	  
+	  if(safeDoorStatus=="OPEN"){safeDoorStatus = "安全门打开";}
+	  else if(safeDoorStatus=="CLOSED"){safeDoorStatus="";}
+	  else if(safeDoorStatus=="FATAL"){safeDoorStatus="安全门故障";}
+	  else if(safeDoorStatus=="NOTSUPPORTED"){safeDoorStatus="安全门状态未知";}
+	  else{safeDoorStatus="";}
+	  
+	  if(inputOutputStatus=="EMPTY"){inputOutputStatus="";}
+	  else if(inputOutputStatus=="NOTEMPTY"){inputOutputStatus="介质在钞口";}
+	  else if(inputOutputStatus=="UNKNOWN"){inputOutputStatus="钞口状态未知";}
+	  else{inputOutputStatus="";}
+
+	  strRecordArr[strRecordArr.length] =new Array(		
+						"存款模块",
+						deviceStatus+" "+acceptorStatus+" "+transportStatus+" "+shutterStatus+" "+safeDoorStatus+" "+inputOutputStatus
+		);
+  }
+  if (typeof(top.YHAXCashDispenserFen) != "undefined"){
+	  var deviceStatus="状态未知";	//硬币模块设备总状态
+	  
+	  try{
+		  deviceStatus=top.YHAXCashDispenserFen.StDeviceStatus;
+	  }catch(e){}
+	  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+	  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+	  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+
+	  strRecordArr[strRecordArr.length] =new Array(		
+						"硬币模块",
+						deviceStatus
+		);
+   }
+  //刷折模块
+  if (typeof(top.YHAXPassbookReader) != "undefined"){
+	  var deviceStatus="状态未知";
+	  try{deviceStatus=top.YHAXPassbookReader.StDeviceStatus;	  
+	  }catch(e){}
+	  if(deviceStatus=="HEALTHY") {deviceStatus="正常";}
+	  else  if(deviceStatus=="FATAL"){deviceStatus="故障";}
+	  else  if(deviceStatus=="NODEVICE"){deviceStatus="未安装";}
+
+	  strRecordArr[strRecordArr.length] =new Array(		
+				"刷折模块",
+				deviceStatus
+		);
+  }
+  // 初始化维护功能列表
+var mrv = new top.MultiRecordView();
+var strHeadingArr = new Array
+(
+  "模块",
+  "状态"
+);  
+  var strAlignArr = new Array
+			  (
+				"center",
+				"left"
+			
+			  ); 
+			  mrv.strClassName_Table_Head             			= "ADMTable_Head";
+			  mrv.strClassName_Table_Record           			= "ADMTable_Record";
+			  mrv.strClassName_Table_Record2         			= "ADMTable_Record2";
+			  mrv.strClassName_Table_RecordSelected    	= "ADMTable_RecordSelected";			  
+   			  mrv.oTHead = oTHead;
+              mrv.oTBody = oTBody;
+              mrv.oTablePageTip = oTablePageTip;
+              mrv.oMFirstPage  = oMFirstPage;
+              mrv.oMPrevPage = oMPrevPage;
+              mrv.oMNextPage = oMNextPage;
+              mrv.oMEndPage = oMEndPage;
+              mrv.strRecordArr = strRecordArr;
+              mrv.strHeadingArr = strHeadingArr;
+              mrv.strAlignArr=strAlignArr;
+              mrv.iRowsPerPage = 8;
+              onKey_F1 = function(){mrv.onFirstPage();}
+              onKey_F2 = function(){mrv.onPrevPage();}
+              onKey_F3 = function(){mrv.onNextPage();}
+              onKey_F4 = function(){mrv.onEndPage();}
+             
+ 
+ 
+  onKey_F7 = function()
+  {
+     top.serviceCtrl.navigate2Maintenance();
+  }
+  onKey_Cancel = onKey_F8 = function()
+  {
+     top.serviceCtrl.navigate2Quit();
+  }
+  mrv.show();
+  top.wins.showMain("oLMtnMenu");
+  window.operateCtrl.enableInput();
+}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMtnMenu" class="FULLSCR">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine"><td align="center">
+        <span class="Tip_Title">设备检测</span><br/>
+        <br/><table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="45%" height="60%">
+          <thead class="ADMTable_Head" id="oTHead"></thead>
+          <tbody id="oTBody"></tbody>
+          <tr><td width="35%"></td><td width="65%"></td></tr>
+        </table>
+        <span class="Tip_Content" id="oTablePageTip"></span>
+      </td></tr>
+    </table>
+  </div>
+  
+  		   <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+          <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+          <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+          <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+          <span class="MMENU7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+          <span class="MMENU8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+ 
+
+</div>
+</body>
+</html>

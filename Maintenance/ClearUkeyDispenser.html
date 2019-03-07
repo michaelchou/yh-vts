@@ -1,0 +1,901 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>设备清UKEY</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+function doMouseDown() {
+//	top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+
+// 服务流程处理入口
+function serverEntrance() {
+	if(top.YHAXUkeyDispenser.StDeviceStatus!="HEALTHY"){
+		onHardwareError();
+	}else	
+    	top.trans.sendQueryUKeyAsync();
+  
+}
+function onHardwareError() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+	 	top.serviceCtrl.navigate2Maintenance();
+	}
+
+	window.operateCtrl.enableInput();
+	Tip_Title2.innerHTML  = "<span class=\"Tip_Title\">发UKEY模块状态不正常，暂不支持本操作</span>";
+	top.wins.showMain("oLInfoTip2");	  
+}
+var ukeyTypeValues=top.misc.getValuesByName("strUkeyType");
+var ukeyTypeDescs=top.misc.getDescsByName("strUkeyType");
+var uKeyTypeValue="";//ukey类型value
+ //根据初始段数组和数据库中交易时用掉的段，
+//返回剩余的段数组字符串(凭证类型,起始段,张数,结束段|)	
+function getSurplusSegments(segments,translog)
+  {
+	segments.sort(function(a,b) {  
+				return a-b;   
+			});
+	translog.sort(function(a,b) {    
+				return a-b;   
+			});
+     //去掉已经用掉的段	
+	var newsegments=new Array();	 
+	for(var i=0;i<segments.length;i++){
+		var flag=false;
+			for(var j=0;j<translog.length;j++){
+				if(segments[i] == translog[j])
+				{
+				
+					flag=true;
+					break;
+				}
+			}
+			if(flag==false){
+				newsegments[newsegments.length]=segments[i];
+			}
+	}
+	//获取重组后的剩余的段
+		var segments2=new Array();
+		var j=0;
+		var i=0;
+		for(i=0;i<newsegments.length;i++){
+			if(i==0){
+				segments2[j]=new Array();
+				segments2[j][0]=uKeyTypeValue;//待定
+				segments2[j][1]=newsegments[i];
+				continue;
+			}
+			if(parseInt(newsegments[i],"10")==parseInt(newsegments[i-1],"10")+1){
+				continue;
+			}else{
+				segments2[j][2]=parseInt(newsegments[i-1],"10")-parseInt(segments2[j][1],"10")+1;
+				segments2[j][3]=newsegments[i-1];
+				j++;
+				segments2[j]=new Array();
+				segments2[j][0]=uKeyTypeValue;
+				segments2[j][1]=newsegments[i];
+			}
+				
+		}
+		if(i>0){
+			segments2[j][2]=parseInt(newsegments[i-1],"10")-parseInt(segments2[j][1],"10")+1;
+			segments2[j][3]=newsegments[i-1];
+		}	
+		//返回格式化字符串
+		var strsegments2="";
+		for(var i=0;i<segments2.length;i++){
+			strsegments2+=segments2[i][0]+","+segments2[i][1]+","+segments2[i][2]+","+segments2[i][3]+"|";
+		}
+		return strsegments2;
+  
+  }		
+ 
+var recyclebinCount=0;//回收箱计数
+var transUnknownCount=0;//发UKEY交易失败UKEY号未知回收
+
+var CUCurrentCount=new Array();//各UKEY箱剩余数量
+var CUInitialCount=new Array();//各UKEY箱初始数量
+var CURetainCount=new Array();//各UKEY箱回收数量
+var selectedUkeyBox;//选中的UKEY箱编号
+var ukeyBoxInfoStr="";//UKEY箱信息(字符串格式)
+var ukeyTransLogStr="";//发UKEY交易信息
+var explogInfoStr="";//吞KEY信息
+var ukeySurplusCount=0; //UKEY箱总剩余数量
+var ukeyRefillCount=0;//UKEY箱总初始数量
+//配置标题和数据
+var strHeadingArr = new Array(
+	"UKEY箱编号",
+	"UKEY类型",
+  	"加UKEY数",
+  	"发UKEY数",
+	"剩余UKEY数",
+	"废UKEY数"
+  //,  "阀值"
+ 
+);
+
+
+
+
+
+
+//UKEY箱信息
+var strRecordArr = new Array();
+//UKEY段信息
+var strSegmentArr = new Array();
+//UKEY箱加UKEY张数
+var iCountArr = new Array();
+//UKEY箱加UKEY类型
+var strUkeyTypeArr = new Array();
+//选择UKEY箱序号
+var index;
+
+//生产
+var ukeyBoxInfoArr0= top.ukeydispenser.getUkeyUnitInfo();//获取UKEY箱信息
+//测试
+//  var ukeyBoxInfoArr0= new Array();//获取UKEY箱信息
+//  for(var i=0;i<2;i++){
+//  	ukeyBoxInfoArr0[i]=new Array();
+//  	ukeyBoxInfoArr0[i][0]=i+1;
+//  }
+
+
+//从数据库获取本终端的UKEY段信息串
+onAsyncQueryUKeyComplete = function(){
+      ukeyBoxInfoStr=  top.pool.get("ukeyBoxInfoStr");
+     // alert(ukeyBoxInfoStr);
+     ukeyTransLogStr=  top.pool.get("ukeyTransLogStr");
+     explogInfoStr= top.pool.get("explogInfoStr");
+     loadBoxInfo();
+	showBoxInfo();
+  }
+//每个字段以','分割，每条记录以'|'分割
+// var ukeyBoxInfoStr="2,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+//     ukeyBoxInfoStr+="2,SUPPLYBIN,150,10,HEALTHY,061,101,200,80,5,1,2,2|";
+//     ukeyBoxInfoStr+="3,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+//     ukeyBoxInfoStr+="3,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+//     ukeyBoxInfoStr+="4,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+//     ukeyBoxInfoStr+="4,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+
+//UKEY段详细数据信息
+ var ukeyBoxInfoArr1= new Array();
+ 
+ //UKEY段详细显示信息
+ var strRecordArr1= new Array();
+   
+//初始化一次性读取并统计UKEY箱信息
+ function loadBoxInfo()
+ {
+	//生产
+	 var ukeyBoxInfoArr= new Array();
+   
+     ukeyBoxInfoArr=ukeyBoxInfoStr.split('|');
+     
+     for (var i=0;i<ukeyBoxInfoArr.length-1;i++){
+        ukeyBoxInfoArr1[i]=new Array();
+     	ukeyBoxInfoArr1[i]=ukeyBoxInfoArr[i].split(',');
+     }
+      var initCount=0;
+ var successCount=0;
+	var curCount=0;
+	var destroyedCount=0;
+	var j=0;
+	
+	for(var i=0;i<ukeyBoxInfoArr1.length;i++){
+		if(i==0){
+			strRecordArr[j] = new Array();
+			
+			strRecordArr[j][0] = ukeyBoxInfoArr1[i][0];  //boxNumber
+		
+				
+			var ukeyType = ukeyBoxInfoArr1[i][5];
+			//alert(ukeyType);
+			uKeyTypeValue=ukeyType;//只取1次，支持1个UKEY盒
+				for ( var c = 0; c < ukeyTypeValues.length; c++) {
+					if (ukeyBoxInfoArr1[i][5] == ukeyTypeValues[c]) {
+						ukeyType = ukeyTypeDescs[c];
+						break;
+					}
+				}
+				strRecordArr[j][1] = ukeyType; //ukeyType  ukeyBoxInfoArr1[i][5];
+
+				//alert(strRecordArr[j][0]);
+			} else if (strRecordArr[j][0] != ukeyBoxInfoArr1[i][0]) {
+
+				//alert(successCount);
+				//alert(curCount);
+				//alert(destroyedCount);
+				strRecordArr[j][2] = initCount; //initCount
+				strRecordArr[j][3] = successCount; //successCount
+				strRecordArr[j][4] = curCount; //curCount
+				strRecordArr[j][5] = destroyedCount; //successCount
+				j += 1;
+				initCount = 0;
+				successCount = 0;
+				curCount = 0;
+				destroyedCount = 0;
+
+				strRecordArr[j] = new Array();
+
+				strRecordArr[j][0] = ukeyBoxInfoArr1[i][0]; //boxNumber
+				
+					var ukeyType = ukeyBoxInfoArr1[i][5];
+				for ( var c = 0; c < ukeyTypeValues.length; c++) {
+					if (ukeyBoxInfoArr1[i][5] == ukeyTypeValues[c]) {
+						ukeyType = ukeyTypeDescs[c];
+						break;
+					}
+				}
+				strRecordArr[j][1] = ukeyType; //ukeyType  ukeyBoxInfoArr1[i][5];
+
+			}
+			initCount += parseInt(ukeyBoxInfoArr1[i][2]); //init
+			successCount += parseInt(ukeyBoxInfoArr1[i][8])
+					+ parseInt(ukeyBoxInfoArr1[i][9])
+					+ parseInt(ukeyBoxInfoArr1[i][11])
+					+ parseInt(ukeyBoxInfoArr1[i][12]);
+			curCount += parseInt(ukeyBoxInfoArr1[i][3]);
+			destroyedCount += parseInt(ukeyBoxInfoArr1[i][10]);
+			// alert(successCount);
+			//alert(curCount);
+			//alert(destroyedCount);
+
+		}
+		strRecordArr[j][2] = initCount; //initCount
+		strRecordArr[j][3] = successCount; //successCount
+		strRecordArr[j][4] = curCount; //successCount
+		strRecordArr[j][5] = destroyedCount; //successCount
+
+		//alert(strRecordArr.length);
+		// 			 str="";
+		// 			 for(var i=0;i<strRecordArr.length;i++){
+		// 				for(var j=0;j<strRecordArr[i].length;j++){
+		// 				str+=strRecordArr[i][j]+",";
+		// 			}
+		// 			alert(str);
+
+		// 			}
+
+	}
+
+	//显示UKEY箱信息
+	function showBoxInfo() {
+		window.operateCtrl.disableInput(true);
+		onKey_Cancel = onKey_F7 = function() {
+			top.serviceCtrl.navigate2Maintenance();
+		}
+		onKey_Enter = onKey_F6 = function() {
+			loadSegmentInfo();
+			showSegmentInfo();
+		}
+		onKey_Cancel = onKey_F8 = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		// 清空当前显示的内容
+		var oTHead = document.getElementById('oTHead');
+		var oTBody = document.getElementById('oTBody');
+		while (oTHead.rows.length > 0)
+			oTHead.deleteRow(0);
+		while (oTBody.rows.length > 0)
+			oTBody.deleteRow(0);
+		// 	thead
+		var oRow = oTHead.insertRow();
+		for ( var j = 0; j < strHeadingArr.length; j++) {
+			var oCell = oRow.insertCell();
+			oCell.innerHTML = strHeadingArr[j];
+			oCell.align = "center";
+		}
+		//       tbody 
+		for ( var i = 0; i < strRecordArr.length; i++) {
+			var oRow = oTBody.insertRow();
+			for ( var j = 0; j < strRecordArr[i].length; j++) {
+				var oCell = oRow.insertCell();
+				oCell.innerHTML = strRecordArr[i][j];
+				oCell.align = "right";
+			}
+		}
+	   var explogInfoArr= new Array();
+        var explogInfoArr1= new Array();//吞key数量
+           recyclebinCount=0;	//吞key未知数量
+      explogInfoArr=explogInfoStr.split('|');
+     
+     for (var i=0;i<explogInfoArr.length-1;i++){
+        explogInfoArr1[i]=new Array();
+     	explogInfoArr1[i]=explogInfoArr[i].split(',');
+     }
+        for (var i=0;i<explogInfoArr1.length;i++){
+      		if(explogInfoArr1[i][0]==null||explogInfoArr1[i][0]=="null"||explogInfoArr1[i][0]==""||explogInfoArr1[i][0].length<15){
+      			
+      			recyclebinCount++;
+      			continue;
+      		}
+        
+      }
+	 recyclebinCountSpan.innerHTML = "<span class=\"Tip_Content\">未知吞UKEY数:"+ recyclebinCount+"</span>";
+
+		top.wins.showMain("oLshowBoxInfo");
+		window.operateCtrl.enableInput();
+	}
+
+	//初始化统计UKEY段信息
+	function loadSegmentInfo() {
+
+		for ( var i = 0; i < ukeyBoxInfoArr1.length; i++) {
+
+			strRecordArr1[i] = new Array();
+
+			var ukeyType = ukeyBoxInfoArr1[i][5];
+				for ( var c = 0; c < ukeyTypeValues.length; c++) {
+					if (ukeyBoxInfoArr1[i][5] == ukeyTypeValues[c]) {
+						ukeyType = ukeyTypeDescs[c];
+						break;
+					}
+				}
+			
+			strRecordArr1[i][1] = ukeyType; //ukeyType  ukeyBoxInfoArr1[i][5];
+				
+			strRecordArr1[i][0] = ukeyBoxInfoArr1[i][0]; //boxNumber
+		
+			strRecordArr1[i][2] = ukeyBoxInfoArr1[i][6]; //startsegment
+			strRecordArr1[i][3] = ukeyBoxInfoArr1[i][7]; //endsegment
+			strRecordArr1[i][4] = ukeyBoxInfoArr1[i][2]; //init
+			strRecordArr1[i][5] = ukeyBoxInfoArr1[i][3]; //cur
+			strRecordArr1[i][6] = ukeyBoxInfoArr1[i][8]; //8
+			strRecordArr1[i][7] = ukeyBoxInfoArr1[i][9]; //9
+			strRecordArr1[i][8] = ukeyBoxInfoArr1[i][10]; //10
+			strRecordArr1[i][9] = ukeyBoxInfoArr1[i][11]; //11
+			//alert(strRecordArr[j][0]);
+
+		}
+
+	}
+	//UKEY段详细信息
+	function showSegmentInfo() {
+
+		onKey_Enter = onKey_F6 = function() {
+			config();
+		}
+		onKey_F7 = function() {
+			showBoxInfo();
+		}
+
+		onKey_Cancel = onKey_F8 = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+
+		window.operateCtrl.enableInput();
+
+		var mrv = new top.MultiRecordView();
+		var strHeadingArr = new Array("UKEY箱编号", "UKEY类型", "起始UKEY段",
+				"结束UKEY段", "加UKEY张数", "剩余张数", "发UKEY已领", "吞UKEY已发", "吞UKEY已销",
+				"吞UKEY未知");
+		  mrv.strClassName_Table_Head             			= "ADMTable_Head";
+		  mrv.strClassName_Table_Record           			= "ADMTable_Record";
+		  mrv.strClassName_Table_Record2         			= "ADMTable_Record2";
+		  mrv.strClassName_Table_RecordSelected    	= "ADMTable_RecordSelected";
+		mrv.oTHead = oTHeadListSegment;
+		mrv.oTBody = oTBodyListSegment;
+		mrv.oTablePageTip = oTablePageTip;
+		mrv.oMFirstPage = oMFirstPage;
+		mrv.oMPrevPage = oMPrevPage;
+		mrv.oMNextPage = oMNextPage;
+		mrv.oMEndPage = oMEndPage;
+		mrv.strRecordArr = strRecordArr1;
+		mrv.strHeadingArr = strHeadingArr;
+		mrv.iRowsPerPage = 4;
+		onKey_F1 = function() {
+			mrv.onFirstPage();
+		}
+		onKey_F2 = function() {
+			mrv.onPrevPage();
+		}
+		onKey_F3 = function() {
+			mrv.onNextPage();
+		}
+		onKey_F4 = function() {
+			mrv.onEndPage();
+		}
+		mrv.show();
+
+		top.wins.showMain("oLListUkey");
+	}
+	//清UKEY设置
+	function config() {
+		window.operateCtrl.disableInput(true);
+		onConfigurationCompleted = function() {
+			if (typeof (top.YHAXReceiptPrint) != "undefined") {
+				printReceipt();
+			}
+			printJournal();
+			onServiceSuccessful();
+		}
+
+		onConfigurationFailed = function() {
+			//alert("ConfigurationFailed");
+			onServiceFailed("UKEY箱配置失败", "", "ConfigurationFailed");
+		}
+		onConfigurationInitiated = function() {
+			var arr = strRecordArr;
+			for (i = 0; i < ukeyBoxInfoArr0.length; i++) {
+				CUCurrentCount[i] = "0";
+				CUInitialCount[i] = "0";
+				CURetainCount[i] = "0";
+			}
+			CUCurrentCount = CUCurrentCount.toString();
+			CUInitialCount = CUInitialCount.toString();
+			CURetainCount = CURetainCount.toString();
+			//  alert(CUCurrentCount);
+			//    alert(CUInitialCount);
+			//  alert(CURetainCount);
+
+			Tip_Title.innerHTML = "<span class=\"Tip_Title\">正在进行清UKEY交易处理，请稍候</span>";
+			
+	    var ukeyTransLogArr= new Array();
+        var ukeyTransLogArr1= new Array();
+   
+     ukeyTransLogArr=ukeyTransLogStr.split('|');
+     
+     for (var i=0;i<ukeyTransLogArr.length-1;i++){
+        ukeyTransLogArr1[i]=new Array();
+     	ukeyTransLogArr1[i]=ukeyTransLogArr[i].split(',');
+     }
+     
+   
+  
+   
+     
+     
+     //UKEY号 List 去掉最后一位,去掉前边7位 取中间8位
+     // 9629992 61000004 4
+     
+      var ukeyTransLogArr2= new Array();
+       transUnknownCount=0;
+      for (var i=0 , j=0;i<ukeyTransLogArr1.length;i++){
+      		if(ukeyTransLogArr1[i][0]==null||ukeyTransLogArr1[i][0]=="null"||ukeyTransLogArr1[i][0]==""||ukeyTransLogArr1[i][0].length<15){
+      			
+      			transUnknownCount++;
+      			continue;
+      		}
+          	ukeyTransLogArr2[j]=ukeyTransLogArr1[i][0].slice(7,15);
+          	j++;
+      }
+     //初始卡段变为卡信息
+      var segments= new Array();
+     
+     for (var i=0;i<strRecordArr1.length;i++){
+      var  data =new Array();
+      data=strRecordArr1[i];
+//       	strRecordArr1[i][0] = cardBoxInfoArr1[i][0];  //boxNumber
+// 			strRecordArr1[i][1] = cardBoxInfoArr1[i][5];  //cardType desc
+// 			strRecordArr1[i][2] = cardBoxInfoArr1[i][6];  //startsegment
+// 			strRecordArr1[i][3] = cardBoxInfoArr1[i][7];  //endsegment
+// 			strRecordArr1[i][4] = cardBoxInfoArr1[i][2];  //init
+
+//  UKEY段根据ukey类型填完整 待定 暂不加
+      //  var cardbin=top.misc.getDescByNameAndValue("strUkeyTypeBin",ukeyBoxInfoArr1[i][5],"");
+           
+     
+       		for(var j=0;j<parseInt(strRecordArr1[i][4],"10");j++){
+       		    var segment=new top.StringCtrl(parseInt(strRecordArr1[i][2],"10")+j).prefixStr('0',8);//8位
+       			segments[segments.length]=segment;
+       		}
+     
+       }
+      
+    	 var strCardUnitInfo=getSurplusSegments(segments,ukeyTransLogArr2);
+    	 //alert(strCardUnitInfo);
+          top.pool.set("strCardUnitInfo",strCardUnitInfo);
+       
+        
+       //   if(transUnknownCount==0&&recyclebinCount==0){
+               if(strCardUnitInfo==""){
+             	  //无凭证上交，不发清key交易，直接清本地库和硬件计数
+             	 // alert("无凭证上交，不发清key交易，直接清本地库和硬件计数");
+             	 onAsync911102Complete();
+             }else{
+	        	//发清key交易
+	           top.trans.send911102Async();   
+	          }
+	            
+//            }else{
+//            		 alert(explogInfoArr1.length);
+//      			 alert(recyclebinCount);
+//           	   showAbnormalInfo(explogInfoArr1.length,recyclebinCount);//回收数，未知回收数
+//           	 }
+           //测试
+      		//onAsync911102Complete();
+      }
+		
+       //回收计数异常确认信息
+function showAbnormalInfo(recyclebinCount,transUnknownCount) {
+	
+onKey_Enter = onKey_F6 = function() {
+		//不发交易，直接清本地库和硬件计数
+		 onAsync911102Complete();
+	}
+	 onKey_F7 = function() {
+		 	showBoxInfo();
+	}
+
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        	top.serviceCtrl.navigate2Quit();
+     }
+ 	
+	window.operateCtrl.enableInput();
+	
+var mrv = new top.MultiRecordView();
+var strHeadingArrAb = new Array
+(
+  "回收箱计数",
+   "发UKEY失败未知计数"
+);  
+
+ var strRecordArrAb = new Array
+    (
+     recyclebinCount,
+      transUnknownCount
+   
+    );
+
+	var oTHead = document.getElementById('oTHeadAb');
+		var oTBody = document.getElementById('oTBodyAb');
+		while (oTHead.rows.length > 0)
+			oTHead.deleteRow(0);
+		while (oTBody.rows.length > 0)
+			oTBody.deleteRow(0);
+		// 	thead
+		var oRow = oTHead.insertRow();
+		for ( var j = 0; j < strHeadingArrAb.length; j++) {
+			var oCell = oRow.insertCell();
+			oCell.innerHTML = strHeadingArrAb[j];
+			oCell.align = "center";
+		}
+		//       tbody 
+	
+			var oRow = oTBody.insertRow();
+		
+				var oCell = oRow.insertCell();
+				oCell.innerHTML =recyclebinCount;
+				oCell.align = "right";
+				oCell = oRow.insertCell();
+				oCell.innerHTML =transUnknownCount;
+				oCell.align = "right";
+			
+		
+	
+	top.wins.showMain("oLShowAbnormalInfo");
+}
+    
+       onAsync911102Complete= function(){
+        //更新本地库
+       	top.trans.sendClearUKeyAsync();
+             //测试
+  		// onAsyncClearUKeyComplete();
+    }
+		onAsyncClearUKeyComplete = function() {
+
+			//  alert("555");
+
+			//生产 	
+			 	top.YHAXUkeyDispenser.SetExtendedProperty("CUCurrentCount", CUCurrentCount);
+			  top.YHAXUkeyDispenser.SetExtendedProperty("CUInitialCount", CUInitialCount);
+			   top.YHAXUkeyDispenser.SetExtendedProperty("CURetainCount", CURetainCount);
+			Tip_Title.innerHTML = "<span class=\"Tip_Title\">正在进行UKEY箱配置信息，请稍候</span>";
+			   top.ukeydispenser.CompletedUkeyUnitConfiguration();
+			//测试
+// 			onConfigurationCompleted();
+		}
+		onNotSupported = function() {
+			//alert("NotSupported");
+			onServiceFailed("UKEY箱配置失败", "", "NotSupported");
+		}
+		onDeviceError = function() {
+			//	alert("DeviceError");
+			onServiceFailed("UKEY箱配置失败", "", "DeviceError");
+		}
+		//alert("config");
+		data = strSegmentArr;
+
+		var UkeyBoxConfig = new Array();
+		for (i = 0; i < ukeyBoxInfoArr0.length; i++) {
+			UkeyBoxConfig[i] = ukeyBoxInfoArr0[i][0];
+		}
+		//   alert(UkeyBoxConfig.toString());
+
+		top.wins.showMain("oLInfoTip");
+		Tip_Title.innerHTML = "<span class=\"Tip_Title\">初始化UKEY箱配置信息，请稍候</span>";
+		//生产
+ 		  top.ukeydispenser.InitiateUkeyUnitConfiguration(UkeyBoxConfig);
+		//测试
+// 		onConfigurationInitiated();
+	}
+	//打印清UKEY凭条
+	function printReceipt() {
+		top.receiptprinter.set("***************清UKEY清单***************");
+		top.receiptprinter.set("时间:" + new top.DateTimeCtrl().getYYYYMMDD2()
+				+ "  " + new top.DateTimeCtrl().getHHmmSSWithSep());
+       top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username"));
+		top.receiptprinter.set("----------------------------------------");
+		top.receiptprinter.set("*************UKEY箱信息明细*************");
+		top.receiptprinter.set("UKEY箱ID UKEY类型 初始 已发 剩余 作废");
+		for ( var i = 0; i < strRecordArr.length; i++) {
+		
+			top.receiptprinter.set(new top.StringCtrl(strRecordArr[i][0])
+					.formatStr(' ', 7)+' '
+					+ new top.StringCtrl(strRecordArr[i][1]).formatStr(' ', 9)
+					+ new top.StringCtrl(strRecordArr[i][2]).formatStr(' ', 5)
+					+ new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 5)
+					+ new top.StringCtrl(strRecordArr[i][4]).formatStr(' ', 5)
+					+ new top.StringCtrl(strRecordArr[i][5]).formatStr(' ', 5));
+		}
+		top.receiptprinter.set("*************UKEY段信息明细*************");
+		top.receiptprinter.set("UKEY箱ID   起始段   结束段   初始   当前");
+		top.receiptprinter.set("发放已领 回收已发 回收已销 回收未知");
+
+		for ( var i = 0; i < strRecordArr1.length; i++) {
+			var data = new Array();
+
+			data = strRecordArr1[i];
+
+			var ukeyBoxInfoStr = "";
+			ukeyBoxInfoStr += new top.StringCtrl(data[0]).formatStr(' ',  2)+' ';
+			ukeyBoxInfoStr += new top.StringCtrl(data[2]).formatStr(' ', 16);
+			ukeyBoxInfoStr += new top.StringCtrl(data[3]).formatStr(' ', 9);
+			ukeyBoxInfoStr += new top.StringCtrl(data[4]).formatStr(' ', 7);
+			ukeyBoxInfoStr += new top.StringCtrl(data[5]).formatStr(' ', 7);
+			ukeyBoxInfoStr += "\r\n";
+			ukeyBoxInfoStr += new top.StringCtrl(data[6]).formatStr(' ',  7)+' ';
+			ukeyBoxInfoStr += new top.StringCtrl(data[7]).formatStr(' ', 9);
+			ukeyBoxInfoStr += new top.StringCtrl(data[8]).formatStr(' ', 9);
+			ukeyBoxInfoStr += new top.StringCtrl(data[9]).formatStr(' ', 9);
+
+			top.receiptprinter.set(ukeyBoxInfoStr);
+		}
+
+		top.receiptprinter.set("----------------------------------------");
+		top.receiptprinter.printAndEject();
+	}
+
+	//打印清UKEY流水	
+	function printJournal() {
+		top.journalPrinter.addJournal("***************清UKEY清单***************");
+		top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("时间:"
+				+ new top.DateTimeCtrl().getYYYYMMDD2() + "  "
+				+ new top.DateTimeCtrl().getHHmmSSWithSep());
+		top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+        top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+        top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));
+		top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter
+				.addJournal("----------------------------------------");
+		top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("*************UKEY箱信息明细*************");
+		top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("UKEY箱ID   UKEY类型 初始 已发 剩余 作废");
+		top.journalPrinter.addJournal("\r\n");
+		for ( var i = 0; i < strRecordArr.length; i++) {
+			top.journalPrinter
+					.addJournal(new top.StringCtrl(strRecordArr[i][0])
+							.formatStr(' ', 2)+' '
+							+ new top.StringCtrl(strRecordArr[i][1]).formatStr(
+									' ', 16)
+							+ new top.StringCtrl(strRecordArr[i][2]).formatStr(
+									' ', 5)
+							+ new top.StringCtrl(strRecordArr[i][3]).formatStr(
+									' ', 5)
+							+ new top.StringCtrl(strRecordArr[i][4]).formatStr(
+									' ', 5)
+							+ new top.StringCtrl(strRecordArr[i][5]).formatStr(
+									' ', 5));
+
+			top.journalPrinter.addJournal("\r\n");
+		}
+		top.journalPrinter.addJournal("*************UKEY段信息明细*************");
+		top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("UKEY箱ID  起始段   结束段   初始   当前");
+		top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("发放已领 回收已发 回收已销 回收未知");
+		top.journalPrinter.addJournal("\r\n");
+
+		for ( var i = 0; i < strRecordArr1.length; i++) {
+			var data = new Array();
+
+			data = strRecordArr1[i];
+
+			var ukeyBoxInfoStr = "";
+			ukeyBoxInfoStr += new top.StringCtrl(data[0]).formatStr(' ',  7)+' ';
+			ukeyBoxInfoStr += new top.StringCtrl(data[2]).formatStr(' ', 8);
+			ukeyBoxInfoStr += new top.StringCtrl(data[3]).formatStr(' ', 9);
+			ukeyBoxInfoStr += new top.StringCtrl(data[4]).formatStr(' ', 7);
+			ukeyBoxInfoStr += new top.StringCtrl(data[5]).formatStr(' ', 7);
+			ukeyBoxInfoStr += "\r\n";
+			ukeyBoxInfoStr += new top.StringCtrl(data[6]).formatStr(' ',  7)+' ';
+			ukeyBoxInfoStr += new top.StringCtrl(data[7]).formatStr(' ', 9);
+			ukeyBoxInfoStr += new top.StringCtrl(data[8]).formatStr(' ', 9);
+			ukeyBoxInfoStr += new top.StringCtrl(data[9]).formatStr(' ', 9);
+
+			top.journalPrinter.addJournal(ukeyBoxInfoStr);
+			top.journalPrinter.addJournal("\r\n");
+		}
+
+		top.journalPrinter
+				.addJournal("----------------------------------------");
+		top.journalPrinter.addJournal("\r\n");
+	}
+
+	//清UKEY成功
+	function onServiceSuccessful() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onKey_F7 = function() {
+			top.serviceCtrl.navigate2Maintenance();
+		}
+		onKey_Cancel = onKey_F8 = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		window.operateCtrl.enableInput();
+		top.wins.showMain("oLServiceSuccessTip");
+	}
+
+	//交易失败
+	function onServiceFailed(title, retcode, retdesc) {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onKey_F7 = function() {
+			top.serviceCtrl.navigate2Maintenance();
+		}
+		onKey_Enter = onKey_Cancel = onKey_F8 = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		oFailedTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+		window.operateCtrl.enableInput();
+		top.wins.showMain("oLServiceFailedTip");
+	}
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+    <div id="oLInfoTip2" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title2"></span></td>
+			</tr>
+	    </table>
+	</div>
+	   <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>	
+   </div>
+<div id="oLshowBoxInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">设备清UKEY</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="60%" height="40%">
+                        <thead class="ADMTable_Head" id="oTHead"></thead>
+                        <tbody id="oTBody"  class="ADMTable_Record"></tbody>
+                    </table>
+                             <br/>
+                   <span class="Tip_Content"  id="recyclebinCountSpan">未知吞UKEY数:</span>
+                </td>
+            </tr>
+        </table>
+   <pre class="Error_Title" id="error_Input_1">&nbsp;</pre>
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm">清UKEY提交</button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+        
+</div>
+<div id="oLListUkey" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">UKEY箱清UKEY</span>
+                    <br/> <br/>
+                                       
+                       <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTableListSegment" width="85%" height="15%">
+                        <thead class="ADMTable_Head" id="oTHeadListSegment">
+                         </thead>
+                        <tbody id="oTBodyListSegment"  class="ADMTable_Record"></tbody>
+                    </table>
+                           <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+            </tr>
+        </table>
+    </div>
+      <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+     <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+     <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+     <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+    
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm" >清UKEY</button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLInfoTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   </div>
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">清UKEY成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLShowAbnormalInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">UKEY箱回收数异常确认</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTableAb" width="60%" height="60%">
+                        <thead class="ADMTable_Head" id="oTHeadAb"></thead>
+                        <tbody id="oTBodyAb"  class="ADMTable_Record"></tbody>
+                    </table>
+                   
+                </td>
+            </tr>
+        </table>
+  
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm" >清UKEY确认</button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+        
+</div>
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

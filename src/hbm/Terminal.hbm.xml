@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.yihuacomputer.cols.entity.Terminal" table="Terminal" lazy="false">
+		<id name="id" type="int" column="id">
+			<generator class="identity" />
+		</id>
+		<property name="strTerminalNum" column="strTerminalNum" type="string" not-null="true" />
+		<property name="strParentOrgNum" column="strParentOrgNum" type="string" not-null="true" />
+		<property name="strOrgNum" column="strOrgNum" type="string" not-null="true" />
+		<property name="strNetAddr" column="strNetAddr" type="string" not-null="true" />
+		<property name="strTellerNum" column="strTellerNum" type="string" not-null="true" />
+		<property name="status" column="iStatus" type="int" not-null="true" />
+		<property name="strTerminalStyle" column="strTerminalStyle" type="string" not-null="false" />
+		<property name="strTerminalAddr" column="strTerminalAddr" type="string" />
+		<property name="strDevSn" column="strDevSn" type="string" />
+		<property name="devType" column="iDevType" type="int" />
+		<property name="devModel" column="iDevModel" type="int" />
+		<property name="devManu" column="iDevManu" type="int" />
+	    <property name="dtStart" column="dtStart" type="timestamp"/>
+	    <property name="dtEnd" column="dtEnd" type="timestamp"/>
+		<property name="strMemo" column="strMemo" type="string" />
+	</class>
+</hibernate-mapping>

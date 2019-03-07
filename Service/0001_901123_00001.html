@@ -1,0 +1,1283 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>社保卡申领</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+	var indexID = 0;
+	var indexImage =0;
+	//光标最后停留的标签id名称
+	var last = "";
+	var localUkeyFlag = false;
+	//刚进入信息录入界面的标准位。
+	var countArrNum = 0;
+	
+	function doMouseDown(){
+		top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+	}
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function() {serverEntrance();});
+
+	// 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+
+	function checkEvent() {
+		try {
+			//如果光标停留在输入框上,更新last
+			if(document.activeElement.tagName == "INPUT"){
+				last = document.activeElement.id;
+			}
+			//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+			if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+				top.wins.checkEvent(event.srcElement, last);
+			}else{
+				top.wins.checkEvent(event.srcElement, event.srcElement.id);
+			}
+		}
+		catch (e) {}
+	}
+
+	// 服务流程处理入口
+	function serverEntrance() {
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		//判断读卡器是否有卡标志位
+		top.pool.set("strCardReader", "0");
+		if (typeof(top.YHAXIDCardReader) == "undefined")
+		{
+			onServiceFailed(top.langcur.oSecSocApplyFailed,"", top.langcur.oNoIDCardReader);
+		}else if(new top.CheckCard().cardSignStatus() != "true")
+		{
+			onServiceFailed(top.langcur.oSecSocApplyFailed, "", new top.CheckCard().cardSignStatus());
+		}else{
+			acceptIDCard();
+		}
+	}
+	
+	// 允许读取身份证
+	function acceptIDCard() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onDeviceError_ID = onTimeout_ID = onCardInvalid_ID = function() {
+			onServiceFailed(top.langcur.oSecSocApplyFailed, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDReaderFailed);
+		}
+		onCardReaded = function() {
+			//退身份证
+			idCardEject();
+		}
+		onCardInserted_ID = function() {
+			top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+		}
+		onKey_Cancel = onKey_F98 = function() {
+			top.idCardReader.cancelAccept();
+			top.serviceCtrl.navigate2Quit();
+		}
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		
+		//插入身份证页面屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oIdCardTick);
+		top.idCardReader.accept();
+		
+		// 播放提示音
+		try {top.soundPlayer.playback("/Sound/PutIDCard.mp3");} catch (e) {}
+		top.wins.showMain("oLIDCardTip");
+	}
+	
+	// 提示取走二代身份证
+	function idCardEject() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onDeviceError_ID = onTimeout_ID = function() {
+			onServiceFailed(top.langcur.oSecSocApplyFailed, top.TERMRETCODE_ID_EJECTFAILED, top.langcur.oEjectIDFailed);
+		}
+		onCardTaken_ID = function()
+		{
+		}
+		//超时退出
+		onTimeout = function() {
+			top.idCardReader.IDCardEvents.clearAll();
+			//进行联网核查流程
+	        top.idCardReader.idCardTakenComplete();
+		}
+		top.serviceCtrl.startUserTimeout(onTimeout, 10, oIdCardTakeTick);
+		window.operateCtrl.enableInput();
+		top.idCardReader.eject();
+		// 播放提示音
+		try {
+			top.soundPlayer.playback("/Sound/TakeIDCard.mp3");
+		} catch (e) {
+		}
+		top.wins.showMain("oLIDCardTakeTip");
+	}
+	
+	//联网核查成功执行的函数。
+	function onNetworkVirificationSuccessful(){
+		top.serviceCtrl.stopUserTimeout();
+		//开始影像文件上传交易  
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();	
+    }
+	
+	//影像文件上传成功回调函数
+	function onImageFileSuccessful(){
+		var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+		top.pool.set("strBatchId", strBatchId);
+		if(indexID == 0)
+		{
+			//拍照
+			TakePic();
+		}
+		else if(indexID == 1)
+		{	
+			top.wins.showNewProcessingTip("卡中心核验中,请稍候...");
+			top.trans.send901121Async(); 
+		}
+		else if(indexID == 2)
+		{
+			var htmlstr = document.getElementById("userMesaageInfo").innerHTML;
+			top.pool.set("htmlstr",htmlstr);
+			top.journalPrinter.addJournalWithTime(htmlstr);
+			oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+			document.getElementById("userMesaageInfo").style.visibility="hidden";
+			top.wins.showNewProcessingTip("交易处理中，请稍候...");
+			top.trans.sendBusinessApplicationAsync();
+		}
+	}
+	
+	//拍照
+	function TakePic() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onTimeout = function() {
+			top.cameras.display("Person", "Destroy");//关闭摄像头
+			top.serviceCtrl.navigate2Quit();
+		}
+		window.operateCtrl.enableInput();
+		window.frames["ifreamPhoto"].CamerasLoad();//加载子页面摄像头相关方法
+		top.wins.showMain("oLTakePicTip");
+	}
+
+	function PhotoPrevStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Quit();//拍照返回后步骤
+		window.operateCtrl.enableInput();
+	}
+
+	function PhotoNextStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+	//有无照片标志。
+	var strImageFlag;
+	//卡中心核验成功
+	function onCardMessageSuccessful(){
+		document.getElementById("error_TXTSign").innerHTML = "";
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		var strApplyFlag = top.pool.get("applyFlag");
+		strImageFlag = top.pool.get("imageFlag");
+		if(strApplyFlag == "1"){
+			if(strImageFlag == "1"){ 
+				top.inputmethod.Close();
+				window.operateCtrl.disableInput(true);
+				top.serviceCtrl.stopUserTimeout();
+				document.getElementById("idCardName").innerHTML = top.pool.get("strIDName");//姓名
+				document.getElementById("idCardSex").innerHTML = top.pool.get("strIDSex");//性别
+				document.getElementById("idCardBirth").innerHTML = top.pool.get("strIDBorn");//出生日期
+				document.getElementById("idCardCuntry").innerHTML = "中国";//国籍
+				document.getElementById("idCardCentry").innerHTML = top.pool.get("strIDNation");//民族
+				document.getElementById("idCardType").innerHTML = "居民身份证";//证件类型
+				document.getElementById("idCardBeginTime").innerHTML = top.pool.get("strIDBegin");//证件开始日期
+				document.getElementById("idCardEndTime").innerHTML = top.pool.get("strIDEnd");//证件结束日期
+				document.getElementById("idCardNum").innerHTML = top.pool.get("strIDCardNum");//证件号码
+				if(top.pool.get("strImageNum") == "0"){
+					document.getElementById("picCome").innerHTML = "授权使用的身份证照片/电子学生证照片";//图片类型
+				}else{
+					document.getElementById("picCome").innerHTML = "现场拍照";
+				}
+				if(countArrNum == 0){
+					document.getElementById("countryMessage").innerHTML = "";
+					document.getElementById("countryMessage").disabled = true;
+				}else{
+					document.getElementById("countryMessage").innerHTML = "";
+					var countryArr = top.pool.get("countryArr");
+					var str = "";
+					var countryMessage = document.getElementById("countryMessage");
+					for(var i=0;i<countryArr.length;i++){
+						var option = document.createElement("option");
+						option.value = countryArr[i][1];
+						option.innerHTML = countryArr[i][0];
+						countryMessage.appendChild(option);
+					}
+					document.getElementById("countryMessage").disabled = false;
+					countryArr == null;
+				}
+				 
+				onKey_F99 = function(){
+					top.inputmethod.Close();
+					var obj = document.getElementById("countryMessage");
+					var index = obj.selectedIndex;
+					var telePhoneNumVal = document.getElementById("telePhoneNum").value;
+					var phoneNumVal = document.getElementById("phoneNum").value;
+					var psotCodeVal = document.getElementById("sendAddressCode").value;
+					var professional = document.getElementById("professional").value;
+					var sendAddressArea = document.getElementById("sendAddressArea").value;
+					var sendAddress = document.getElementById("sendAddress").value;
+					if(professional==null||""==professional){
+						document.getElementById("error_TXTSign").innerHTML = "职业不能为空";
+						return;
+					}
+					if(phoneNumVal==null||""==phoneNumVal){
+						document.getElementById("error_TXTSign").innerHTML = "手机号码不能为空";
+						return;
+					}else if(!new top.StringCtrl(phoneNum.value).checkPhone()){
+						document.getElementById("error_TXTSign").innerHTML = "请输入11位正确的手机号";
+						return;
+					}else if(phoneNumVal.length != 11){
+						document.getElementById("error_TXTSign").innerHTML = "手机号码位数必须为11位";
+						return;
+					} 
+					if(telePhoneNumVal==null||""==telePhoneNumVal){
+					}else if(telePhoneNumVal.length > 12 || telePhoneNumVal.length<5){
+						document.getElementById("error_TXTSign").innerHTML = "固定电话的位数必须为5-12位";
+						return;
+					} 
+					if(sendAddressArea == null || ""==sendAddressArea){
+						document.getElementById("error_TXTSign").innerHTML = "区名不能为空";
+						return;
+					}
+					if(sendAddress==null||""==sendAddress){
+						document.getElementById("error_TXTSign").innerHTML = "指定投递地址不能为空";
+						return;
+					}
+					if(psotCodeVal==null||""==psotCodeVal){
+						document.getElementById("error_TXTSign").innerHTML = "邮编不能为空";
+						return;
+					}else if(psotCodeVal.length != 6){
+						document.getElementById("error_TXTSign").innerHTML = "邮编位数必须为6位";
+						return;
+					}
+					
+					if(obj.value==null||""==obj.value){
+						document.getElementById("error_TXTSign").innerHTML = "备选社区网点不能为空";
+						return;
+					}
+					var countryMessageval = obj.options[index].value;
+					var countryMessageText = obj.options[index].text;
+					var sendAllAdress = "上海市" + ShowAddressChina(sendAddressArea) + sendAddress;
+					top.pool.set("telePhoneNumVal",telePhoneNumVal);//手机号码
+					top.pool.set("phoneNumVal",phoneNumVal);//固定电话
+					top.pool.set("psotCodeVal",psotCodeVal);//邮编
+					top.pool.set("professional",professional);//职业
+					top.pool.set("sendAddress",sendAllAdress);//地址
+					top.pool.set("sendAddressArea",sendAddressArea);//申领区县
+					top.pool.set("countryMessageval",countryMessageval);//备选网点代码
+					top.pool.set("countryMessageText",countryMessageText);//备选网点中文
+					userSign();
+				}
+				onTimeout = function() {
+					top.serviceCtrl.navigate2Quit();
+				}
+				oLSafeQuit.style.visibility = "visible";
+				oLGoHome.style.visibility = "visible";
+				window.operateCtrl.enableInput();
+				top.serviceCtrl.startUserTimeout(onTimeout, top.iPadCheckTimeout, oInputPassword1Tick);
+				top.wins.showMain("oLMessageDetailTip");
+	 	 	}else{
+	 	 		top.pool.set("strImageNum","1");
+				onSendPicSuccessful();
+			} 
+	  	}else {
+			onServiceFailed("社保卡申领失败", top.exchxmlasync.strTermRetCode, top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/remark"));
+		} 
+	}  
+	
+	//卡中心核验无照片返回函数。
+	function onWeChatSuccessful(){
+		top.pool.set("imageFlag", "1");
+		onCardMessageSuccessful();
+	}
+	
+	//用户签名
+	function userSign()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+		oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+		oSigFinger.style.visibility = "hidden";
+		oESign.style.visibility = "visible";
+		 var StartTime = top.pool.get("strIDBegin");
+		var EndTime = top.pool.get("strIDEnd");
+		top.pool.set("strIDNationChina",exchangeCentry(top.pool.get("strIDNation")));//民族代码
+		document.getElementById("idCardName1").innerHTML = top.pool.get("strIDName");//姓名
+		document.getElementById("idCardSex1").innerHTML = top.pool.get("strIDSex");//性别
+		document.getElementById("idCardBirth1").innerHTML = top.pool.get("strIDBorn");//出生日期
+		document.getElementById("idCardCuntry1").innerHTML = "中国";//国籍
+		document.getElementById("idCardCentry1").innerHTML = top.pool.get("strIDNation");//民族
+		document.getElementById("idCardType1").innerHTML = "居民身份证";//证件类型
+		document.getElementById("idCardTime").innerHTML = StartTime+"-"+EndTime;//证件有效期限
+		document.getElementById("professional1").innerHTML = exchangeWork(top.pool.get("professional"));//职业
+		document.getElementById("phoneAddress1").innerHTML = top.pool.get("sendAddress");//地址
+		document.getElementById("phoneAddressCode1").innerHTML = top.pool.get("psotCodeVal");//邮编
+		document.getElementById("sendAddress1").innerHTML = top.pool.get("sendAddress");//地址
+		document.getElementById("sendAddressCode1").innerHTML = top.pool.get("psotCodeVal");//邮编
+		document.getElementById("phoneNum1").innerHTML = top.pool.get("phoneNumVal");//手机号码
+		if(top.pool.get("telePhoneNumVal")== null || "" == top.pool.get("telePhoneNumVal")){
+			document.getElementById("telePhoneNum1").innerHTML=="&nbsp;"
+		}else{
+			document.getElementById("telePhoneNum1").innerHTML = top.pool.get("telePhoneNumVal");//固定电话
+		}
+		document.getElementById("serviceBank").innerHTML = "上海农商银行";//服务银行
+		document.getElementById("acceptOutlets").innerHTML = top.terminal.strOrgNum;
+		document.getElementById("countryMessage1").innerHTML = top.pool.get("countryMessageText");
+		document.getElementById("managers").innerHTML = top.terminal.strTerminalNum;
+		var idCardNum = top.pool.get("strIDCardNum");
+		for(var i=0;i<18;i++){
+			document.getElementById("idCardNum"+(i+1)).innerHTML = idCardNum.substring(i,i+1);
+		}
+		if(top.pool.get("strImageNum") == "0"){
+			document.getElementById("pictureType").innerHTML = "<table><tr>"
+				+"<td><img src=\"../Terminal/Style/Default/Img/unSelectIdCardPicture.png\" style=\"display:table-cell;vertical-align: middle;\"></td>"
+				+"<td>授权使用的身份证照片/电子学生证照片&nbsp;&nbsp;&nbsp;&nbsp;</td>"
+				+"<td><img src=\"../Terminal/Style/Default/Img/selectLivePicture.png\" style=\"display:table-cell;vertical-align: middle;\"></td>"
+				+"<td>现场拍照</td>"
+				+"</tr></table>";
+		}else{
+			document.getElementById("pictureType").innerHTML = "<table><tr>"
+				+"<td><img src=\"../Terminal/Style/Default/Img/selectLivePicture.png\" style=\"display:table-cell;vertical-align: middle;\"></td>"
+				+"<td>授权使用的身份证照片/电子学生证照片&nbsp;&nbsp;&nbsp;&nbsp;</td>"
+				+"<td><img src=\"../Terminal/Style/Default/Img/unSelectIdCardPicture.png\" style=\"display:table-cell;vertical-align: middle;\"></td>"
+				+"<td>现场拍照</td>"
+				+"</tr></table>";
+		} 
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(window.frames['ifreamSign'].onTimeout, top.iUserTimeout,oSigFingerTick);
+		top.wins.showMain("oLUserSignTip");
+	}
+	
+	function SignPrevStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";
+		oSigAgain.style.visibility = "hidden";
+		oSigFinger.style.visibility = "hidden";
+		oESign.style.visibility = "hidden";
+		top.wins.showNewProcessingTip("");
+		top.serviceCtrl.startFlowCtrlTimeout(onCardMessageSuccessful, 3 * 1000);
+		window.operateCtrl.enableInput();
+	}
+	
+	function SignNextStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+	
+	//业务办理单上传成功
+	function onSuccessful()
+	{
+		//身份证图片查询
+		top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+		top.pool.set("strImageType","ZNGYType");
+		top.trans.sendImageFileQueryAsync();
+	}
+	
+	//图片查询结果
+	function onImageFileQuerySuccessful()
+	{ 
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		if(indexImage == 0){
+			top.pool.set("idPhotoBackUrl",top.pool.get("back"));//反
+			top.pool.set("idPhotoUrl",top.pool.get("Front"));//正				
+			//进行查询
+			indexImage ++;
+			top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+			top.pool.set("strImageType","ZNGYType");
+			top.trans.sendImageFileQueryAsync();
+		}else if(indexImage == 1){
+			top.pool.set("scenePhotoUrl",top.pool.get("cameras"));//现场
+			top.pool.set("signaturePhotoUrl",top.pool.get("Signature"));//现场
+	        var Msg = new top.JSONCtrl();			
+			Msg.setJson("customerName", "姓名：" + top.pool.get("strIDName"));
+			Msg.setJson("customerphone", "手机号码：" + top.pool.get("phoneNumVal"));
+			Msg.setJson("customerIDnum", "证件号码：" + top.pool.get("strIDCardNum"));
+			Msg.setJson("customerAddress", "指定投递地址：" + top.pool.get("sendAddress"));
+			Msg.setJson("countryMessageText", "备选自领社区网点：" + top.pool.get("countryMessageText"));
+			Msg.setJson("psotCodeVal", "邮编：" + top.pool.get("psotCodeVal"));
+			if(top.pool.get("telePhoneNumVal")==null || "" == top.pool.get("telePhoneNumVal")){
+			}else{
+				Msg.setJson("telePhoneNumVal", "固定电话：" + top.pool.get("telePhoneNumVal"));
+			}
+			top.pool.set("strCheckContent", Msg.jsonStr);
+			top.pool.set("strbusinessCode", "901123");
+			top.pool.set("strbusinessName", "社保卡申领");		
+			//进行审核
+			top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+			top.trans.send910301Async();
+		}
+	}
+	
+	//审核超时处理
+	function onProcessingTimeout() {
+		top.serviceCtrl.navigate2Quit();	  
+	}
+	
+	//审核成功
+	function onCheckLoadingSuccessful() 
+	{
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.showNewProcessingTip("正在发送个人申领交易,请稍候...");
+		top.trans.send901123Async();
+		//onServiceSuccessful();
+	}
+	//显示成功信息
+	 function onServiceSuccessful()
+	 {
+	 	window.operateCtrl.disableInput(true);
+	 	top.serviceCtrl.stopUserTimeout();
+	 	if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	 	{
+	 		oPrintReceipt.style.visibility = "hidden";	
+	 	}else
+	 	{
+	 		onKey_F99 = onKey_Enter = function()
+	 		{
+				top.wins.showNewProcessingTip("正在打印凭条...");
+				//开始打印凭条
+				top.pool.set("transName", "社保卡申领");
+				top.pool.set("printType", "51");//选择打印的凭条类型	
+				top.pool.set("strNavigate2Url", "/Service/Idle.html");
+				top.serviceCtrl.navigate2PrintReceipt();
+	 		}
+	 	}
+	 	onKey_Cancel = onKey_F98 = function()
+	 	{
+	 		top.serviceCtrl.navigate2Quit();
+	 	}
+	   
+	 	onTimeout = function()
+	 	{
+	 		top.serviceCtrl.navigate2Quit();
+	 	}
+	 	//成功界面显示安全退出及返回Home的功能		
+	 	oLSafeQuit.style.visibility = "visible";
+	 	oLGoHome.style.visibility = "visible";
+	 	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccessTick);
+	 	Tip_Title.innerHTML = "社保卡申领交易成功";
+	 	window.operateCtrl.enableInput();
+	 	top.wins.showMain("oLServiceSuccessTip");
+	 }
+	
+	//提示微信上传社保照片
+	 function onSendPicSuccessful()
+	 {
+	 	window.operateCtrl.disableInput(true);
+	 	top.serviceCtrl.stopUserTimeout();
+ 		onKey_F99 = onKey_Enter = function()
+ 		{
+ 			top.wins.showNewProcessingTip("正在查询上传结果,请稍候...");
+ 			top.trans.send910209Async();
+ 		}
+
+ 		onTimeout = function()
+	 	{
+	 		top.serviceCtrl.navigate2Quit();
+	 	}
+	 	//成功界面显示安全退出及返回Home的功能		
+	 	oLSafeQuit.style.visibility = "visible";
+	 	oLGoHome.style.visibility = "visible";
+	 	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oSendPictureSuccessTick);
+	 	try {
+			top.soundPlayer.playback("/Sound/sendPicture.mp3");
+		} catch (e) {
+		}
+	 	Tip_SendPicSuccessful.innerHTML = "请扫码上传照片";
+	 	window.operateCtrl.enableInput();
+	 	top.wins.showMain("oLSendPicture");
+	 }
+	//显示失败信息
+	function onServiceFailed(title, retcode, retdesc)
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.journalPrinter.addJournalWithTime("onServiceFailed  title：" + title + " retcode:" + retcode + " retdesc:" + retdesc);
+		onTimeout = function()
+		{
+			top.serviceCtrl.navigate2Quit();
+		}
+		oTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+		
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+		//交易失败后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		top.wins.showMain("oLServiceFailedTip");
+	}
+	//当前页
+	var CurrPage;
+	//网点信息数组
+	var countryArr;
+	function searchCountryMessage(){
+		top.inputmethod.Close();
+		document.getElementById("sendAddressCode").focus();
+		countryArr = new Array();
+		CurrPage = 1;
+		top.pool.set("CurrPage",CurrPage);
+		var sendAddressArea = document.getElementById("sendAddressArea").value;
+		if(sendAddressArea==null || ""==sendAddressArea){
+			document.getElementById("error_TXTSign").innerHTML = "请先选择区县";
+			return;
+		}else{
+			top.pool.set("sendAddressArea",sendAddressArea);
+			top.wins.showNewProcessingTip("正在查询社区网点信息,请稍候...");
+			top.trans.send901122Async();
+		}
+	}
+	
+	//社区网点的查询
+	function onSearchBrnoCodeSuccessful(){
+		countArrNum++;
+		//当前页
+		CurrPage++;
+		top.pool.set("CurrPage",CurrPage);
+		var countryNum = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/pagerownum");
+		var totalpagenum = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/totalpagenum");
+		for(var i=1;i<=countryNum;i++){
+			if(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item["+i+"]/communityName")==null || "" ==top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item["+i+"]/communityName")){
+				continue;
+			}
+			countryArr[countryArr.length] = [top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item["+i+"]/communityName"),top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item["+i+"]/communityNo")];
+		}
+		if(totalpagenum >= CurrPage && CurrPage%2 == 0){
+			top.trans.send901122SecondAsync();
+		}else if(totalpagenum >= CurrPage && CurrPage%2 ==1){
+			top.trans.send901122Async();
+		}else{
+			top.pool.set("countryArr",countryArr);
+			onCardMessageSuccessful();
+		}
+	}
+	
+	 function releseCountryMessage(){
+		document.getElementById("countryMessage").innerHTML = "";
+		document.getElementById("countryMessage").disabled = true;
+	}
+	 
+	//将名族代码转化为中文。
+	function exchangeCentry(centry){
+		switch(centry){
+			case "汉族" :  return "01";
+			case "蒙古族" : return "02";
+			case "回族" :  return "03";
+			case "藏族" :  return "04";
+			case "维吾尔族" : return "05";
+			case "苗族" :  return "06";
+			case "彝族" :  return "07";
+			case "壮族" :  return "08";
+			case "布依族" : return "09";
+			case "朝鲜族" : return "10";
+			case "满族" :  return "11";
+			case "侗族" :  return "12";
+			case "瑶族" :  return "13";
+			case "白族" :  return "14";
+			case "土家族" : return "15";
+			case "哈尼族" : return "16";
+			case "哈萨克族" : return "17";
+			case "傣族" : return "18";
+			case "黎族" : return "19";
+			case "傈僳族" : return "20";
+			case "佤族" : return "21";
+			case "畲族" : return "22";
+			case "高山族" : return "23";
+			case "拉祜族" : return "24";
+			case "水族" : return "25";
+			case "东乡族" : return "26";
+			case "纳西族" : return "27";
+			case "景颇族" : return "28";
+			case "柯尔克孜族" : return "29";
+			case "土族" : return "30";
+			case "达翰尔族" : return "31";
+			case "仫佬族" : return "32";
+			case "羌族" : return "33";
+			case "布朗族" : return "34";
+			case "撒拉族" : return "35";
+			case "毛南族" : return "36";
+			case "仡佬族" : return "37";
+			case "锡伯族" : return "38";
+			case "阿昌族" : return "39";
+			case "普米族" : return "40";
+			case "塔吉克族" : return "41";
+			case "怒族" : return "42";
+			case "乌孜别克族" : return "43";
+			case "俄罗斯族" : return "44";
+			case "鄂温克族" : return "45";
+			case "德昂族" : return "46";
+			case "保安族" : return "47";
+			case "裕固族" : return "48";
+			case "京族" : return "49";
+			case "塔塔尔族" : return "50";
+			case "独龙族" : return "51";
+			case "鄂伦春族" : return "52";
+			case "赫哲族" : return "53";
+			case "门巴族" : return "54";
+			case "珞巴族" : return "55";
+			case "基诺族" : return "56";
+			default : return "99"
+		}
+	}
+	
+	function ShowAddressChina(sendAddressArea){
+		switch(sendAddressArea){
+			case "310101": return "黄浦区";
+			case "310104": return "徐汇区";			
+			case "310105": return "长宁区";
+			case "310106": return "静安区";
+			case "310107": return "普陀区";
+			case "310109": return "虹口区";
+			case "310110": return "杨浦区";
+			case "310112": return "闵行区";
+			case "310113": return "宝山区";
+			case "310114": return "嘉定区";
+			case "310115": return "浦东新区";
+			case "310116": return "金山区";
+			case "310117": return "松江区";
+			case "310118": return "青浦区";
+			case "310120": return "奉贤区";
+			case "310230": return "崇明区";
+			default : return "";
+		}
+	}
+	
+	//将职业的代码转化为中文名称。
+	function exchangeWork(work){
+		switch(work){
+			case "11" : return "国家公务员";
+			case "12" : return "机关工勤人员";
+			case "13" : return "事业单位管理人员";
+			case "14" : return "事业单位专业技术人员";
+			case "15" : return "事业单位工勤人员";
+			case "21" : return "企业经营管理人员";
+			case "22" : return "企业专业技术人员";
+			case "24" : return "工人";
+			case "27" : return "农民工";
+			case "31" : return "学生";
+			case "37" : return "现役军人";
+			case "51" : return "自由职业者";
+			case "54" : return "个体经营者";
+			case "70" : return "无业人员";
+			case "80" : return "退(离)休人员";
+			case "81" : return "外国人";
+			default : return "其他"
+		}
+	}
+	
+	//验证输入非法字符
+	function input_checkUse()
+	{
+		var strUseData = sendAddress.value;
+		var Uselen = sendAddress.value.length;
+		if(strUseData != null && strUseData !=""){
+			strUseData = strUseData.substring(Uselen-1, Uselen);
+			  if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+				if(!new top.StringCtrl(strUseData).trimChinese()){
+					document.getElementById("sendAddress").value = document.getElementById("sendAddress").value.substring(0, Uselen-1);
+					error_TXTSign.innerHTML = "您输入的投递地址中包含非法字符，请重新输入";
+				}
+			}
+		}
+	}
+	
+	//校验电话号码
+	function input_checkTel() {
+		var phoneNum = document.getElementById("phoneNum");
+		if(telePhoneNum.value != null && ""!=telePhoneNum.value){
+			if (!new top.StringCtrl(phoneNum.value).isAllDigit2()) {
+				error_TXTSign.innerHTML = top.langcur.oInputRightTel;
+				phoneNum.value = "";
+			}
+		}
+	}
+	
+	//校验固定电话号码
+	function input_checkTel2()
+	{
+		var telePhoneNum = document.getElementById("telePhoneNum");
+		if(telePhoneNum.value != null && ""!=telePhoneNum.value){
+			if(!new top.StringCtrl(telePhoneNum.value).isAllDigit2()){
+				 error_TXTSign.innerHTML = "请输入正确的固定电话号码";//请输入正确的联系电话
+				 telePhoneNum.value = "";
+			}
+		}
+	}
+	
+	//显示键盘
+	function ShowKeyboard() {
+	try{top.inputmethod.ShowDigit(650, 570);}catch(e){}
+		
+	}
+	
+	//显示键盘
+	function ShowKeyboardPin() {
+		try {
+			top.inputmethod.ShowWrite(650, 670);
+		} catch (e) {
+		}
+	}
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+	<div id="oLIDCardTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oIdCardTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br/><br/> 
+						<span class="Tip_Title" id="oInsertID"></span><br/>
+						<img src="../Image/ID_in.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98"><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	</div>
+	
+	<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oIdCardTakeTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br/><br/>
+						<span class="Tip_Title" id="oIDCardTake"></span><br/>
+						<img src="../Image/id_out.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+	<div id="oLTakePicTip" class="oLTakePicTip" style="visibility: hidden;">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="100%">
+				<td align="center"><iframe id="ifreamPhoto" src="../Service/TakePhoto.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			</tr>
+		</table>
+	</div>
+	
+    <div id="oLMessageDetailTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+		<span class="Tip_Tick" id="oInputPassword1Tick"></span>
+		    <br><br><br><br><br><br>
+				<table width="85%" height="60%" cellspacing="0" align="center" >
+				<tr>
+					<td colspan="4" align="center" class="Tip_Title" id="oUserInformation"><span>社保卡申领信息</span></td>
+				</tr>		
+				<tr>
+					<td colspan="1" width="25%" align="right" class="Tip_Content">
+						<p>姓名:</p>
+					</td>
+					<td colspan="1" width="25%" align="left" class="Tip_Content">
+						<span id="idCardName">&nbsp;</span>
+					</td>
+					<td colspan="1" width="25%" align="right" class="Tip_Content">
+						<p>性别:</p>	
+					</td>
+					<td colspan="1" width="25%" align="left" class="Tip_Content">
+						<span id="idCardSex">&nbsp;</span>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="1" width="25%" align="right" class="Tip_Content">
+						<p>出生日期:</p>
+					</td>
+					<td colspan="1" width="25%" align="left" class="Tip_Content">
+						<span id="idCardBirth">&nbsp;</span>
+					</td>
+					<td colspan="1" width="25%" align="right" class="Tip_Content">
+						<p>国籍:</p>
+					</td>
+					<td colspan="1" width="25%" align="left" class="Tip_Content">
+						<span id="idCardCuntry">&nbsp;</span>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>民族:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<span id="idCardCentry">&nbsp;</span>
+					</td>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>职业:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<select id="professional" class="Tip_Content" style="width: 100%; height: 50px;">
+							<option value="">--请选择--</option>
+							<option value="11">国家公务员</option>
+							<option value="12">机关工勤人员</option>
+							<option value="13">事业单位管理人员</option>
+							<option value="14">事业单位专业技术人员</option>
+							<option value="15">事业单位工勤人员</option>
+							<option value="21">企业经营管理人员</option>
+							<option value="22">企业专业技术人员</option>
+							<option value="24">工人</option>
+							<option value="27">农民工</option>
+							<option value="31">学生</option>
+							<option value="37">现役军人</option>
+							<option value="51">自由职业者</option>
+							<option value="54">个体经营者</option>
+							<option value="70">无业人员</option>
+							<option value="80">退(离)休人员</option>
+							<option value="81">外国人</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>证件类型:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<span id="idCardType">&nbsp;</span>
+					</td>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>证件号码:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<span id="idCardNum">&nbsp;</span>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>证件起始日期:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<span id="idCardBeginTime">&nbsp;</span>
+					</td>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>证件结束日期:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<span id="idCardEndTime">&nbsp;</span>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>手机号码:</p>
+					</td>
+					<td colspan="1" align="left">
+						<input type="text" name="phoneNum" id="phoneNum" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkTel()"  style="width: 100%; height: 40px; font-size: 38px;" maxlength="11" />
+					</td>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>固定电话:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<input type="text" name="telePhoneNum" id="telePhoneNum" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkTel2()" style="width: 100%; height: 40px; font-size: 38px;" maxlength="12"/>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>指定投递地址:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<span align="left" class="Tip_Content">上海市</span>
+						<select id="sendAddressArea"  class="Tip_Content" onchange="releseCountryMessage();" style="width: 66%; height:  40px;"><!--  onchange="releseCountryMessage();"-->
+							<option value="">--请选择--</option>
+							<option value="310101">黄浦区</option>
+							<option value="310104">徐汇区</option>
+							<option value="310105">长宁区</option>
+							<option value="310106">静安区</option>
+							<option value="310107">普陀区</option>
+							<option value="310109">虹口区</option>
+							<option value="310110">杨浦区</option>
+							<option value="310112">闵行区</option>
+							<option value="310113">宝山区</option>
+							<option value="310114">嘉定区</option>
+							<option value="310115">浦东新区</option>
+							<option value="310116">金山区</option>
+							<option value="310117">松江区</option>
+							<option value="310118">青浦区</option>
+							<option value="310120">奉贤区</option>
+							<option value="310230">崇明区</option>
+						</select>
+					</td>
+					<td colspan="2" align="center" class="Tip_Content">
+						<input type="text" name="sendAddress" id="sendAddress" onclick="javascript:ShowKeyboardPin();" onkeyup="input_checkUse();"  maxlength="30"  style="width: 100%;height: 40px; font-size: 35px;"/>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>邮编:</p>
+					</td>
+					<td colspan="1" align="left" class="Tip_Content">
+						<!-- <span id="sendAddressCode" style="width: 100%;"></span> -->
+						<input type="text" id="sendAddressCode" style="width: 100%; height: 40px; font-size: 38px; placeholr:请输入地址对应的邮编;" onclick="javascript:ShowKeyboard();" maxlength="6" />
+					</td>
+				</tr>
+				<tr>
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>照片来源:</p>
+					</td>
+					<td colspan="3" align="left" class="Tip_Content">
+						<span id="picCome">&nbsp;</span>
+					</td>
+				</tr>
+				<tr style="height: 12%;">
+					<td colspan="1" align="right" class="Tip_Content">
+						<p>备选自领社区网点:</p>
+					</td>
+					<td colspan="2" align="center" class="Tip_Content">
+						<select class="Tip_Content" id="countryMessage" style="width: 75%; height: 40px;" align = "left">
+						</select>
+						<button class="Menu_page" onclick="searchCountryMessage();">网点查询</button>
+					</td>
+				</tr>
+				<tr style="height: 8%;">
+					<td colspan="4" align="center"><span class="Error_Title" id="error_TXTSign">&nbsp;</span></td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU99"><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+	</div>
+	
+	<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+    	<div class="FULLSCR" >
+    		<span class="Tip_Tick" id="oSigFingerTick"></span>
+	    	<br><br><br><br>
+	    	<div style="width: 80%; height: 60%; position: absolute; left: 10%; background-color: #FFFFFF; " align="center" id="userMesaageInfo">
+			<table align="center" cellpadding="0" cellspacing="0">
+				<tr style="height: 10%;" align="center">
+					<td style="height: 10%;" align="center" nowrap>
+						<center><span style="font-size: 25px; margin-bottom: 0px; width: 80%; display: block;" align="center">上海社会保障卡申领登记表</span></center>
+					</td>
+				</tr>
+				<tr style="height: 80%;">
+					<td style="height: 80%;" nowrap>
+						<table style="width: 80%;" cellpadding="0" cellspacing="0" align="center" border="1" bordercolor="#000000">
+							<tr align="center">
+								<td colspan="2" width="10%" nowrap>姓名</td>
+								<td colspan="6" width="30%" nowrap><span id="idCardName1">&nbsp;</span></td>
+								<td colspan="3" width="20%" nowrap>性别</td>
+								<td colspan="2" width="15%" nowrap><span id="idCardSex1">&nbsp;</span></td>
+								<td colspan="3" width="15%" nowrap>出生日期</td>
+								<td colspan="4" width="10%" nowrap><span id="idCardBirth1">&nbsp;</span></td>
+							</tr>		
+							<tr align="center">
+								<td colspan="2" width="10%" height="3%" nowrap>国家/地区</td>
+								<td colspan="6" nowrap><span id="idCardCuntry1">&nbsp;</span></td>
+								<td colspan="3" nowrap>民族</td>
+								<td colspan="2" nowrap><span id="idCardCentry1">&nbsp;</span></td>
+								<td colspan="3" nowrap>职业(工种)</td>
+								<td colspan="4" nowrap><span id="professional1">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="2" width="10%" height="3%" nowrap>证件类型</td>
+								<td colspan="6" nowrap><span id="idCardType1">&nbsp;</span></td>
+								<td colspan="3" nowrap>证件有效期限</td>
+								<td colspan="9" nowrap><span id="idCardTime">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="2" width="10%" height="3%" nowrap>证件号码</td>
+								<td colspan="1" width="5%"><span id="idCardNum1">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum2">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum3">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum4">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum5">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum6">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum7">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum8">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum9">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum10">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum11">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum12">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum13">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum14">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum15">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum16">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum17">&nbsp;</span></td>
+								<td colspan="1" width="5%"><span id="idCardNum18">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="2" width="10%" height="3%" nowrap>通讯地址</td>
+								<td colspan="12"><span id="phoneAddress1">&nbsp;</span></td>
+								<td colspan="2">邮编</td>
+								<td colspan="4"><span id="phoneAddressCode1">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="2" width="10%" height="3%" nowrap>手机号码</td>
+								<td colspan="6"><span id="phoneNum1">&nbsp;</span></td>
+								<td colspan="4" nowrap>固定电话</td>
+								<td colspan="8"><span id="telePhoneNum1">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="2" width="10%" height="3%" nowrap>指定投递地址</td>
+								<td colspan="12"><span id="sendAddress1">&nbsp;</span></td>
+								<td colspan="2" nowrap>邮编</td>
+								<td colspan="4"><span id="sendAddressCode1">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="4" width="20%" height="3%" nowrap>备选自领社区受理网点</td>
+								<td colspan="16"><span id="countryMessage1">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="4" width="20%" height="3%" nowrap>服务银行</td>
+								<td colspan="16"><span id="serviceBank">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="4" width="20%" height="3%" nowrap>照片来源</td>
+								<td colspan="16" id="pictureType">
+								</td>
+							</tr>
+							<tr align="center">
+								<td colspan="4" width="20%" height="3%" nowrap>代办人姓名</td>
+								<td colspan="7"><span id="peopleName">&nbsp;</span></td>
+								<td colspan="5" nowrap>与申领人关系</td>
+								<td colspan="4"><span id="relationship">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="4" width="20%" height="3%" nowrap>联系电话</td>
+								<td colspan="7"><span id="phoneNum2">&nbsp;</span></td>
+								<td colspan="5" nowrap>证件类型</td>
+								<td colspan="4"><span id="idCardType2">&nbsp;</span></td>
+							</tr>
+							<tr align="center">
+								<td colspan="2" width="10%" height="3%" nowrap>证件号码</td>
+								<td colspan="1"><span id="idCardPeopleNum1">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum2">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum3">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum4">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum5">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum6">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum7">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum8">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum9">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum10">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum11">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum12">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum13">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum14">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum15">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum16">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum17">&nbsp;</span></td>
+								<td colspan="1"><span id="idCardPeopleNum18">&nbsp;</span></td>
+							</tr>
+							<tr>
+								<td colspan="20" width="100%" height="3%">
+									<span style="font-weight: bold;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;申领人确认以上信息无误,并郑重承诺:此卡仅限持卡人本人使用,绝不出让、转借,否则除冒用人外，持卡人也自愿接受相关法律法规和规章制度规定的处罚.</span>
+									<br>
+									<span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+									&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+									&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+									&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+									申领人(代办人)签名:</span><span></span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+									&nbsp;&nbsp;&nbsp;&nbsp;<span></span>年<span>&nbsp;&nbsp;</span>月<span>&nbsp;&nbsp;</span>日
+								
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr align="center" style="height: 10%;">
+					<td style="height: 10%;">
+						<table style="width: 80%;" cellpadding="0" cellspacing="0" align="center">
+							<tr>
+								<td align="center" style="width: 10%;">
+						  			<p style="float: left; margin: 0px; ">受理网点:</p>
+								</td>
+								<td align="left" style="width: 20%;">
+						  			<span id="acceptOutlets">&nbsp;</span>
+								</td>
+								<td align="center" style="width: 10%;">
+									<p style="float: left; margin: 0px;">经办人:</p>
+								</td>
+								<td align="left" style="width: 20%;">
+						  			<span id="managers">&nbsp;</span>
+								</td>
+								<td align="center" style="width: 10%;">
+									<p style="float: left; margin: 0px;">受理日期:</p>
+								</td>
+								<td align="center" style="width: 5%;">
+						  			<span id="acceptTimesYear">&nbsp;</span>
+								</td>
+								<td align="center" style="width: 5%;">
+									<span style="float: left;">年</span>
+								</td>
+								<td align="center" style="width: 5%;">
+						  			<span id="acceptTimesMonths">&nbsp;</span>
+								</td>
+								<td align="center" style="width: 5%;">
+									<span style="float: left;">月</span>
+								</td>
+								<td align="center" style="width: 5%;">
+						  			<span id="acceptTimesDay">&nbsp;</span>
+								</td>
+								<td align="center" style="width: 5%;">
+									<span style="float: left;">日</span>	
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div> 
+			<table  width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center" >
+				<tr>
+			        <td colspan="2" ><iframe style="position: absolute; top: 60%" id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			    </tr>
+			</table>
+		</div>
+	    <span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>  
+		<span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+	    <span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+	    <span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span>
+	    <span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+	</div>
+	
+	<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr>
+					<td align="center">
+						<table cellpadding="10" cellspacing="1" class="Table_Ob"
+							width="55%">
+							<tr class="Table_Head">
+								<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+							</tr>
+							<tr class="Table_Record">
+								<td id="oDescription"></td>
+								<td><span id="oFailedRetDesc"></span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+	<div id="oLServiceSuccessTip" class="FULLSCR"
+		style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<br />
+				<br />
+				<br />
+				<br />
+				<br />
+				<br />
+				<br />
+				<br />
+				<tr class="FirstLine">
+					<td align="center" colspan="2">
+					<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+					<span class="Tip_Title" id="Tip_Title"></span></td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	    <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" id="oPrintReceipt" name="oPrintReceipt"></button></span>
+	</div>
+
+	<div id="oLSendPicture" class="FULLSCR"
+		style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oSendPictureSuccessTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<br />
+				<br />
+				<br />
+				<br />
+				<br />
+				<br />
+				<br />
+				<br />
+				<tr class="FirstLine">
+					<td align="center" colspan="2">
+					<span class="Tip_Title" id="Tip_SendPicSuccessful"></span></td>
+				</tr>
+				<tr style="top: 30%; position: absolute;">
+					<td align="center" colspan="2">
+						<img src="../Terminal/Style/Default/Img/ssUploadTest.jpg">
+					</td>
+				</tr>
+			</table>
+		</div>
+	    <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" id="oSendPicture" name="oSendPicture">查询上传结果</button></span>
+	</div>
+
+	<div id="oLTakeInvalCardTip" class="FULLSCR" style="visibility: hidden;">
+		<span class="Tip_Tick" id="oTakeInvalCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center"><span id="oReInsertDebCard" class="Tip_Title"></span><br />
+				<br /> <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+				</td>
+			</tr>
+		</table>
+	</div>
+	
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+</body>
+</html>

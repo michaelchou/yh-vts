@@ -1,0 +1,424 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>服务菜单页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var strServiceMenuAction ="";
+var id ="";
+var prevServiceMenuId = "";//上一级菜单
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 服务流程处理入口
+function serverEntrance()
+{
+	/*黑灰名单需要退卡，为了避免在每个页面判断是退卡还是回到二级菜单，
+	  在进入二级菜单之前判断是否是黑灰名单，若是黑灰名单，跳转到退卡。
+	*/
+	var isBlackList = top.pool.get("isBlackList");
+	if("true" == isBlackList){
+		top.serviceCtrl.navigate2Quit();
+		return ;
+	}
+   top.journalPrinter.addJournalWithTime("回到二级菜单");
+   closeAll();
+   //清空批次号，分离同一客户不同交易统计。
+   top.pool.set("strBatchId", "");
+   top.pool.set("IDCardAcceptFlag","");//清空身份证插入次数累加
+   top.pool.set("strFSNFlag", "");//2018-1-9 取款标志清空-FSN冠字号组装报文使用
+   top.pool.set("isBookPrintFlag","");//是否需要联动存折补登标志
+  if (top.cardreader.isCardPresent())//卡存在，直接返回菜单页面
+  {
+      top.pool.set("CurMenuId", "");
+      new top.ServiceMenu().getMenulist();
+  }else{
+      top.cancelCardflag=false;
+      top.serviceCtrl.navigate2Quit();
+      return;
+  }
+}
+
+/*
+  根据虚模块状态等情况，过滤出不显示的服务菜单
+ */
+function filterSmiArr()
+{
+  var allMenuList = new Array();
+  var SmiArr_All = top.pool.get("MenuList");
+  
+  for (var i=0; i<SmiArr_All.length; i++)
+  {
+    var smi = SmiArr_All[i];
+	
+    allMenuList[allMenuList.length] = smi;
+  }
+  return allMenuList;
+}
+
+/*
+  返回到父级菜单
+ */
+function return2ParentMenu()
+{
+  if(prevServiceMenuId == top.pool.get("CurMenuId")){
+     top.pool.set("CurMenuId", "");
+  }else{
+     top.pool.set("CurMenuId", prevServiceMenuId);
+  }
+  //现金辅柜灯
+  try{top.cashguidelights.setENVDepositoryLight("OFF");}catch(e){} //迎宾灯
+  try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //出钞口灯&拒钞口灯
+  try{top.cashguidelights.setCashAcceptorLight("OFF");}catch(e){} //进钞口灯
+  try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //硬币出口灯
+  try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //硬币内侧照明灯
+  showMenu();
+}
+
+/*
+  根据当前位置，显示菜单
+ */
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  // 菜单异常，直接退出
+  var menuList = filterSmiArr();
+  if (menuList == null || menuList.length == 0)
+  {
+    top.serviceCtrl.navigate2Quit();
+    return;
+  }
+  // 获取当前要显示的菜单层级
+  var strServiceMenuId = top.pool.get("CurMenuId");
+  if (strServiceMenuId == null)
+  {
+    strServiceMenuId = "";
+    top.pool.set("CurMenuId", strServiceMenuId);
+  }
+  // 置所有菜单隐藏，再分别根据需要显示
+  oLMenu1.style.visibility = "hidden";
+  oLMenu2.style.visibility = "hidden";
+  oLMenu3.style.visibility = "hidden";
+  oLMenu4.style.visibility = "hidden";
+  oLMenu5.style.visibility = "hidden";
+  oLMenu6.style.visibility = "hidden";
+  oLMenu7.style.visibility = "hidden";
+  oLMenu8.style.visibility = "hidden";
+  oLMenu9.style.visibility = "hidden";
+  oLMenu10.style.visibility = "hidden";
+  oLMenu11.style.visibility = "hidden";
+  oLMenu12.style.visibility = "hidden";
+  oLMenu98.style.visibility = "hidden";
+  
+  // 决定返回键是否显示
+  if (strServiceMenuId != "")
+  {
+    oLMenu98.style.visibility = "";
+    onKey_F98 = return2ParentMenu;
+  }
+  else
+  {
+    oLMenu98.style.visibility = "hidden";
+  }
+  prevServiceMenuId = top.pool.get("CurServiceMenuId");
+  // 分析服务菜单数组，进行界面和流程构造
+  for (var i=0; i<menuList.length; i++)
+  {
+    if ( (menuList[i].id == menuList[i].strServiceMenuId && strServiceMenuId.length == 0) ||
+      (menuList[i].id != menuList[i].strServiceMenuId && menuList[i].strServiceMenuId ==strServiceMenuId ) )
+	{
+      // 服务动作对应的值大于4的就是服务，否则是菜单
+      var js = "top.journalPrinter.addJournalWithTime('客户选择 " + menuList[i].strServiceMenuName + "');\n";
+      if (menuList[i].strServiceMenuAction.length > 4){
+        js += "startService('" + menuList[i].strServiceMenuAction + "', '" + menuList[i].strServiceMenuId + "');";
+	  }
+      else{
+           js += 'top.pool.set("CurServiceMenuId", "' + menuList[i].strServiceMenuId +'");\n' +'top.pool.set("CurMenuId", "' + menuList[i].id +'");\n' + 'showMenu();';
+	  }
+      // 根据不同的位置，决定该服务或菜单的响应方式
+      if (1 == menuList[i].btnPos)
+      {
+           onKey_F1=new Function(js);
+           var strClassName = menuList[i].strServiceMenuNameEn;
+           oMMenu1.className = ""+strClassName; 	
+           oLMenu1.style.visibility = "";
+      }
+      else if (2 == menuList[i].btnPos)
+      {
+           onKey_F2 = new Function(js);
+           var strClassName = menuList[i].strServiceMenuNameEn;
+           oMMenu2.className = ""+strClassName; 	
+           oLMenu2.style.visibility = "";
+      }
+      else if (3 == menuList[i].btnPos)
+      {
+	  	   
+		   onKey_F3 = new Function(js);
+		   var strClassName = menuList[i].strServiceMenuNameEn;
+           oMMenu3.className = ""+strClassName; 
+           oLMenu3.style.visibility = "";
+		  
+      }
+	  else if (4 == menuList[i].btnPos)
+      {
+			if(top.pool.get("strICFlag") == "0" && top.pool.get("strCardType") == "3"){//如果是信用卡，而且还是磁条卡的时候
+		   }else{
+			   onKey_F4 = new Function(js);
+			   var strClassName = menuList[i].strServiceMenuNameEn;
+			   oMMenu4.className = ""+strClassName;
+			   oLMenu4.style.visibility = "";
+		  }
+      }
+      else if (5 == menuList[i].btnPos)
+      {
+          onKey_F5 = new Function(js);
+		  var strClassName = menuList[i].strServiceMenuNameEn;
+          oMMenu5.className = ""+strClassName;
+          oLMenu5.style.visibility = "";
+      }
+      else if (6 == menuList[i].btnPos)
+      {
+          onKey_F6 = new Function(js);
+		  var strClassName = menuList[i].strServiceMenuNameEn;
+          oMMenu6.className = ""+strClassName;
+          oLMenu6.style.visibility = "";
+      }
+	  else if (7 == menuList[i].btnPos)
+      {
+		  onKey_F7 = new Function(js);
+		  var strClassName = menuList[i].strServiceMenuNameEn;
+          oMMenu7.className = ""+strClassName;
+          oLMenu7.style.visibility = "";
+      }
+	  else if (8 == menuList[i].btnPos)
+      {
+	  	  
+		  onKey_F8 = new Function(js);
+		  var strClassName = menuList[i].strServiceMenuNameEn;
+          oMMenu8.className = ""+strClassName;
+          oLMenu8.style.visibility = "";
+		  
+      }
+	  else if (9 == menuList[i].btnPos)
+      {
+		   onKey_F9 = new Function(js);
+		   var strClassName = menuList[i].strServiceMenuNameEn;
+		   oMMenu9.className = ""+strClassName;
+	       oLMenu9.style.visibility = "";
+      }
+	  else if (10 == menuList[i].btnPos)
+      {
+	  	if(top.pool.get("strICFlag") == "0" && top.pool.get("strCardType") == "1"){//如果是借记卡，而且还是磁条卡的时候
+	  	}else{	
+			onKey_F10 = new Function(js);
+			var strClassName = menuList[i].strServiceMenuNameEn;
+			oMMenu10.className = ""+strClassName;
+			oLMenu10.style.visibility = "";
+	  	}
+      }
+	  else if (11 == menuList[i].btnPos)
+      {	  
+          onKey_F11 = new Function(js);
+		  var strClassName = menuList[i].strServiceMenuNameEn;
+          oMMenu11.className = ""+strClassName;
+          oLMenu11.style.visibility = "";
+      }
+	  else if (12 == menuList[i].btnPos)
+      { 
+          onKey_F12 = new Function(js);
+  		  var strClassName = menuList[i].strServiceMenuNameEn;
+          oMMenu12.className = ""+strClassName;
+          oLMenu12.style.visibility = "";
+       }
+    } 
+  }
+  onTimeout = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oMenuTick);
+  top.wins.showMain("oLMenu");
+}
+
+/*开始运行服务*/
+function startService(strServiceMenuAction, id)
+{
+	onPrintJudge(strServiceMenuAction, id);
+}
+
+/*不能打印凭条时友情提醒*/
+function onPrintJudge(strServiceAction, Id)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onKey_F99 = onKey_Enter = function()
+  {
+	  top.serviceCtrl.navigate2("/Service/" + strServiceAction + ".html");
+  }
+  onKey_F98 = onKey_Cancel = function()
+  {
+  	  top.serviceCtrl.navigate2SecondMenu();
+  }
+  if (top.receiptprinter.ReceiptPrinterStatus()!="true")
+  {
+	 oImpNotice1.innerHTML = top.langcur.oReceiptOffLine; 
+  }
+  else
+  {
+      onKey_F99();
+	  return;	  
+  }
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oPrintTick);
+  top.wins.showMain("oLPrint");
+}
+
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onKey_Enter = onKey_Cancel = onKey_F98 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+
+  oServiceMenuFailed.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iFailedTimeout,oSerFailTick);
+  top.wins.showMain("oLServiceFailedTip");
+}
+function onServiceMenuFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onKey_Enter = onKey_Cancel = onKey_F98 = function()
+  {
+     return2ParentMenu();
+  }
+
+  oServiceMenuFailed.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iFailedTimeout,oSerFailTick);
+  top.wins.showMain("oLServiceFailedTip");
+}
+
+//关闭所有
+function closeAll()
+{
+	top.inputmethod.Close();//隐藏虚拟键盘
+	//关闭签名面板
+	if(top.pool.get("SigCloseFlag") !="" && top.pool.get("SigCloseFlag") != null && top.pool.get("SigCloseFlag")=="1"){
+		//关闭签名面板
+		try {
+		        top.journalPrinter.addJournalWithTime("尝试关闭电子签名板 二级菜单");
+				top.sigCameras.display("Extra","Destroy");//关闭电子签名面板
+				top.sigCameras.sigCamerasEvents.clearAll();
+			} catch (e){}
+	}
+    //关闭摄像头
+	if(top.pool.get("PhotoCloseFlag") !="" && top.pool.get("PhotoCloseFlag") != null && top.pool.get("PhotoCloseFlag")=="1"){
+		//关闭摄像头
+		try {
+		        top.journalPrinter.addJournalWithTime("尝试关闭摄像头预览窗口 二级菜单");
+				top.cameras.display("Person","Destroy");
+				top.cameras.camerasEvents.clearAll();
+			} catch (e){}
+	}
+	
+}
+
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button onclick="javascript:onKey_F1();" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button onclick="javascript:onKey_F2();" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button onclick="javascript:onKey_F3();" name="oMMenu3" id="oMMenu3"></button></span>
+  <span class="MENU4" id="oLMenu4"><button onclick="javascript:onKey_F4();" name="oMMenu4" id="oMMenu4"></button></span>
+  <span class="MENU5" id="oLMenu5"><button onclick="javascript:onKey_F5();" name="oMMenu5" id="oMMenu5"></button></span>
+  <span class="MENU6" id="oLMenu6"><button onclick="javascript:onKey_F6();" name="oMMenu6" id="oMMenu6"></button></span>
+  <span class="MENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" name="oMMenu7" id="oMMenu7"></button></span>
+  <span class="MENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" name="oMMenu8" id="oMMenu8"></button></span>
+  <span class="MENU9" id="oLMenu9"><button onclick="javascript:onKey_F9();" name="oMMenu9" id="oMMenu9"></button></span>
+  <span class="MENU10" id="oLMenu10"><button onclick="javascript:onKey_F10();" name="oMMenu10" id="oMMenu10"></button></span>
+  <span class="MENU11" id="oLMenu11"><button onclick="javascript:onKey_F11();" name="oMMenu11" id="oMMenu11"></button></span>
+  <span class="MENU12" id="oLMenu12"><button onclick="javascript:onKey_F12();" name="oMMenu12" id="oMMenu12"></button></span>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);"  class="return" name="return"></button></span>
+  
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oSerFailTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oServiceMenuFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oFailedRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+   <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPrint" class="FULLSCR" style="visibility: hidden;">
+	<div style="position: absolute; top: 2%; left: 20%; width: 70%; height: 78%;";>
+		<span class="Tip_Tick" id="oPrintTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		  <tr>
+            <td align="center">
+				<table cellpadding="10" cellspacing="1" class="Table_Ob" width="100%">
+					<tr><td><span class="Tip_Alarm" id="oImpNotice1"></span>
+					</td></tr>
+				</table>
+			 </td>
+		   </tr>
+		 </table>
+	  </div>
+      <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+      <span class="MENU99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+</div>
+
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+</body>
+</html>

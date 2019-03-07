@@ -1,0 +1,1046 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>设备加钞</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var strAddCashType;			//加钞类型，1-按金额加、2-按张数加
+var strUnit;				//计量单位  按金额加钞则为"元"   按张数加钞则为"张"
+var AddCashAmountCounts;	//加钞总金额
+
+function doMouseDown() {
+	//top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+/*
+ * 界面显示小键盘
+ */
+function ShowKeyboard(){
+	try{top.inputmethod.ShowDigit(10,680);}catch(e){}
+}
+// 禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick", checkEvent);
+document.attachEvent("ondblclick", checkEvent);
+document.attachEvent("onfocusin", checkEvent);
+document.attachEvent("onkeypress", checkEvent);
+//光标最后停留的标签id名称
+var last = "";
+function checkEvent() {
+	  try
+	  {
+		//如果光标停留在输入框上,更新last
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id != "" && event.srcElement.type == "text" && !event.srcElement.disabled){
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	  }catch(e){}
+}
+
+//取款模块事件响应对象
+var CashDispenserEnr = new top.EventHandling(top.YHAXCashDispenser);
+//存款模块事件响应对象
+var CashAcceptorEnr = new top.EventHandling(top.YHAXCashAcceptor);
+//硬币模块事件响应对象
+var CashDispenserFenEnr = new top.EventHandling(top.YHAXCashDispenserFen);
+
+// 服务流程处理入口
+function serverEntrance() {
+	if(!checkDevStatus()){
+		if(ResetCounts<2){
+			ResetCounts++;
+			Reset(false,0);	//加钞前模块故障复位
+		}else{
+			onHardwareError();
+		}
+		//onHardwareError();
+	}else{
+		//查询清钞状态
+		top.wins.showProcessingTip("正在查询清机状态,请稍候...");
+		top.pool.set("strTransType","addCash");
+		top.trans.sendCashSettleCycLogStatusAsync();
+		//onAsyncCashSettleCycLogStatusComplete();
+	}
+}
+
+var ResetCounts = 0;	//故障自动复位次数
+var ErrInfoDesc = "";	//异常信息说明
+var devName = "";		//需要复位的模块名称
+/*
+ 检测硬件状态，正常则返回true（支持加钞），否者返回false（不支持加钞）
+ */
+function checkDevStatus(){
+	var CDMDevStatus;	//取款模块总状态
+	var CIMDevStatus;	//存款模块总状态
+	var CoinDevStatus;	//硬币模块总状态
+	var transportStatus;	//传输通道状态
+	var inputOutputStatus;	//钞口状态
+	var lastAcceptStatus;	//存款周期
+	var result = true;
+	ErrInfoDesc = "";
+	devName = "";
+	if(typeof(top.YHAXCashAcceptor) != "undefined"){
+		//获取存款模块状态
+		CIMDevStatus=top.YHAXCashAcceptor.StDeviceStatus;
+		inputOutputStatus=top.YHAXCashAcceptor.StInputOutputStatus;
+		transportStatus=top.YHAXCashAcceptor.StTransportStatus;
+		lastAcceptStatus=top.YHAXCashAcceptor.LastAcceptStatus;
+		top.journalPrinter.addJournalWithTime("存款模块状态：" + CIMDevStatus);
+		devName = "CashAcceptor";
+		if(lastAcceptStatus != "ACCEPTED" && lastAcceptStatus != "UNKNOWN") {
+			ErrInfoDesc = "存款周期异常，暂不支持本操作";
+			return false;		//存款周期异常，优先返回
+	  	}
+		if(transportStatus=="OCCUPIDE"){
+			ErrInfoDesc="钞票传输通道有介质,请先取走介质";
+			return false;
+		}
+		if(inputOutputStatus=="NOTEMPTY"){
+			ErrInfoDesc="钞口有介质,请先取走介质";
+			return false;
+		}
+		if(CIMDevStatus != "HEALTHY"){
+			ErrInfoDesc = "存款模块状态异常,暂不支持本操作";
+			return false;
+		}
+	}
+	
+	if(typeof(top.YHAXCashDispenser) != "undefined"){
+		//获取取款模块状态
+		CDMDevStatus=top.YHAXCashDispenser.StDeviceStatus;
+		transportStatus=top.YHAXCashDispenser.StTransportStatus;
+		inputOutputStatus=top.YHAXCashDispenser.StInputOutputStatus;
+		top.journalPrinter.addJournalWithTime("取款款模块状态：" + CDMDevStatus);
+		devName = "CashDispenser";
+		if(transportStatus=="OCCUPIDE"){
+			ErrInfoDesc="钞票传输通道有介质,请先取走介质";
+			return false;
+		}
+		if(inputOutputStatus=="NOTEMPTY"){
+			ErrInfoDesc="钞口有介质,请先取走介质";
+			return false;
+		}
+		if(CDMDevStatus != "HEALTHY"){
+			ErrInfoDesc = "取款模块状态异常,暂不支持本操作";
+			return false;
+		}
+	}
+	
+	if(typeof(top.YHAXCashDispenserFen) != "undefined"){
+		//获取硬币模块状态
+		CoinDevStatus=top.YHAXCashDispenserFen.StDeviceStatus;
+		top.journalPrinter.addJournalWithTime("硬币模块状态：" + CoinDevStatus);
+		if(CoinDevStatus != "HEALTHY"){
+			ErrInfoDesc = "硬币模块状态异常，暂不支持本操作";
+			devName = "CashDispenserFen";
+			return false;
+		}
+	}
+
+	return result;
+}
+/*硬件模块故障*/
+function onHardwareError() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+	 	top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	if(ErrInfoDesc.length <1){
+		ErrInfoDesc = "现金模块状态异常，暂不支持本操作";
+	}
+	
+	top.journalPrinter.addJournalWithTime(ErrInfoDesc);
+	window.operateCtrl.enableInput();
+	Tip_Title2.innerHTML  = "<span class=\"Tip_Title\">" + ErrInfoDesc + "</span>";
+	top.wins.showMain("oLInfoTip2");	  
+}
+/*
+ * 复位故障模块
+ * 参数：isShowRes:true 显示复位结果    false 不显示复位结果
+ *		index:0 加钞前复位		1 加钞后复位
+ */
+ function Reset(isShowRes,index){
+	top.wins.showProcessingTip("正在复位,请稍候...");
+	var devEnr = null;
+	if("CashDispenser" == devName){
+		devEnr = CashDispenserEnr;
+	}else if("CashAcceptor" == devName){
+		devEnr = CashAcceptorEnr;
+	}else if("CashDispenserFen" == devName){
+		devEnr = CashDispenserFenEnr;
+	}
+	var result = "";
+	onResetComplete = function(){
+		ResetCounts = 0;	//复位成功，复位次数初始化
+		devEnr.clearAll();
+		if(isShowRes){
+			result = "复位成功";
+			showReset(result)
+		}else{
+			if(index == 0){
+				serverEntrance();	//加钞前
+			}else if(index == 1){
+				onConfigurationCompleted();		//已完成加钞
+			}
+		}
+	}
+	onDeviceError = function(){
+		devEnr.clearAll();
+		if(isShowRes){
+			result = "复位失败";
+			showReset(result)
+		}else{
+			if(index == 0){
+				serverEntrance();	//加钞前
+			}else if(index == 1){
+				onConfigurationCompleted();		//已完成加钞
+			}
+		}
+	}
+	if(devName.length > 0){
+		devEnr.clearAll();
+		devEnr.appendEvent("ResetComplete", onResetComplete);
+		devEnr.appendEvent("DeviceError", onDeviceError);
+		devEnr.appendEvent("FatalError", onDeviceError);
+		if("CashDispenser" == devName){
+			top.journalPrinter.addJournalWithTime("取款模块开始复位");
+			top.YHAXCashDispenser.Reset("RETRACT", 0);
+		}else if("CashAcceptor" == devName){
+			top.journalPrinter.addJournalWithTime("存款模块开始复位");
+			top.YHAXCashAcceptor.Reset("RETRACT", 0);
+		}else if("CashDispenserFen" == devName){
+			top.journalPrinter.addJournalWithTime("硬币模块开始复位");
+			top.YHAXCashDispenserFen.Reset("RETRACT", 0);
+		}
+	}else{
+		if(isShowRes){
+			result = "复位失败";
+			showReset(result)
+		}else{
+			if(index == 0){
+				serverEntrance();	//加钞后
+			}else if(index == 1){
+				onConfigurationCompleted();		//已完成加钞
+			}
+		}
+	}
+}
+var iTime = null;		//初始化定时器
+/*
+ * 显示复位结果
+ */
+function showReset(showText){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+
+	top.journalPrinter.addJournalWithTime(devName + "  " + showText);
+	window.operateCtrl.enableInput();
+	Tip_Title1.innerHTML  = "<span class=\"Tip_Title\">" + showText + "</span>";
+	top.wins.showMain("oLInfoTip1");
+	iTime = setTimeout(function(){try{serverEntrance();}catch(e){}}, 3000);
+	
+}
+//钞箱信息
+var strRecordArr = new Array();
+//输入金额或张数
+var iCountArr = new Array();
+//钞箱最大张数
+var iMaxThresholdArr = new Array();
+//钞箱Number
+var iNumberArr = new Array();
+//硬币钞箱Number
+var iNumberArrFen = new Array();
+var cashBoxInfoArr= new Array();
+var cashBoxInfoFenArr= new Array();
+var AddCashType = top.pool.get("AddCashType");
+if("1" == AddCashType){
+	strAddCashType = "金额";
+	strUnit = "元";
+}else{
+	strAddCashType = "数量";
+	strUnit = "张";
+}
+var strHeadingArr = new Array(
+		" 钞箱ID ",
+		"钞箱类型",
+	    "钞箱状态",
+		"钞箱面值",
+		"初始数量",
+		"结存数量",
+		"输入" + strAddCashType
+	);
+	
+/*查询清钞状态服务器响应回调函数*/
+onAsyncCashSettleCycLogStatusComplete = function(){
+	top.serviceCtrl.stopUserTimeout();
+	loadCashBoxInfo();
+	showCashBoxInfo();
+}
+
+/*初始化一次性读取钞箱信息*/
+function loadCashBoxInfo()
+{
+	var logicalunits = top.YHAXCashDispenser.LogicalUnits;
+	for(var i=0; i<logicalunits.Count;i++){
+		var logicalunit = logicalunits.Item(i);
+		//if("BILLCASSETTE" == logicalunit.Type || "RECYCLINGCASSETTE" == logicalunit.Type){
+			//循环箱
+			cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
+					logicalunit.Id,
+					converType(logicalunit.Type),
+					converStatus(logicalunit.Status),
+					logicalunit.NoteValue + "元",
+					logicalunit.InitialCount,
+					logicalunit.CurrentCount,
+					logicalunit.MaxThreshold,
+					logicalunit.Number 
+				);
+		//}
+			top.journalPrinter.addJournalWithTime(
+					"LogicalUnits: Number=" + logicalunit.Number 
+					+ "  id=" + logicalunit.id
+					+ "  Type=" + converType(logicalunit.Type)
+					+ "  Status=" + converStatus(logicalunit.Status)
+					+ "  NoteValue=" + logicalunit.NoteValue
+					+ "  InitialCount=" + logicalunit.InitialCount
+					+ "  CurrentCount=" + logicalunit.CurrentCount
+					+ "  MaxThreshold=" + logicalunit.MaxThreshold
+					);
+	}
+	var logicalunitsFen = top.YHAXCashDispenserFen.LogicalUnits;
+	for(var j=0; j<logicalunitsFen.Count;j++){
+		var logicalunitFen = logicalunitsFen.Item(j);
+		//if("COINCYLINDER" == logicalunitFen.Type || "COINDISPENSER" == logicalunitFen.Type){
+			//硬币箱
+			cashBoxInfoFenArr[cashBoxInfoFenArr.length] = new Array(
+					logicalunitFen.Id,
+					converType(logicalunitFen.Type),
+					converStatus(logicalunitFen.Status),
+					"1" + converNoteValue(logicalunitFen.NoteValue),
+					logicalunitFen.InitialCount,
+					logicalunitFen.CurrentCount, 
+					logicalunitFen.MaxThreshold,
+					logicalunitFen.Number
+				);
+		//}
+			top.journalPrinter.addJournalWithTime(
+					"LogicalUnitsFen: Number=" + logicalunitFen.Number 
+					+ "  id=" + logicalunitFen.id
+					+ "  Type=" + converType(logicalunitFen.Type)
+					+ "  Status=" + converStatus(logicalunitFen.Status)
+					+ "  NoteValue=" + logicalunitFen.NoteValue
+					+ "  InitialCount=" + logicalunitFen.InitialCount
+					+ "  CurrentCount=" + logicalunitFen.CurrentCount
+					+ "  MaxThreshold=" + logicalunitFen.MaxThreshold
+					);
+	}
+	if(cashBoxInfoArr.length < 1 || cashBoxInfoFenArr.length < 1){
+		onServiceFailed("交易失败", "", "获取钞箱信息失败");
+	}
+	var len = cashBoxInfoArr.length;
+	for(var i=0;i<len;i++){
+		strRecordArr[strRecordArr.length] = new Array(
+				new top.StringCtrl(cashBoxInfoArr[i][0]).trim(),  		//钞箱ID
+				new top.StringCtrl(cashBoxInfoArr[i][1]).trim(),		//钞箱类型
+				new top.StringCtrl(cashBoxInfoArr[i][2]).trim(),		//钞箱状态
+				new top.StringCtrl(cashBoxInfoArr[i][3]).trim(),		//钞箱面值
+				new top.StringCtrl(cashBoxInfoArr[i][4]).trim(),		//初始张数
+				new top.StringCtrl(cashBoxInfoArr[i][5]).trim()			//结存张数
+	    	);
+	    iMaxThresholdArr[i] = cashBoxInfoArr[i][6];		//钞箱最大张数
+	    iNumberArr[i] = cashBoxInfoArr[i][7];		//钞箱Number
+	    iCountArr[i] = 0;
+	}
+	
+	var k = strRecordArr.length;
+	var lenFen = cashBoxInfoFenArr.length;
+	for(var j=0;j<lenFen;j++){
+		strRecordArr[strRecordArr.length] = new Array(
+				new top.StringCtrl(cashBoxInfoFenArr[j][0]).trim(),  	//钞箱ID
+				new top.StringCtrl(cashBoxInfoFenArr[j][1]).trim(),		//钞箱类型
+				new top.StringCtrl(cashBoxInfoFenArr[j][2]).trim(),		//钞箱状态
+				new top.StringCtrl(cashBoxInfoFenArr[j][3]).trim(),		//钞箱面值
+				new top.StringCtrl(cashBoxInfoFenArr[j][4]).trim(),		//初始张数
+				new top.StringCtrl(cashBoxInfoFenArr[j][5]).trim()		//结存张数
+			);
+	    iMaxThresholdArr[k] = cashBoxInfoFenArr[j][6];		//钞箱最大张数
+	    iNumberArrFen[j] = cashBoxInfoFenArr[j][7];		//钞箱Number
+	    iCountArr[k] = 0;
+	    k++;
+	}
+}
+
+/*显示钞箱信息，等待输入加钞信息*/
+function showCashBoxInfo() {
+	window.operateCtrl.disableInput(true);
+	onKey_Cancel = onKey_F7 = function() {
+		//关闭小键盘
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Enter = onKey_F6 = function() {
+		//关闭小键盘
+		try{top.inputmethod.Close();}catch(e){}
+		Confirm();
+	}
+	onKey_F8 = function()
+	{
+		//关闭小键盘
+		try{top.inputmethod.Close();}catch(e){}
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	// 清空当前显示的内容
+	var oTHead=document.getElementById('oTHead');
+	var oTBody=document.getElementById('oTBody');
+    while (oTHead.rows.length > 0)
+     oTHead.deleteRow(0);
+    while (oTBody.rows.length > 0)
+     oTBody.deleteRow(0);
+	// 	thead
+	var oRow = oTHead.insertRow();
+	for (var j=0; j<strHeadingArr.length; j++){
+       var oCell = oRow.insertCell();
+       oCell.innerHTML =strHeadingArr[j];
+       oCell.align = "center";
+    }
+
+	//tbody 
+    for (var i=0; i<strRecordArr.length; i++){
+		var oRow =oTBody.insertRow(); 
+    	for (var j=0; j<strRecordArr[i].length; j++){
+		  var oCell = oRow.insertCell();
+		  oCell.innerHTML =strRecordArr[i][j];
+		  oCell.align="center";
+	    }
+    	if("1" != AddCashType){
+			if("硬币箱" == strRecordArr[i][1])
+				strUnit = "枚";
+			else
+				strUnit = "张";
+		}
+		
+    	var oCell = oRow.insertCell();
+    	if(("取款箱" == strRecordArr[i][1] || "循环箱" == strRecordArr[i][1] || "硬币箱" == strRecordArr[i][1])
+    			&& ("无效" != strRecordArr[i][2] && "缺失" != strRecordArr[i][2] && "未知" != strRecordArr[i][2])){
+    		oCell.innerHTML ="<input class=\"select_AddCash\"  type=\"text\"  id=\"input_count_" + i +"\" maxlength=\"9\"  value=" + iCountArr[i] + "  onclick=\"getclick(" + i +")\"  onblur=\"getblur(" + i +")\">" + strUnit + "</input>";
+    		//oCell.innerHTML ="<input class=\"select_AddCash\"  type=\"text\"  id=\"input_count_" + i +"\" maxlength=\"9\"  value=" + iCountArr[i] + " >" + strUnit + "</input>";
+    	}else{
+    		oCell.innerHTML ="<input class=\"select_AddCash\"  type=\"text\"  disabled=\"true\"  id=\"input_count_" + i +"\" maxlength=\"9\"  value=" + iCountArr[i] + " >" + strUnit + "</input>";
+    	}
+		oCell.align="center";  
+    } 
+	top.wins.showMain("oLShowCashBoxInfo");
+	window.operateCtrl.enableInput();
+}
+
+
+/*获取点击事件*/
+function getclick(id){
+	try{
+		oLMenu6.innerHTML ="<button onmousedown=\"doMouseDown();setTimeout(onKey_F6,100);\" class=\"ADMConfirm\" name=\"oConfirm\" id=\"oConfirm\"></button>";
+		document.getElementById("input_count_" + id).value = "";
+		ShowKeyboard();		//点击输入框之后显示小键盘
+		verifyInfo_Title.innerHTML = "";
+		amountCounts_Title.innerHTML = "";
+	}catch(e){}
+}
+/*丢失焦点事件*/
+function getblur(id){
+	try{
+		var strValue = document.getElementById("input_count_" + id).value
+		if(strValue.length ==0){
+			document.getElementById("input_count_" + id).value = 0;
+		}
+	}catch(e){}
+}
+/*检验输入值*/
+function checkVal(id){
+	var CashBoxType = strRecordArr[id][1];	//钞箱类型
+	//其他钞箱不支持输入，这里不做判断
+	if("取款箱" != strRecordArr[id][1] && "循环箱" != strRecordArr[id][1] && "硬币箱" != strRecordArr[id][1]){
+		return true;
+	}
+	var CashBoxValue = getCashBoxValueToYuan(id);	//钞箱面值
+	try{
+		var input_id = document.getElementById("input_count_" + id);
+		var strValue = input_id.value;
+	}catch(e){}
+	if(strValue.length < 1){
+		strValue = 0;
+	}
+	error_input.innerHTML = "";
+	if("1" == AddCashType){
+		//按金额加钞校验格式
+		if (!new top.StringCtrl(strValue).isValidAmount()) {
+			error_input.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_id.value = "";
+			input_id.focus();
+			return false;
+		}else if((input_id.value).indexOf("00") ==0){
+			error_input.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_id.value = "";
+			input_id.focus();
+			return false;
+		}else if((strValue * 100) % (CashBoxValue * 100) !=0){
+			//将金额和面值放大100倍，防止对小数求余
+			error_input.innerHTML = "请输入该钞箱面值的整数倍";
+			input_id.value = "";
+			input_id.focus();
+			return false;
+		}else if("硬币箱" != CashBoxType && strValue > (iMaxThresholdArr[id] * CashBoxValue)){
+			//纸币钞箱最大存放张数*钞箱面值
+			error_input.innerHTML = "输入金额超过钞箱最大存放金额，最大可输入 " + (iMaxThresholdArr[id] * CashBoxValue);
+			input_id.value = "";
+			input_id.focus();
+			return false;
+		}else if("硬币箱" == CashBoxType && strValue > (iMaxThresholdArr[id]* CashBoxValue)){
+			//硬币钞箱最大存放张数*钞箱面值
+			error_input.innerHTML = "输入金额超过钞箱最大存放金额，最大可输入 " + (iMaxThresholdArr[id] * CashBoxValue);
+			input_id.value = "";
+			input_id.focus();
+			return false;
+		}
+		input_id.value = new top.StringCtrl(strValue).formatNumber(2);
+	}else if("2" == AddCashType){
+		//按张数加钞校验格式
+		if(!new top.StringCtrl(strValue).isAllDigit2()){
+			error_input.innerHTML = "请输入正确数量,只能输入正整数";
+			input_id.value = "";
+			input_id.focus();
+			return false;
+		}else if((input_id.value).indexOf("00") ==0){
+			error_input.innerHTML = "请输入正确数量,前两位不能为'00'";
+			input_id.value = "";
+			input_id.focus();
+			return false;
+		}else{
+			//按钞箱类型校验最大张数(纸币钞箱和硬币钞箱)
+			if("硬币" == CashBoxType && strValue > iMaxThresholdArr[id]){
+				error_input.innerHTML = "输入数量超过钞箱最大存放数，最大可输入 " + iMaxThresholdArr[id];
+				input_id.value = "";
+				input_id.focus();
+				return false;
+			}else if(strValue > iMaxThresholdArr[id]){
+				error_input.innerHTML = "输入数量超过钞箱最大存放数,最大可输入 " + iMaxThresholdArr[id];
+				input_id.value = "";
+				input_id.focus();
+				return false;
+			}
+		}
+	}
+	return true;
+}
+/*钞箱面值单位转换为元*/
+ function getCashBoxValueToYuan(id){
+	var CashBoxType = strRecordArr[id][1];	//钞箱类型
+	var CashBoxValue = strRecordArr[id][3];	//钞箱面值
+	if("硬币箱" == CashBoxType && CashBoxValue.indexOf("角") > 0){
+		CashBoxValue = parseInt(CashBoxValue)/10;	//转换为元
+	}else if("硬币箱" == CashBoxType && CashBoxValue.indexOf("分") > 0){
+		CashBoxValue = parseInt(CashBoxValue)/100;	//转换为元
+	}else{
+		CashBoxValue = parseInt(CashBoxValue);
+	}
+	return CashBoxValue;
+}
+
+/*根据特定字符查找所在位置*/
+function find_str(str,f_str,n){
+	var arr_str;
+    var tmp_str=0;
+    var arr_str=str.split(f_str);
+    if(arr_str.length<n){n=arr_str.length}
+    for(i=0;i<n;i++){
+       tmp_str=arr_str[i].length+tmp_str;
+    }
+    return tmp_str+i-1;
+}
+
+/*选择确认*/
+function Confirm(){
+	onAddCashSubmit = function(){
+		top.wins.showProcessingTip("正在进行加钞,请稍候...");
+		top.trans.send909012Async();	//提交加钞
+		//测试
+		//InitiateCashUnitExchange();
+	}
+
+	//加钞交易回调函数
+	onAsync909012Complete = function(){
+		//钞箱设数
+		InitiateCashUnitExchange();
+	}
+	var input_count_value="";
+	oLMenu6.focus();
+	 for (var i=0; i<strRecordArr.length; i++){
+		 iCountArr[i] = document.getElementById("input_count_"+ i).value;	//单独记录每个钞箱的输入计数
+		 if(!checkVal(i)){
+			 return;
+		 }
+		 input_count_value += document.getElementById("input_count_"+ i).value + "|";
+	 }
+	 AddCashAmountCounts = outAddAmountCount(input_count_value);	//计算加钞总金额
+	 AddCashAmountCounts = new top.StringCtrl(AddCashAmountCounts).formatNumber(2);
+	 if(AddCashAmountCounts <=0){
+		 verifyInfo_Title.innerHTML = "<span class=\"Tip_Content\">请输入加钞金额或数量</span>";
+		 return;
+	 }
+	 top.pool.set("strAddTotalAmount",AddCashAmountCounts);
+	 oLMenu6.innerHTML ="<button onmousedown=\"doMouseDown();setTimeout(onAddCashSubmit,100);\" class=\"ADMButton\" name=\"oConfirm\" >加钞提交</button>";
+	 verifyInfo_Title.innerHTML = "<span class=\"Tip_Content\">请确认总加钞金额及各钞箱"+ strAddCashType +"无误后选择【加钞提交】</span>";
+	 amountCounts_Title.innerHTML = "<span class=\"Tip_Content\">总加钞金额:  "+ AddCashAmountCounts +"元</span>";
+	 top.journalPrinter.addJournalWithTime("加钞输入" + strAddCashType + ": " + input_count_value);
+}
+
+/*计算加钞金额*/
+function outAddAmountCount(strAddAmountInfo){
+	var AddAmountCounts = 0;
+	var addAmountInfoArr= new Array();
+	addAmountInfoArr=strAddAmountInfo.split('|');
+	
+	if("1" == AddCashType){
+		//按金额加钞
+		for(var i = 0;i < addAmountInfoArr.length - 1;i++){
+			AddAmountCounts += parseFloat(addAmountInfoArr[i]);
+		}
+	}else{
+		//按张数加钞
+		for(var i = 0;i < addAmountInfoArr.length - 1;i++){
+			AddAmountCounts += parseFloat(addAmountInfoArr[i]) * parseFloat(getCashBoxValueToYuan(i));
+		}
+	}
+	return AddAmountCounts;
+}
+
+/*打印加钞凭条*/
+function printReceipt() {
+	var strPrt = "";
+	var strNewLine = "\r\n";
+	strPrt +="****************加钞清单****************" + strNewLine;
+	strPrt += "时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep() + strNewLine;
+	strPrt += "网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username") + strNewLine;
+	strPrt += "----------------------------------------" + strNewLine;
+	strPrt += "**************钞箱信息明细**************" + strNewLine;
+	strPrt += "钞箱ID     类型      面值      加钞" + strAddCashType + strNewLine;
+     for (var i=0; i<strRecordArr.length; i++){
+          if("1" != AddCashType){
+			if("硬币箱" == strRecordArr[i][1])
+				strUnit = "枚";
+			else
+				strUnit = "张";
+		}
+          strPrt +=   new top.StringCtrl(strRecordArr[i][0]).formatStrRight(' ', 10)+
+	                  new top.StringCtrl(strRecordArr[i][1]).formatStrRight(' ', 9)+
+	                  new top.StringCtrl(strRecordArr[i][3]).prefixStr(' ', 5)+
+	                  new top.StringCtrl(iCountArr[i]).prefixStr(' ', 12) + strUnit+
+	                  strNewLine;
+     }
+     strPrt += "总加钞金额: " + AddCashAmountCounts + " 元" + strNewLine;
+     strPrt += "----------------------------------------";
+     top.receiptprinter.set(strPrt);
+     top.receiptprinter.printAndEject();
+   //将凭条信息打印到Cash.txt文件中
+     top.journalPrinter.addCashJournal(strPrt + strNewLine,false);
+}
+
+/*打印加钞流水*/
+function printJournal() {
+	var strJrn = "";
+	strJrn += "****************加钞清单****************" + top.journalPrinter.strNewLine;
+	strJrn += "时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep() + top.journalPrinter.strNewLine;
+	strJrn += "网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username") + top.journalPrinter.strNewLine;
+	strJrn += "----------------------------------------" + top.journalPrinter.strNewLine;
+	strJrn += "**************钞箱信息明细**************" + top.journalPrinter.strNewLine;
+	strJrn += "钞箱ID     类型      面值      加钞" + strAddCashType + top.journalPrinter.strNewLine;
+     for (var i=0; i<strRecordArr.length; i++){
+    	 if("1" != AddCashType){
+			if("硬币箱" == strRecordArr[i][1])
+				strUnit = "枚";
+			else
+				strUnit = "张";
+		}
+		 strJrn +=new top.StringCtrl(strRecordArr[i][0]).formatStrRight(' ', 10)+
+                  new top.StringCtrl(strRecordArr[i][1]).formatStrRight(' ', 9)+
+                  new top.StringCtrl(strRecordArr[i][3]).prefixStr(' ', 5)+
+                  new top.StringCtrl(iCountArr[i]).prefixStr(' ', 12) + strUnit;
+         strJrn += top.journalPrinter.strNewLine;
+     }
+     strJrn += "总加钞金额: " + AddCashAmountCounts + " 元" + top.journalPrinter.strNewLine;
+     strJrn += "----------------------------------------" + top.journalPrinter.strNewLine;
+     top.journalPrinter.addJournal(strJrn);
+}
+
+/*初始化钞箱配置信息*/
+function InitiateCashUnitExchange(){
+	var CashBoxConfig = "";
+	for(var i=0;i<cashBoxInfoArr.length;i++){
+		CashBoxConfig +=(CashBoxConfig.length==0 ? "" : ",") + iNumberArr[i];
+    }
+	onExchangeInitiatedFailed = function(){
+	  	CashDispenserEnr.clearAll();
+	  	onServiceFailed("交易失败", "", "钞箱配置初始化失败"); 
+  	}
+	onExchangeInitiated = function(){
+  		CashDispenserEnr.clearAll();
+  		top.journalPrinter.addJournalWithTime("钞箱配置初始化完成");
+  		CompletedCashUnitConfiguration();
+  	}
+  	top.journalPrinter.addJournalWithTime("InitiateCashUnitExchange(" + CashBoxConfig + ")");
+  	
+  	top.journalPrinter.addJournalWithTime("钞箱配置初始化开始  CashDispenser command InitiateCashUnitExchange");
+	CashDispenserEnr.clearAll();
+	CashDispenserEnr.appendEvent("ExchangeInitiated",onExchangeInitiated);
+	CashDispenserEnr.appendEvent("DeviceError",onExchangeInitiatedFailed);
+	top.YHAXCashDispenser.InitiateCashUnitExchange(CashBoxConfig.split(','));
+}
+/*更新钞箱配置信息*/
+function CompletedCashUnitConfiguration(){
+	var CUCurrentCount = new Array();
+	var CUInitialCount = new Array();
+	var CURejectCount = new Array();
+
+	top.journalPrinter.addJournalWithTime("钞箱配置信息更新开始  CashDispenser command CompletedCashUnitConfiguration");
+	for(var i=0;i<cashBoxInfoArr.length;i++){
+		if("1" == AddCashType){
+			//钞箱面值等于0，则钞箱值置0
+			if(parseInt(cashBoxInfoArr[i][3]) == 0){
+				CUCurrentCount[i] = 0;
+				CUInitialCount[i] =0;
+				CURejectCount[i] = 0;
+				continue;
+			}else{
+				//输入张数，则将金额除于面额
+				CUCurrentCount[i] = iCountArr[i] / parseInt(cashBoxInfoArr[i][3]);
+				CUInitialCount[i] =iCountArr[i] / parseInt(cashBoxInfoArr[i][3]);
+				CURejectCount[i] = 0;
+			}
+		}else if("2" == AddCashType){
+			//输入张数，则将输入计数赋值
+			CUCurrentCount[i] = iCountArr[i];
+			CUInitialCount[i] = iCountArr[i];
+			CURejectCount[i] = 0;
+		}
+    }
+	onExchangeCompleted = function(){
+		CashDispenserEnr.clearAll();
+		top.journalPrinter.addJournalWithTime("钞箱配置信息更新完成");
+		if(typeof(top.YHAXCashDispenserFen) != "undefined"){
+			InitiateCashUnitExchangeFen();
+		}else{
+			onConfigurationCompleted();
+		}
+	}
+	onExchangeCompletedFailed = function(){
+		CashDispenserEnr.clearAll();
+		onServiceFailed("交易失败","","钞箱配置信息更新失败");
+	}
+	try{
+		  top.YHAXCashDispenser.PURejectCount = CURejectCount;			
+		  top.YHAXCashDispenser.CURejectCount = CURejectCount;
+		  
+		  top.YHAXCashDispenser.PUCurrentCount = CUCurrentCount;
+		  top.YHAXCashDispenser.CUCurrentCount =  CUCurrentCount;
+		  
+		  top.YHAXCashDispenser.PUInitialCount = CUInitialCount;
+		  top.YHAXCashDispenser.CUInitialCount = CUInitialCount;
+	    
+		CashDispenserEnr.clearAll();
+		CashDispenserEnr.appendEvent("ExchangeCompleted", onExchangeCompleted);
+		CashDispenserEnr.appendEvent("DeviceError", onExchangeCompletedFailed);
+	    top.YHAXCashDispenser.CompletedCashUnitExchange();
+	}catch(e){
+		top.journalPrinter.addJournalWithTime("钞箱配置信息更新失败  " + e);
+		onServiceFailed("交易失败","","钞箱配置信息更新失败");
+	}
+}
+
+/*初始化硬币钞箱配置信息*/
+function InitiateCashUnitExchangeFen(){
+	var CashBoxConfigFen = new Array();
+	for(var i=0;i<cashBoxInfoFenArr.length;i++){
+		CashBoxConfigFen[i] = iNumberArrFen[i];
+	}
+  	onExchangeInitiatedFailedFen = function(){
+	  	CashDispenserFenEnr.clearAll();
+	  	onServiceFailed("交易失败", "", "硬币钞箱配置初始化失败"); 
+  	}
+  	onExchangeInitiatedFen = function(){
+  		CashDispenserFenEnr.clearAll();
+  		top.journalPrinter.addJournalWithTime("硬币钞箱配置始化完成");
+  		CompletedCashUnitExchangeFen();
+  	}
+  	
+  	top.journalPrinter.addJournalWithTime("硬币钞箱配置初始化开始  CashDispenserFen command InitiateCashUnitExchange");
+	CashDispenserFenEnr.clearAll();
+	CashDispenserFenEnr.appendEvent("ExchangeInitiated",onExchangeInitiatedFen);
+	CashDispenserFenEnr.appendEvent("DeviceError",onExchangeInitiatedFailedFen);
+  	top.YHAXCashDispenserFen.InitiateCashUnitExchange(CashBoxConfigFen);
+}
+/*更新硬币钞箱配置信息*/
+function CompletedCashUnitExchangeFen(){
+	var CUCurrentCountFen = new Array();
+	var CUInitialCountFen = new Array();
+	var CURejectCountFen = new Array();
+
+	top.journalPrinter.addJournalWithTime("硬币钞箱配置信息更新开始   CashDispenserFen command CompletedCashUnitExchange");
+	var j=cashBoxInfoArr.length
+	for(var i=0;i<cashBoxInfoFenArr.length;i++){
+		if("1" == AddCashType){
+			if(parseInt(cashBoxInfoFenArr[i][3]) == 0){
+				CUCurrentCountFen[i] = 0;
+				CUInitialCountFen[i] = 0;
+				CURejectCountFen[i] = 0;
+				continue;
+			}
+			//界面输入时以元为单位，硬币钞箱面值以分为单位
+			if(cashBoxInfoFenArr[i][3].indexOf("分") > 0){
+				cashBoxInfoFenArr[i][3] = 100;	//以分为单位
+			}else if(cashBoxInfoFenArr[i][3].indexOf("角") > 0){
+				cashBoxInfoFenArr[i][3] = 10;	//以分为单位
+			}else{
+				cashBoxInfoFenArr[i][3] = 1;
+			}
+			//输入金额，则将金额乘于面额
+			CUCurrentCountFen[i] = iCountArr[j] * parseInt(cashBoxInfoFenArr[i][3]);
+			CUInitialCountFen[i] = iCountArr[j] * parseInt(cashBoxInfoFenArr[i][3]);
+			CURejectCountFen[i] = 0;
+
+		}else if("2" == AddCashType){
+			//输入张数，则将输入计数赋值
+			CUCurrentCountFen[i] = iCountArr[j];
+			CUInitialCountFen[i] = iCountArr[j];
+			CURejectCountFen[i] = 0;
+		}
+		j++;
+    }
+	onExchangeCompletedFen = function(){
+		CashDispenserFenEnr.clearAll();
+		top.journalPrinter.addJournalWithTime("硬币钞箱配置信息更新完成");
+		onConfigurationCompleted();
+	}
+	onDeviceErrorFen = function(){
+		CashDispenserFenEnr.clearAll();
+		onServiceFailed("交易失败", "", "硬币钞箱配置信息更新失败");
+	}
+	try{
+		top.YHAXCashDispenserFen.PURejectCount = CURejectCountFen;			
+		top.YHAXCashDispenserFen.CURejectCount = CURejectCountFen;
+		  
+		top.YHAXCashDispenserFen.PUCurrentCount = CUCurrentCountFen;
+		top.YHAXCashDispenserFen.CUCurrentCount =  CUCurrentCountFen;
+		  
+		top.YHAXCashDispenserFen.PUInitialCount = CUInitialCountFen;
+		top.YHAXCashDispenserFen.CUInitialCount = CUInitialCountFen;
+		  
+		CashDispenserFenEnr.clearAll();
+	    CashDispenserFenEnr.appendEvent("ExchangeCompleted", onExchangeCompletedFen);
+	    CashDispenserFenEnr.appendEvent("DeviceError", onDeviceErrorFen);
+	    top.YHAXCashDispenserFen.CompletedCashUnitExchange();
+	}catch(e){
+		top.journalPrinter.addJournalWithTime("硬币钞箱信息更新失败");
+	}
+}
+
+//更新本地钞箱配置成功回调函数
+function onConfigurationCompleted(){
+	if(!checkDevStatus() && ResetCounts < 2){
+		ResetCounts++;
+		Reset(false,1);		//已完成加钞
+	}else{
+		top.serviceCtrl.stopUserTimeout();
+		ResetCounts = 0;
+		if (typeof(top.YHAXReceiptPrint) != "undefined"){
+			printReceipt();
+		}
+		printJournal();
+		onServiceSuccessful();
+	}
+}
+
+/*交易成功*/
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+	//交易成功之后发送钞箱变动交易到P端
+    top.trans.send909014Async();
+	//交易成功，记钞箱变动日志(cash.txt)
+	var CashBoxRecode = new top.CashBoxCheck().getCashBoxRecord();
+	var strJrn = "---------AddCash CashBoxRecode---------" + "\r\n" + CashBoxRecode;
+    top.journalPrinter.addCashJournalWithTime(strJrn,false);
+}
+
+/*交易失败*/
+function onServiceFailed(title, retcode, retdesc)
+{
+	top.journalPrinter.addJournalWithTime(title + ":" + retdesc);;
+	window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+  	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+  	onKey_Enter = onKey_Cancel = onKey_F8 = function()
+  	{
+    	top.serviceCtrl.navigate2Quit();
+  	}
+  	oFailedTitle.innerHTML = title;
+  	oFailedRetDesc.innerHTML = retdesc;
+  	window.operateCtrl.enableInput();
+  	top.wins.showMain("oLServiceFailedTip");
+}
+/*
+ * 钞箱状态转义
+ */
+function converStatus(uStatus){
+	switch(uStatus) {
+		case "HEALTHY" : return "正常"; 
+		case "FULL" : return "钞满";
+		case "HIGH" : return "将满";
+		case "LOW" : return "将空";
+		case "EMPTY" :return "钞空";
+		case "INOPERATIVE" :return "无效";
+		case "MISSING" :return "缺失";
+		case "UNKNOWN" :return "未知";
+	}
+	return uStatus;
+}
+
+/*
+ * 钞箱类型转义
+ */
+function converType(uType){
+	switch(uType) {
+		case "REJECTCASSETTE" : return "拒钞箱"; 
+		case "BILLCASSETTE" : return "取款箱";
+		case "RETRACTCASSETTE" : return "回收箱";
+		case "COINCYLINDER" : return "硬币箱";
+		case "COINDISPENSER" : return "硬币箱";
+		case "RECYCLINGCASSETTE" :return "循环箱";
+		case "CASHIN" :return "存款箱";
+		case "RECYCLER" :return "循环箱";
+		case "RETRACT" :return "回收箱";
+		case "REJECT" :return "拒钞箱";
+		default : return "其他"
+	}
+	return uType;
+}
+/*
+ * 硬币钞箱币值转义
+ */
+function converNoteValue(uNoteValue){
+	switch(uNoteValue) {
+		case 100 : return "元"; 
+		case 10 : return "角";
+		case 1 : return "分";
+	}
+	return uNoteValue;
+}
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLShowCashBoxInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">设备加钞</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="60%" height="60%">
+                        <thead class="ADMTable_Head" id="oTHead"></thead>
+                        <tbody id="oTBody"  class="ADMTable_Record"></tbody>
+                    </table>
+                    <pre class="Error_Title" id="error_input">&nbsp;</pre>
+		            <pre class="Tip_Title" id="amountCounts_Title">&nbsp;</pre>
+		            <pre class="Tip_Title" id="verifyInfo_Title">&nbsp;</pre>
+                </td>
+            </tr>
+        </table>
+    </div>
+   <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+</div>
+
+<div id="oLInfoTip2" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title2"></span></td>
+			</tr>
+	    </table>
+	</div>
+	<span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	<span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+</div>
+
+<div id="oLInfoTip1" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title1"></span></td>
+			</tr>
+	    </table>
+	</div>
+	
+</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">加钞成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

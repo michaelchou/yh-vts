@@ -1,0 +1,640 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>明细查询</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript" src="../JavaScript/Calendar.js" ></script>
+<style>
+.input_date1
+{
+  BORDER:white 1px solid;
+  width:400px;
+  height:50px;
+  cursor:pointer; 
+  font-size: 30px;
+  font-weight: bold;
+  font-family:微软雅黑;
+  padding-left:9px;
+  padding-top:20px;
+  letter-spacing:6px;
+  background-color:transparent;
+}
+</style>
+<script type="text/javascript">
+var isBeginDate = false;
+var isEndDate = false;
+var last = "";
+var totalRecordCnt = 0;
+var recordCnt = 0;
+var currPage = 0;
+var dtFlag = "";
+var strRecordArr = new Array();
+
+function doMouseDown() {
+	top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+// 禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick", checkEvent);
+document.attachEvent("ondblclick", checkEvent);
+document.attachEvent("onfocusin", checkEvent);
+document.attachEvent("onkeypress", checkEvent);
+
+function checkEvent() {
+	try {
+		//如果光标停留在输入框上,更新last
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text"){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	}
+	catch (e) {}
+}
+// 服务流程处理入口
+function serverEntrance() {
+	top.pool.set("strNavigate2Url", window.location.pathname);
+	if (top.cardreader.isCardPresent()) {
+		if(top.pool.get("strCardType") != "1"){			
+			InsertDebitCard();//提示插入借记卡				
+		}else{
+			top.pool.set("strNavigate2Url", "");
+			//输入查询开始时间
+			selectTime();
+		}
+	} else {
+		top.serviceCtrl.navigate2InsertCard();
+		//selectTime();//流程测试
+	}
+}
+
+//重新插入借记卡
+function InsertDebitCard()
+{
+	onCardEjected = function()
+      {
+	    top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+        // 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("oLTakeCardTip");
+      }
+	  
+	 onCardTaken = function()
+      {
+        top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+      }
+	  
+	  onDeviceError_Idc = function()
+      {
+	    if (top.cardreader.isCardPresent()){
+	       top.YHAXCardReader.Capture();
+	    } 
+        onServiceFailed(top.langcur.oTransferSignFailed, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError); 
+      }
+	  
+	  onCardCapturedTipEnd = function()
+      {
+  	    top.serviceCtrl.navigate2Quit();
+      }
+	  
+      onCardCaptured = function()
+      {
+		top.pool.set("printType","3");//选择打印的凭条类型
+		top.receiptprinter.printAndEject();
+		top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+		top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+      }
+	top.cardreader.eject();
+}
+//审核超时处理
+function onProcessingTimeout(){
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.navigate2Quit();  
+}
+//选择查询日期与币种
+function selectTime() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	
+	onKey_Enter = onKey_F99 = function() {
+		tiannetHideControl();//隐藏日历控件
+		var BeeType = document.getElementById("BeeType");
+	    var BeeTypeValue = BeeType.value;
+		var input_BeginDateValue = input_BeginDate.value;
+		var input_EndDateValue = input_EndDate.value;
+	   
+		if(BeeTypeValue == "" || BeeTypeValue == null)
+		{
+			error_QueryDetial.innerHTML = "请选择币种！";
+		}
+		else if(input_BeginDateValue == "" || input_BeginDateValue == null)
+		{
+			error_QueryDetial.innerHTML = "请输入起始日期！";
+			input_BeginDate.focus();
+		}
+		else if(input_EndDateValue == "" || input_EndDateValue == null)
+		{
+			error_QueryDetial.innerHTML = "请输入终止日期！";
+			input_EndDate.focus();
+		}
+		else if (!new top.DateTimeCtrl(null).isValidDateTimeStr(input_BeginDateValue, "yyyy-MM-dd") ||
+			input_BeginDateValue.replace(new RegExp("-","g"),"") > new top.DateTimeCtrl().getYYYYMMDD()) 
+		{
+			//开始日期不能大于当前日期
+			error_QueryDetial.innerHTML = top.langcur.oPlsInputRightBeginDate;
+			input_BeginDate.value = "";
+			input_BeginDate.focus();
+		}else if(input_BeginDateValue.replace(new RegExp("-","g"),"") <= new top.DateTimeCtrl().addDate('-1Y').getYYYYMMDD()){
+			error_QueryDetial.innerHTML = top.langcur.OTimeSpanGt1Y;
+			input_BeginDate.value = "";
+			input_BeginDate.focus();
+		}
+		else if (!new top.DateTimeCtrl(null).isValidDateTimeStr(input_EndDateValue, "yyyy-MM-dd") 
+			|| input_EndDateValue.replace(new RegExp("-","g"),"") > new top.DateTimeCtrl().getYYYYMMDD() ||
+			input_EndDateValue.replace(new RegExp("-","g"),"") < input_BeginDateValue.replace(new RegExp("-","g"),"")) 
+		{
+			//结束日期不能大于当前日期
+			error_QueryDetial.innerHTML = top.langcur.oPlsInputRightEndDate;
+			input_EndDate.value = "";
+			input_EndDate.focus();
+		}
+		else {
+			input_BeginDateValue=input_BeginDateValue.replace(new RegExp("-","g"),"");
+			input_EndDateValue=input_EndDateValue.replace(new RegExp("-","g"),"");
+			var year = input_BeginDateValue.substr(0,4);
+			var month = parseInt(input_BeginDateValue.substr(4,2),10)-1;
+			var day = input_BeginDateValue.substr(6,2);
+			var afterthreeMonth = new top.DateTimeCtrl(new Date(year,month,day)).addDate('90D').getYYYYMMDD();
+			if( afterthreeMonth <= input_EndDateValue){
+				//查询跨度大于90天
+				error_QueryDetial.innerHTML = top.langcur.OTimeSpanGt90D;
+				input_EndDate.focus();
+				return ;
+			}
+			top.inputmethod.Close();
+			
+			if("CNY"==BeeTypeValue){
+				top.pool.set("strCurrency",BeeTypeValue);
+				top.pool.set("strCashRemitFlag","");
+			}else if(BeeTypeValue != null && BeeTypeValue.length == 4){
+				top.pool.set("strCurrency",BeeTypeValue.substr(0,3));
+				top.pool.set("strCashRemitFlag",BeeTypeValue.substr(3,1));
+			}
+			top.pool.set("BeginDate", input_BeginDateValue.replace(new RegExp("-","g"),""));
+			top.pool.set("EndDate", input_EndDateValue.replace(new RegExp("-","g"),""));
+			top.pool.set("DestPan",top.pool.get("hostAccount"));//验密返回的账户
+	
+			//发起明细查询交易
+			clearData();
+			send902111service();
+		}
+	}
+	
+	//取消按钮
+	onKey_Cancel = onKey_F98 = function() {
+		tiannetHideControl();//隐藏日历控件
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+	onTimeout = function()
+    {
+	  tiannetHideControl();//隐藏日历控件
+      top.serviceCtrl.navigate2Quit();
+    }
+	window.operateCtrl.enableInput();
+	error_QueryDetial.innerHTML = "";
+	//CurYYYYMMEXP.innerHTML = new top.DateTimeCtrl(null).getYYYYMM01();
+	text_strPan.innerHTML = top.pool.get("strPan");
+	
+	//超时处理
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oSelectTimeTick);
+	// 播放提示音
+	//try{top.soundPlayer.playback("/Sound/.mp3");}catch(e){}
+	top.wins.showMain("oLSelectTime");
+	
+}
+
+//初始化部分数据
+function clearData(){
+	currPage = 0;
+	top.pool.set("startRecordNo","1");//起始号码
+	oTablePageTip.innerHTML = "";
+	
+}
+
+//发送明细查询请求
+function send902111service(dtFlag){
+	if(null != dtFlag && dtFlag.length >1 ){
+		var EndDate = new top.DateTimeCtrl().getYYYYMMDD();
+		var BeginDate = new top.DateTimeCtrl().cutDate(dtFlag).getYYYYMMDD();
+		top.pool.set("BeginDate",BeginDate);
+		top.pool.set("EndDate",EndDate);
+	}
+	var BeeTypeValue = BeeType.value;
+	if(BeeTypeValue == "" || BeeTypeValue == null)
+	{
+		error_QueryDetial.innerHTML = "请选择币种！";
+		return;
+	}else if("CNY"==BeeTypeValue){
+		top.pool.set("strCurrency",BeeTypeValue);
+		top.pool.set("strCashRemitFlag","");
+	}else if(BeeTypeValue.length == 4){
+		top.pool.set("strCurrency",BeeTypeValue.substr(0,3));
+		top.pool.set("strCashRemitFlag",BeeTypeValue.substr(3,1));
+	}
+	
+	top.pool.set("DestPan",top.pool.get("hostAccount"));//验密返回的账户
+	top.wins.showNewProcessingTip("正在查询明细，请稍候...");
+	top.trans.send902111Async();
+}
+
+//成功显示
+function onServiceSuccessful() {
+
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+
+	onKey_Cancel = onKey_F98 = function() {
+		selectTime();
+	}
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	//组装数据
+	viewMultiRecord();
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+function viewMultiRecord() {
+	var mrv = new top.MultiRecordView();
+	var strHeadingArr = new Array(
+		top.langcur.oSerialNumber,
+		top.langcur.oORDT,
+		top.langcur.oSMCD,
+		//top.langcur.oJTRAM,
+		top.langcur.oDTRAM,
+		top.langcur.oINAM,
+		top.langcur.oACAM
+	);
+
+	/*
+	for (var i = 1; i <= 45; i++) {
+		var JTRAM = "";
+		var DTRAM = "";
+		var flag = i % 2;
+		if ("0" == flag) {
+			JTRAM = "10.00";
+		} else {
+			DTRAM = "0.00";
+		}
+		strRecordArr[strRecordArr.length] = new Array(
+			"2016-11-23",
+			"转账",
+			//"其他",
+			JTRAM,
+			DTRAM,
+			"10000.58");
+	}*/
+	
+	totalRecordCnt = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/totalRecordCnt");
+	strRecordArr = new Array(parseInt(totalRecordCnt,10));
+	recordCnt = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/recordCnt");
+	var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+	itemCount = parseInt(itemCount,10);
+	
+	for(var i = 1; i <= itemCount; i++){
+		var jtram = "";
+		var dtram = "";
+		var transDate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/transDate");
+		var transExplain = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/transExplain");
+		var crDbFlag = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/crDbFlag");
+		var transAmt = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/transAmt");
+		var balance = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/acctBalance");
+		if("0"==crDbFlag){
+			dtram = transAmt;
+		}else{
+			jtram = transAmt;
+		}
+		if(transExplain.length > 10){
+			transExplain = transExplain.substr(0,10) + "...";
+		}
+		strRecordArr[currPage*10 + (i -1) ] = new Array(
+			currPage*10 +i,
+			transDate,
+			transExplain,
+			jtram,
+			dtram,
+			balance,
+			i
+		);
+	}
+	
+	var strAlignArr = new Array(
+		"center",
+		"center",
+		"center",
+		"right",
+		"right",
+		"right"
+	);
+	
+	mrv.oTHead = oTHead;
+	mrv.oTBody = oTBody;
+	mrv.oMFirstPage = oMFirstPage
+	mrv.iCurPage = currPage; 
+	mrv.oTablePageTip = oTablePageTip;
+	mrv.oMPrevPage = oMPrevPage;
+	mrv.oMNextPage = oMNextPage;
+	mrv.oMEndPage = oMEndPage;
+	mrv.strRecordArr = strRecordArr;
+	mrv.strHeadingArr = strHeadingArr;
+	mrv.strAlignArr = strAlignArr;
+	mrv.iRowsPerPage = 10;
+	onKey_F1 = function() {
+		currPage = 0;
+		top.pool.set("startRecordNo","1");
+		send902111service(dtFlag);
+	}
+	onKey_F2 = function() {
+		currPage--;
+		top.pool.set("startRecordNo",(currPage*10 + 1) +"");
+		send902111service(dtFlag);
+	}
+	onKey_F3 = function() {
+		currPage++;
+		top.pool.set("startRecordNo",(currPage*10 + 1) + "");
+		send902111service(dtFlag);
+	}
+	onKey_F4 = function() {
+		currPage = Math.floor(totalRecordCnt/10);
+		top.pool.set("startRecordNo",(currPage*10 + 1) +"");
+		send902111service(dtFlag);
+	}
+	mrv.show();
+}
+
+function onServiceFailed(title, retcode, retdesc) {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	onKey_F98 = function(){
+		//返回选择时间页面，清空原有数据；
+		dtFlag="";
+		top.pool.set("BeginDate","");
+		top.pool.set("EndDate","");
+		input_BeginDate.value = "";
+		input_EndDate.value = "";
+		serverEntrance();
+	}
+	
+
+	oTitle.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip");
+}
+
+
+//校验开始日期
+function input_checkBeginDate() {
+	if (!new top.StringCtrl(input_BeginDate.value).isAllDigit() && input_BeginDate.value !="" && input_BeginDate.value != null) {
+	    window.operateCtrl.enableInput();
+		error_QueryDetial.innerHTML = top.langcur.oPlsInputRightBeginDate;
+		//input_BeginDate.value = "";
+		input_BeginDate.focus();
+	}
+}
+
+//校验结束日期
+function input_checkEndDate() {
+	if (!new top.StringCtrl(input_EndDate.value).isAllDigit() 
+		&& input_EndDate.value !="" 
+		&& input_EndDate.value != null
+		&& input_EndDate.value > new top.DateTimeCtrl().getYYYYMMDD()	) {
+	    window.operateCtrl.enableInput();
+		error_QueryDetial.innerHTML = top.langcur.oPlsInputRightEndDate;
+		//input_EndDate.value = "";
+		input_EndDate.focus();
+	}
+}
+</script>
+
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false"   >
+
+<div id="oLSelectTime" class="FULLSCR" style="visibility:hidden">
+	<div class="FULLSCR">
+    <span class="Tip_Tick" id="oSelectTimeTick"></span>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+           <tr>
+               <td align="center"><br/><br/>
+		            <table cellpadding="10" cellspacing="0" border="0" class="Table_Ob" width="55%">
+			            <tr class="Table_Head"><td colspan="4" align="center" id="oSelectInqDate"></td></tr>
+						<tr class="Table_Record"><td nowrap colspan="1"><span id="oPanAccount"></span></td><td nowrap colspan="3" id="text_strPan"></td></tr>
+						<tr class="Table_Record"><td nowrap colspan="1" id="oSelectCash"></td>
+							<td nowrap colspan="3" class="Digit_Normal" align="center" id="text_UserPan">
+									<select class="select" style="font-size:28px;" width="400px" name="BeeType" id="BeeType">
+										<option value="">--请选择币种--</option>
+										<option id="oCNY0" value="CNY"></option> 
+										<option id="oUSD1" value="USD1"></option> 
+										<option id="oUSD2" value="USD2"></option> 
+										<option id="oEUR1" value="EUR1"></option> 
+										<option id="oEUR2" value="EUR2"></option> 
+										<option id="oHKD1" value="HKD1"></option> 
+										<option id="oHKD2" value="HKD2"></option> 
+										<option id="oJPY1" value="JPY1"></option> 
+										<option id="oJPY2" value="JPY2"></option> 
+										<option id="oAUD1" value="AUD1"></option> 
+										<option id="oAUD2" value="AUD2"></option> 
+										<option id="oGBP1" value="GBP1"></option> 
+										<option id="oGBP2" value="GBP2"></option> 
+										<option id="oSGD1" value="SGD1"></option> 
+										<option id="oSGD2" value="SGD2"></option> 
+										<option id="oCAD1" value="CAD1"></option> 
+										<option id="oCAD2" value="CAD2"></option> 
+									</select>						
+							</td>
+						</tr>
+			            <tr class="Table_Record">
+							<td nowrap id="oBeginDate"></td>
+							<td nowrap colspan=3 class="Digit_Normal" id="text_UserNum"> 
+								
+								 <input type="text" id="input_BeginDate" name="input_BeginDate" class="input_short5" onClick="setDay(this);" maxlength=10 readonly=true />
+								 <!--
+								<input type="text" id="input_BeginDate" name="input_BeginDate" class="input_date1 laydate-icon" readonly=true />
+								-->
+								
+							</td>
+						</tr>
+						<tr class="Table_Record">
+							<td nowrap id="oEndDate"></td>
+							<td nowrap colspan=3 class="Digit_Normal" id="text_PaymentAmt">
+									
+								<input type="text" id="input_EndDate" name="input_EndDate" class="input_short5" onClick="setDay(this);" maxlength=10 readonly=true />
+							<!--
+								<input type="text" id="input_EndDate" name="input_EndDate" class="input_date1 laydate-icon" readonly=true />
+								-->
+							</td>
+						</tr>
+						<!--
+						<tr class="Table_Record">
+						 <td nowrap colspan="4"><pre class="Tip_Content">(<span id="oDateFormatTip"></span><span id="CurYYYYMMEXP"></span>)</pre></td>
+						</tr>
+						-->
+		            </table>
+					
+					<pre class="Error_Title" id="error_QueryDetial">&nbsp;</pre>
+				   <br><br>
+               </td>
+           </tr>
+       </table>
+	   <span class="MMENU8" style="top: 75%;"><button onmousedown='doMouseDown();setTimeout(function(){tiannetHideControl();clearData();send902111service("1M");},100);' class="Menu_Right" >近一个月</button></span>
+	   <span class="MMENU7" style="top: 75%;"><button onmousedown='doMouseDown();setTimeout(function(){tiannetHideControl();clearData();send902111service("3M");},100);' class="Menu_Right" >近三个月</button></span>
+	</div>
+	<span class="MENU98" ><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+    <span class="MENU99" ><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+	</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden">
+    <div class="FULLSCR">
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        <br/>
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="80%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Title" id="oInqDetailSucc"></span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="2" cellspacing="1" class="Table_Ob" id="oTable" width="80%" height="55%">
+                        <thead class="Table_Head" id="oTHead"></thead>
+                        <tbody id="oTBody">
+                        </tbody>
+                    </table>
+                    <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+	
+    <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_pageFE" name="oFirstPage" id="oFirstPage"></button></span>
+    <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+    <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+    <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_pageFE" name="oEndPage" id="oEndPage"></button></span>
+	<span class="MENU98" ><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title" id ="oReInsertDebCard"></span><br/><br/>
+      <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+                        <tr class="Table_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+	<span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+</div>
+
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	
+	<script type="text/javascript" >
+/*
+!function(){
+laydate.skin('danlan');//切换皮肤，请查看skins下面皮肤库
+}();
+//日期范围限制
+
+var start = {
+    elem: '#input_BeginDate',
+    format: 'YYYY-MM-DD',
+    min:'1900-01-01' , //设定最小日期为当前日期
+    //max: laydate.now(), //最大日期
+    istime: false,
+    istoday: true,
+    choose: function(datas){
+		end.min = datas; //开始日选好后，重置结束日的最小日期
+    }
+};
+
+var end = {
+    elem: '#input_EndDate',
+    format: 'YYYY-MM-DD',
+    min: '1900-01-01',
+    //max: laydate.now(),
+    istime: false,
+    istoday: true,
+    choose: function(datas){
+      start.max = datas;
+    }
+};
+laydate(start);
+laydate(end);
+*/
+</script>
+</body>
+
+</html>

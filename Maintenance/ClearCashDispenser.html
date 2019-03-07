@@ -1,0 +1,1279 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>设备清钞</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+function doMouseDown() {
+//	top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+//取款模块事件响应对象
+var CashDispenserEnr = new top.EventHandling(top.YHAXCashDispenser);
+//存款模块事件响应对象
+var CashAcceptorEnr = new top.EventHandling(top.YHAXCashAcceptor);
+//硬币模块事件响应对象
+var CashDispenserFenEnr = new top.EventHandling(top.YHAXCashDispenserFen);
+
+var ResetCounts = 0;	//故障自动复位次数
+var ErrInfoDesc = "";	//异常信息说明
+var devName = "";		//需要复位的模块名称
+
+//服务流程处理入口
+function serverEntrance() {
+	if(!checkDevStatus()){
+		if(ResetCounts<2){
+			ResetCounts++;
+			Reset(false,0);	//清钞前模块故障复位
+		}else{
+			onHardwareError();
+		}
+		//onHardwareError();
+	}else{
+		//查询清钞状态
+		top.wins.showProcessingTip("正在查询清机状态,请稍候...");
+		top.pool.set("strTransType","alearCash");
+		top.trans.sendCashSettleCycLogStatusAsync();
+		//onAsyncCashSettleCycLogStatusComplete();
+	}
+}
+/*
+检测硬件状态，正常则返回true（支持清钞），否者返回false（不支持清钞）
+*/
+function checkDevStatus(){
+	var CDMDevStatus;	//取款模块总状态
+	var CIMDevStatus;	//存款模块总状态
+	var CoinDevStatus;	//硬币模块总状态
+	var transportStatus;	//传输通道状态
+	var inputOutputStatus;	//钞口状态
+	var lastAcceptStatus;	//存款周期
+	var result = true;
+	ErrInfoDesc = "";
+	devName = "";
+	if(typeof(top.YHAXCashAcceptor) != "undefined"){
+		//获取存款模块状态
+		CIMDevStatus=top.YHAXCashAcceptor.StDeviceStatus;
+		inputOutputStatus=top.YHAXCashAcceptor.StInputOutputStatus;
+		transportStatus=top.YHAXCashAcceptor.StTransportStatus;
+		lastAcceptStatus=top.YHAXCashAcceptor.LastAcceptStatus;
+		top.journalPrinter.addJournalWithTime("存款模块状态：" + CIMDevStatus);
+		devName = "CashAcceptor";
+		if(lastAcceptStatus != "ACCEPTED" && lastAcceptStatus != "UNKNOWN") {
+			ErrInfoDesc = "存款周期异常，暂不支持本操作";
+			return false;		//存款周期异常，优先返回
+	  	}
+		if(transportStatus=="OCCUPIDE"){
+			ErrInfoDesc="钞票传输通道有介质,请先取走介质";
+			return false;
+		}
+		if(inputOutputStatus=="NOTEMPTY"){
+			ErrInfoDesc="钞口有介质,请先取走介质";
+			return false;
+		}
+		if(CIMDevStatus != "HEALTHY"){
+			ErrInfoDesc = "存款模块状态异常,暂不支持本操作";
+			return false;
+		}
+	}
+	
+	if(typeof(top.YHAXCashDispenser) != "undefined"){
+		//获取取款模块状态
+		CDMDevStatus=top.YHAXCashDispenser.StDeviceStatus;
+		transportStatus=top.YHAXCashDispenser.StTransportStatus;
+		inputOutputStatus=top.YHAXCashDispenser.StInputOutputStatus;
+		top.journalPrinter.addJournalWithTime("取款款模块状态：" + CDMDevStatus);
+		devName = "CashDispenser";
+		if(transportStatus=="OCCUPIDE"){
+			ErrInfoDesc="钞票传输通道有介质,请先取走介质";
+			return false;
+		}
+		if(inputOutputStatus=="NOTEMPTY"){
+			ErrInfoDesc="钞口有介质,请先取走介质";
+			return false;
+		}
+		if(CDMDevStatus != "HEALTHY"){
+			ErrInfoDesc = "取款模块状态异常,暂不支持本操作";
+			return false;
+		}
+	}
+	
+	if(typeof(top.YHAXCashDispenserFen) != "undefined"){
+		//获取硬币模块状态
+		CoinDevStatus=top.YHAXCashDispenserFen.StDeviceStatus;
+		top.journalPrinter.addJournalWithTime("硬币模块状态：" + CoinDevStatus);
+		if(CoinDevStatus != "HEALTHY"){
+			ErrInfoDesc = "硬币模块状态异常，暂不支持本操作";
+			devName = "CashDispenserFen";
+			return false;
+		}
+	}
+
+	return result;
+}
+
+/*硬件模块故障*/
+function onHardwareError() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+	 	top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	if(ErrInfoDesc.length <1){
+		ErrInfoDesc = "现金模块状态异常，暂不支持本操作";
+	}
+	
+	top.journalPrinter.addJournalWithTime(ErrInfoDesc);
+	window.operateCtrl.enableInput();
+	Tip_Title2.innerHTML  = "<span class=\"Tip_Title\">" + ErrInfoDesc + "</span>";
+	top.wins.showMain("oLInfoTip2");	  
+}
+/*
+ * 复位故障模块
+ * 参数：isShowRes:true 显示复位结果    false 不显示复位结果
+ *		index:0 清钞前复位		1 清钞后复位
+ */
+ function Reset(isShowRes,index){
+	top.wins.showProcessingTip("正在复位,请稍候...");
+	var devEnr = null;
+	if("CashDispenser" == devName){
+		devEnr = CashDispenserEnr;
+	}else if("CashAcceptor" == devName){
+		devEnr = CashAcceptorEnr;
+	}else if("CashDispenserFen" == devName){
+		devEnr = CashDispenserFenEnr;
+	}
+	var result = "";
+	onResetComplete = function(){
+		devEnr.clearAll();
+		if(isShowRes){
+			result = "复位成功";
+			showReset(result)
+		}else{
+			if(index == 0){
+				serverEntrance();	//清钞前
+			}else if(index == 1){
+				onConfigurationCompleted();		//已完成清钞
+			}
+		}
+	}
+	onDeviceError = function(){
+		devEnr.clearAll();
+		if(isShowRes){
+			result = "复位失败";
+			showReset(result)
+		}else{
+			if(index == 0){
+				serverEntrance();	//清钞前
+			}else if(index == 1){
+				onConfigurationCompleted();		//已完成清钞
+			}
+		}
+	}
+	if(devName.length > 0){
+		devEnr.clearAll();
+		devEnr.appendEvent("ResetComplete", onResetComplete);
+		devEnr.appendEvent("DeviceError", onDeviceError);
+		devEnr.appendEvent("FatalError", onDeviceError);
+		if("CashDispenser" == devName){
+			top.journalPrinter.addJournalWithTime("取款模块开始复位");
+			top.YHAXCashDispenser.Reset("RETRACT", 0);
+		}else if("CashAcceptor" == devName){
+			top.journalPrinter.addJournalWithTime("存款模块开始复位");
+			top.YHAXCashAcceptor.Reset("RETRACT", 0);
+		}else if("CashDispenserFen" == devName){
+			top.journalPrinter.addJournalWithTime("硬币模块开始复位");
+			top.YHAXCashDispenserFen.Reset("RETRACT", 0);
+		}
+	}else{
+		if(isShowRes){
+			result = "复位失败";
+			showReset(result)
+		}else{
+			if(index == 0){
+				serverEntrance();	//清钞前
+			}else if(index == 1){
+				onConfigurationCompleted();		//已完成清钞
+			}
+		}
+	}
+}
+var iTime = null;		//初始化定时器
+/*
+ * 显示复位结果
+ */
+function showReset(showText){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+
+	top.journalPrinter.addJournalWithTime(devName + "  " + showText);
+	window.operateCtrl.enableInput();
+	Tip_Title1.innerHTML  = "<span class=\"Tip_Title\">" + showText + "</span>";
+	top.wins.showMain("oLInfoTip1");
+	iTime = setTimeout(function(){try{serverEntrance();}catch(e){}}, 3000);
+}
+var strHeadingArr = new Array(
+		" 钞箱ID ",
+		"钞箱类型",
+	    "钞箱状态",
+		"钞箱面值",
+		"初始数量",
+		"结存数量"
+	);
+	
+//钞箱信息
+var strRecordArr = new Array();
+var strTotalAmount = 0;	//钞箱剩余金额总和
+
+/*查询清钞状态服务器响应回调函数*/
+onAsyncCashSettleCycLogStatusComplete = function(){
+	top.serviceCtrl.stopUserTimeout();
+	loadCashBoxInfo();
+	showCashBoxInfo();
+}
+
+var cashBoxInfoArr= new Array();
+var cashBoxInfoArrFen= new Array();
+var iNumberArr=new Array();
+var iNumberArrFen= new Array();
+var CashBoxTotal = 0;		//取款钞箱总额
+var coinCashBoxTotal = 0;	//硬币钞箱总额
+var logicalunitsCDM;
+var logicalunitsCIM;
+var logicalunitsFen;
+/*初始化一次性读取钞箱信息*/
+function loadCashBoxInfo()
+{
+	logicalunitsCDM = top.YHAXCashDispenser.LogicalUnits;
+	for(var i=0; i<logicalunitsCDM.Count;i++){
+		var logicalunitCDM = logicalunitsCDM.Item(i);
+		//取款模块钞箱
+		cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
+				logicalunitCDM.Id,
+				converType(logicalunitCDM.Type),
+				converStatus(logicalunitCDM.Status),
+				logicalunitCDM.NoteValue + "元",
+				logicalunitCDM.InitialCount,
+				logicalunitCDM.CurrentCount,
+				logicalunitCDM.Number 
+			);
+		CashBoxTotal += logicalunitCDM.CurrentCount * logicalunitCDM.NoteValue;
+		top.journalPrinter.addJournalWithTime(
+				"logicalunitCDM: Number=" + logicalunitCDM.Number 
+				+ "  id=" + logicalunitCDM.id
+				+ "  Type=" + logicalunitCDM.Type
+				+ "  Status=" + logicalunitCDM.Status
+				+ "  NoteValue=" + logicalunitCDM.NoteValue
+				+ "  InitialCount=" + logicalunitCDM.InitialCount
+				+ "  CurrentCount=" + logicalunitCDM.CurrentCount
+				);
+	}
+	logicalunitsCIM = top.YHAXCashAcceptor.LogicalUnits;
+	for(var j=0; j<logicalunitsCIM.Count;j++){
+		var isExit = false;
+		var logicalunitCIM = logicalunitsCIM.Item(j);
+		for(var n=0;n<logicalunitsCDM.Count;n++){
+			if(logicalunitCIM.Number == logicalunitsCDM.Item(n).Number){
+				isExit = true;
+				break;
+			}
+		}
+		if(isExit){
+			continue;
+		}
+		cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
+				logicalunitCIM.UnitID,
+				converType(logicalunitCIM.Type),
+				converStatus(logicalunitCIM.Status),
+				logicalunitCIM.Denomination + "元",
+							"0",	//存款钞箱无法初始张数		//logicalunitCIM.InitialCount,
+				logicalunitCIM.CurrentCount,
+				logicalunitCIM.Number 
+			);
+		CashBoxTotal += logicalunitCIM.CurrentCount * logicalunitCIM.Denomination;
+		top.journalPrinter.addJournalWithTime(
+				"logicalunitCIM: Number=" + logicalunitCIM.Number 
+				+ "  id=" + logicalunitCIM.UnitID
+				+ "  Type=" + logicalunitCIM.Type
+				+ "  Status=" + logicalunitCIM.Status
+				+ "  NoteValue=" + logicalunitCIM.Denomination
+				+ "  InitialCount=" + logicalunitCIM.InitialCount
+				+ "  CurrentCount=" + logicalunitCIM.CurrentCount
+			);
+	}
+	
+	logicalunitsFen = top.YHAXCashDispenserFen.LogicalUnits;
+	for(var k=0; k<logicalunitsFen.Count;k++){
+		var logicalunitFen = logicalunitsFen.Item(k);
+		//硬币箱
+		cashBoxInfoArrFen[cashBoxInfoArrFen.length] = new Array(
+				logicalunitFen.Id,
+				converType(logicalunitFen.Type),
+				converStatus(logicalunitFen.Status),
+				"1" + converNoteValue(logicalunitFen.NoteValue),
+				logicalunitFen.InitialCount,
+				logicalunitFen.CurrentCount, 
+				logicalunitFen.Number
+			);
+		coinCashBoxTotal +=  logicalunitFen.CurrentCount * logicalunitFen.NoteValue;
+		top.journalPrinter.addJournalWithTime(
+				"LogicalUnitFen: Number=" + logicalunitFen.Number 
+				+ "  id=" + logicalunitFen.id
+				+ "  Type=" + logicalunitFen.Type
+				+ "  Status=" + logicalunitFen.Status
+				+ "  NoteValue=" + logicalunitFen.NoteValue
+				+ "  InitialCount=" + logicalunitFen.InitialCount
+				+ "  CurrentCount=" + logicalunitFen.CurrentCount
+			);
+	}
+	if(cashBoxInfoArr.length < 1 || cashBoxInfoArrFen.length < 1){
+		onServiceFailed("交易失败", "", "获取钞箱信息失败");
+		return;
+	}
+	for(var i=0;i<cashBoxInfoArr.length;i++){
+	    strRecordArr[i] = new Array(
+	    		new top.StringCtrl(cashBoxInfoArr[i][0]).trim(),  		//钞箱ID
+	    		new top.StringCtrl(cashBoxInfoArr[i][1]).trim(),		//钞箱类型
+	    		new top.StringCtrl(cashBoxInfoArr[i][2]).trim(),		//钞箱状态
+	    		new top.StringCtrl(cashBoxInfoArr[i][3]).trim(),		//钞箱面值
+	    		new top.StringCtrl(cashBoxInfoArr[i][4]).trim(),		//初始张数
+	    		new top.StringCtrl(cashBoxInfoArr[i][5]).trim()			//结存张数
+	    	);
+	}
+	
+	var FenLen=cashBoxInfoArrFen.length;
+	for(var j=0;j<FenLen;j++){
+	    strRecordArr[strRecordArr.length] = new Array(
+	    		new top.StringCtrl(cashBoxInfoArrFen[j][0]).trim(),  	//钞箱ID
+	    		new top.StringCtrl(cashBoxInfoArrFen[j][1]).trim(),		//钞箱类型
+	    		new top.StringCtrl(cashBoxInfoArrFen[j][2]).trim(),		//钞箱状态
+	    		new top.StringCtrl(cashBoxInfoArrFen[j][3]).trim(),		//钞箱面值
+	    		new top.StringCtrl(cashBoxInfoArrFen[j][4]).trim(),		//初始张数
+	    		new top.StringCtrl(cashBoxInfoArrFen[j][5]).trim()		//结存张数
+	    	);
+	}
+}
+
+/*显示钞箱信息*/
+function showCashBoxInfo() {
+	window.operateCtrl.disableInput(true);
+	onKey_Cancel = onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Enter = onKey_F6 = function() {
+		Confirm();
+	}
+	onKey_F8 = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	// 清空当前显示的内容
+	var oTHead=document.getElementById('oTHead');
+	var oTBody=document.getElementById('oTBody');
+    while (oTHead.rows.length > 0)
+     oTHead.deleteRow(0);
+    while (oTBody.rows.length > 0)
+     oTBody.deleteRow(0);
+	// 	thead
+	var oRow = oTHead.insertRow();
+	for (var j=0; j<strHeadingArr.length; j++){
+       var oCell = oRow.insertCell();
+       oCell.innerHTML =strHeadingArr[j];
+       oCell.align = "center";
+    }
+
+	//tbody 
+    for (var i=0; i<strRecordArr.length; i++){
+  	  var oRow =oTBody.insertRow(); 
+  	  for (var j=0; j<strRecordArr[i].length; j++){
+  		  var oCell = oRow.insertCell();
+  		  oCell.innerHTML =strRecordArr[i][j];
+  		  oCell.align="center";
+  	  }
+    } 
+	
+	//将纸币钞箱面额转换为分后进行相加
+    strTotalAmount = (CashBoxTotal * 100) + coinCashBoxTotal;
+	//amountCounts_Title.innerHTML = "<span class=\"Tip_Content\">钞箱剩余金额:  "+ new top.StringCtrl("").formatStrAmount(strTotalAmount) +"元</span>";
+	top.wins.showMain("oLShowCardBoxInfo");
+	window.operateCtrl.enableInput();
+}
+	
+/*选择确认，发送查询轧账信息交易*/
+function Confirm(){
+	onAsyncCashFailedRecordComplete = function(){
+		top.serviceCtrl.stopUserTimeout();
+		showServerInfo();
+	}
+
+	top.wins.showProcessingTip("正在查询轧账信息,请稍候...");
+	top.trans.sendCashFailedRecordAsync();
+	//onAsyncCashFailedRecordComplete();	//测试
+}
+
+var addCashRecordArr = new Array();			//加钞记录
+var faieldWithDralRecords = new Array();	//取款异常总汇
+var faieldWithDralRecord = new Array();		//取款异常单条记录
+var faieldDepositRecords = new Array();		//存款异常总汇
+var faieldDepositRecord = new Array();		//存款异常单条记录
+var faieldWithDralCompRecords = new Array();	//对公取款异常总汇
+var faieldWithDralcompRecord = new Array();		//对公取款异常单条记录
+var addCashCycle;				//加钞批次号
+var addCashTime;				//加钞时间
+var addCashAmount;				//加钞金额
+var cdmSurplusAmount;			//取款钞箱余额
+var cimSurplusAmount;			//存款钞箱余额
+var surplusAmount = 0;			//服务器端统计的钞箱剩余总金额
+var faieldWithDralCount = 0;	//取款异常笔数
+var faieldWithDralTotal = 0;	//取款异常金额总计
+var faieldDepositCount = 0;		//存款异常笔数
+var faieldDepositTotal = 0;		//存款异常金额总计
+var faieldWithDralCompCount = 0;	// 对公取款异常笔数
+var faieldWithDralCompTotal = 0; 	// 对公取款异常笔数总计
+
+/*展示服务器返回的加钞金额、取款异常、存款异常交易信息*/
+function showServerInfo(){
+	window.operateCtrl.disableInput(true);
+	onKey_Cancel = onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Enter = onKey_F6 = function() {
+		ClearCashSubmit();
+	}
+	onKey_F8 = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	var tempAddCashRecord = top.exchxmlasync.msgxmldomResp.getElementValue("addCashRecord");
+	top.journalPrinter.addJournalWithTime("addCashRecord:"+tempAddCashRecord);
+	if(tempAddCashRecord.length < 1){
+		onServiceFailed("查询轧账信息失败","","无加钞记录");
+	}
+	addCashRecordArr = tempAddCashRecord.split(',');
+	addCashCycle = addCashRecordArr[2];						//批次号
+	addCashTime = addCashRecordArr[3];						//加钞时间
+	addCashAmount = parseFloat(addCashRecordArr[8]).toFixed(2);			//加钞金额
+	cdmSurplusAmount = parseFloat(addCashRecordArr[6]).toFixed(2);		//取款箱剩余金额
+	cimSurplusAmount = parseFloat(addCashRecordArr[7]).toFixed(2);		//存款箱剩余金额
+	surplusAmount = (parseFloat(cdmSurplusAmount) + parseFloat(cimSurplusAmount)).toFixed(2);	//总剩余金额
+	
+	addCashTime_Title.innerHTML = "<span class=\"Tip_Content\">加钞时间: "+ addCashTime +"</span>";
+	addCashCycle_Title.innerHTML = "<span class=\"Tip_Content\">批次号: "+ addCashCycle +"</span>";
+	//cdmSurplusAmount_Title.innerHTML = "<span class=\"Tip_Content\">取款钞箱余额: "+ cdmSurplusAmount +"元</span>";
+	//cimSurplusAmount_Title.innerHTML = "<span class=\"Tip_Content\">存款钞箱余额: "+ cimSurplusAmount +"元</span>";
+	addCashAmount_Title.innerHTML = "<span class=\"Tip_Content\">加钞金额: "+ addCashAmount +"元</span>";
+	//surplusAmount_Title.innerHTML = "<span class=\"Tip_Content\">钞箱余额: "+ new top.StringCtrl("").formatStrAmount(strTotalAmount) +"元</span>";
+	
+	var tempFaieldWithDralRecord = top.exchxmlasync.msgxmldomResp.getElementValue("faieldWithDralRecord");
+	top.journalPrinter.addJournalWithTime("faieldWithDralRecord:"+tempFaieldWithDralRecord);
+	if(tempFaieldWithDralRecord.length > 0){
+		faieldWithDralRecords = tempFaieldWithDralRecord.split('|');
+		faieldWithDralCount = 0;		//取款异常笔数
+		faieldWithDralTotal = 0;		//取款异常金额总计
+		for(var i=0;i<faieldWithDralRecords.length;i++){
+			faieldWithDralRecord[i] = new Array();
+			faieldWithDralRecord[i] = faieldWithDralRecords[i].split(',');
+			if(faieldWithDralRecord[i][9] != "1"){
+				//0不冲正  1冲正成功  2冲正失败  3结果不确定	冲正成功的不统计
+				faieldWithDralTotal += parseFloat(faieldWithDralRecord[i][3]);
+				faieldWithDralRecord[faieldWithDralCount] = faieldWithDralRecord[i];
+				++faieldWithDralCount;
+				
+			}
+		}
+		faieldWithDralTotal = faieldWithDralTotal.toFixed(2);
+		faieldWithDralCount_Title.innerHTML = "<span class=\"Tip_Content\">取款异常笔数: "+ faieldWithDralCount +"</span>";
+		faieldWithDralTotal_Title.innerHTML = "<span class=\"Tip_Content\">取款异常金额: "+ faieldWithDralTotal +" 元</span>";
+	}
+
+	var tempFaieldDepositRecord = top.exchxmlasync.msgxmldomResp.getElementValue("faieldDepositRecord");
+	top.journalPrinter.addJournalWithTime("faieldDepositRecord:"+tempFaieldDepositRecord);
+	if(tempFaieldDepositRecord.length > 0){
+		faieldDepositRecords = tempFaieldDepositRecord.split('|');
+		faieldDepositCount = 0;		//存款异常笔数
+		faieldDepositTotal = 0;		//存款异常金额总计
+		for(var j=0;j<faieldDepositRecords.length;j++){
+			faieldDepositRecord[j] = new Array();
+			faieldDepositRecord[j] = faieldDepositRecords[j].split(',');
+			++faieldDepositCount;
+			faieldDepositTotal += parseFloat(faieldDepositRecord[j][3]);
+		}
+		faieldDepositTotal = faieldDepositTotal.toFixed(2);
+		faieldDepositCount_Title.innerHTML = "<span class=\"Tip_Content\">存款异常笔数: "+ faieldDepositCount +"</span>";
+		faieldDepositTotal_Title.innerHTML = "<span class=\"Tip_Content\">存款异常金额: "+ faieldDepositTotal +" 元</span>";
+	}
+	
+	var tempFaieldWithDralCompRecord = top.exchxmlasync.msgxmldomResp.getElementValue("faieldWithDralCompRecord");
+	top.journalPrinter.addJournalWithTime("faieldWithDralCompRecord:"+tempFaieldWithDralCompRecord);
+	if(tempFaieldWithDralCompRecord.length > 0){
+		faieldWithDralCompRecords = tempFaieldWithDralCompRecord.split('|');
+		faieldWithDralCompCount = 0;		//对公取款异常笔数
+		faieldWithDralCompTotal = 0;		//对公取款异常金额总计
+		for(var j=0;j<faieldWithDralCompRecords.length;j++){
+			faieldWithDralcompRecord[j] = new Array();
+			faieldWithDralcompRecord[j] = faieldWithDralCompRecords[j].split(',');
+			++faieldWithDralCompCount;
+			faieldWithDralCompTotal += parseFloat(faieldWithDralcompRecord[j][3]);
+		}
+		faieldWithDralCompTotal = faieldWithDralCompTotal.toFixed(2);
+		faieldWithDralCompCount_Title.innerHTML = "<span class=\"Tip_Content\">对公取款异常笔数: "+ faieldWithDralCompCount +"</span>";
+		faieldWithDralCompTotal_Title.innerHTML = "<span class=\"Tip_Content\">对公取款异常金额: "+ faieldWithDralCompTotal +" 元</span>";
+	}
+	
+	top.wins.showMain("oLshowServerInfo");
+	window.operateCtrl.enableInput();
+}
+
+/*选择提交清钞*/
+function ClearCashSubmit(){
+	
+	onAsync909011Complete = function(){
+		top.serviceCtrl.stopUserTimeout();
+		//开始钞箱设数
+		InitiateCashUnitExchangeCDM();
+	}
+	top.wins.showProcessingTip("正在进行清钞,请稍候...");
+	top.pool.set("strAddTotalAmount",strTotalAmount);	//上送本地钞箱剩总计金额
+	top.trans.send909011Async();	//提交清机 
+	//onAsync909011Complete();	//测试
+}
+
+/*初始化钞箱配置信息*/
+function InitiateCashUnitExchangeCDM(){
+	var CashBoxConfig = new Array();
+	for(var i=0; i<logicalunitsCDM.Count;i++){
+		var logicalunit = logicalunitsCDM.Item(i);
+		CashBoxConfig[i] = logicalunit.Number;
+	}
+	onExchangeInitiatedFailedCDM = function(){
+	  	onServiceFailed("交易失败", "", "取款钞箱配置初始化失败"); 
+  	}
+	onExchangeInitiatedCDM = function(){
+  		top.journalPrinter.addJournalWithTime("取款钞箱配置初始化完成");
+  		CompletedCashUnitConfigurationCDM();
+  	}
+  	
+  	top.journalPrinter.addJournalWithTime("取款钞箱配置初始化开始  CashDispenser command InitiateCashUnitExchange");
+	CashDispenserEnr.clearAll();
+	CashDispenserEnr.appendEvent("ExchangeInitiated",onExchangeInitiatedCDM);
+	CashDispenserEnr.appendEvent("DeviceError",onExchangeInitiatedFailedCDM);
+	top.YHAXCashDispenser.InitiateCashUnitExchange(CashBoxConfig);
+}
+/*更新钞箱配置信息*/
+function CompletedCashUnitConfigurationCDM(){
+	var CUCurrentCount = new Array();
+	var CUInitialCount = new Array();
+	var CURejectCount = new Array();
+
+	top.journalPrinter.addJournalWithTime("取款钞箱配置信息更新开始  CashDispenser command CompletedCashUnitConfiguration");
+	for(var i=0;i<logicalunitsCDM.Count;i++){
+		CUCurrentCount[i] = 0;
+		CUInitialCount[i] = 0;
+		CURejectCount[i] = 0;
+    }
+	onExchangeCompletedCDM = function(){
+		top.journalPrinter.addJournalWithTime("取款钞箱配置信息更新完成");
+			InitiateCashUnitExchangeCIM();
+	}
+	onExchangeCompletedFailedCDM = function(){
+		onServiceFailed("交易失败","","取款钞箱配置信息更新失败");
+	}
+	try{
+		  top.YHAXCashDispenser.PURejectCount = CURejectCount;			
+		  top.YHAXCashDispenser.CURejectCount = CURejectCount;
+		  
+		  top.YHAXCashDispenser.PUCurrentCount = CUCurrentCount;
+		  top.YHAXCashDispenser.CUCurrentCount =  CUCurrentCount;
+		  
+		  top.YHAXCashDispenser.PUInitialCount = CUInitialCount;
+		  top.YHAXCashDispenser.CUInitialCount = CUInitialCount;
+	    
+		CashDispenserEnr.clearAll();
+		CashDispenserEnr.appendEvent("ExchangeCompleted", onExchangeCompletedCDM);
+		CashDispenserEnr.appendEvent("DeviceError", onExchangeCompletedFailedCDM);
+	    top.YHAXCashDispenser.CompletedCashUnitExchange();
+	}catch(e){
+		top.journalPrinter.addJournalWithTime("取款钞箱配置信息更新失败  " + e);
+		onServiceFailed("交易失败","","取款钞箱配置信息更新失败");
+	}
+}
+
+/*初始化存钞箱配置信息*/
+function InitiateCashUnitExchangeCIM(){
+	if(typeof(top.YHAXCashAcceptor) != "undefined"){
+		var CashBoxConfig = new Array();
+		for(var i=0; i<logicalunitsCIM.Count;i++){
+			var logicalunit = logicalunitsCIM.Item(i);
+			CashBoxConfig[i] = logicalunit.Number;
+		}
+		onExchangeInitiatedFailedCIM = function(){
+			onServiceFailed("交易失败", "", "存款钞箱配置初始化失败"); 
+		}
+		onExchangeInitiatedCIM = function(){
+			top.journalPrinter.addJournalWithTime("存款钞箱配置初始化完成");
+			CompletedCashUnitConfigurationCIM();
+		}
+		
+		top.journalPrinter.addJournalWithTime("存款钞箱配置初始化开始  CashAcceptor command InitiateCashUnitExchange");
+		CashAcceptorEnr.clearAll();
+		CashAcceptorEnr.appendEvent("ExchangeInitiated",onExchangeInitiatedCIM);
+		CashAcceptorEnr.appendEvent("DeviceError",onExchangeInitiatedFailedCIM);
+		top.YHAXCashAcceptor.InitiateCashUnitExchange(CashBoxConfig);
+	}else{
+		InitiateCashUnitExchangeFen();
+	}
+
+}
+/*更新钞箱配置信息*/
+function CompletedCashUnitConfigurationCIM(){
+	var CUCurrentCount = new Array();
+	var CUInitialCount = new Array();
+	var CURejectCount = new Array();
+
+	top.journalPrinter.addJournalWithTime("存款钞箱配置信息更新开始  CashAcceptor command CompletedCashUnitConfiguration");
+	for(var i=0;i<logicalunitsCIM.Count;i++){
+		CUCurrentCount[i] = 0;
+		CUInitialCount[i] = 0;
+		CURejectCount[i] = 0;
+    }
+	onExchangeCompletedCIM = function(){
+		top.journalPrinter.addJournalWithTime("存款钞箱配置信息更新完成");
+		InitiateCashUnitExchangeFen();
+	}
+	onExchangeCompletedFailedCIM = function(){
+		onServiceFailed("交易失败","","存款钞箱配置信息更新失败");
+	}
+	try{
+		  top.YHAXCashAcceptor.PURejectCount = CURejectCount;			
+		  top.YHAXCashAcceptor.CURejectCount = CURejectCount;
+		  
+		  top.YHAXCashAcceptor.PUCurrentCount = CUCurrentCount;
+		  top.YHAXCashAcceptor.CUCurrentCount =  CUCurrentCount;
+		  
+		  top.YHAXCashAcceptor.PUInitialCount = CUInitialCount;
+		  top.YHAXCashAcceptor.CUInitialCount = CUInitialCount;
+	    
+		CashAcceptorEnr.clearAll();
+		CashAcceptorEnr.appendEvent("ExchangeCompleted", onExchangeCompletedCIM);
+		CashAcceptorEnr.appendEvent("DeviceError", onExchangeCompletedFailedCIM);
+	    top.YHAXCashAcceptor.CompletedCashUnitExchange();
+	}catch(e){
+		top.journalPrinter.addJournalWithTime("存款钞箱配置信息更新失败  " + e);
+		onServiceFailed("交易失败","","存款钞箱配置信息更新失败");
+	}
+}
+
+/*初始化硬币钞箱配置信息*/
+function InitiateCashUnitExchangeFen(){
+	if(typeof(top.YHAXCashDispenserFen) != "undefined"){
+		var CashBoxConfigFen = new Array();
+		for(var i=0;i<logicalunitsFen.Count;i++){
+			var logicalunit = logicalunitsFen.Item(i);
+			CashBoxConfigFen[i] = logicalunit.Number;
+		}
+		onExchangeInitiatedFailedFen = function(){
+			onServiceFailed("交易失败", "", "硬币钞箱配置初始化失败"); 
+		}
+		onExchangeInitiatedFen = function(){
+			top.journalPrinter.addJournalWithTime("硬币钞箱配置始化完成");
+			CompletedCashUnitExchangeFen();
+		}
+		
+		top.journalPrinter.addJournalWithTime("硬币钞箱配置初始化开始  CashDispenserFen command InitiateCashUnitExchange");
+		CashDispenserFenEnr.clearAll();
+		CashDispenserFenEnr.appendEvent("ExchangeInitiated",onExchangeInitiatedFen);
+		CashDispenserFenEnr.appendEvent("DeviceError",onExchangeInitiatedFailedFen);
+		top.YHAXCashDispenserFen.InitiateCashUnitExchange(CashBoxConfigFen);
+	}else{
+		onConfigurationCompleted();
+	}
+	
+}
+/*更新硬币钞箱配置信息*/
+function CompletedCashUnitExchangeFen(){
+	var CUCurrentCountFen = new Array();
+	var CUInitialCountFen = new Array();
+	var CURejectCountFen = new Array();
+
+	top.journalPrinter.addJournalWithTime("硬币钞箱配置信息更新开始   CashDispenserFen command CompletedCashUnitExchange");
+
+	for(var i=0;i<logicalunitsFen.Count;i++){
+		CUCurrentCountFen[i] = 0;
+		CUInitialCountFen[i] = 0;
+		CURejectCountFen[i] = 0;
+    }
+	onExchangeCompletedFen = function(){
+		top.journalPrinter.addJournalWithTime("硬币钞箱配置信息更新完成");
+		onConfigurationCompleted();
+	}
+	onExchangeCompletedFailedFen = function(){
+		onServiceFailed("交易失败", "", "硬币钞箱配置信息更新失败");
+	}
+	try{
+		top.YHAXCashDispenserFen.PURejectCount = CURejectCountFen;			
+		top.YHAXCashDispenserFen.CURejectCount = CURejectCountFen;
+		  
+		top.YHAXCashDispenserFen.PUCurrentCount = CUCurrentCountFen;
+		top.YHAXCashDispenserFen.CUCurrentCount =  CUCurrentCountFen;
+		  
+		top.YHAXCashDispenserFen.PUInitialCount = CUInitialCountFen;
+		top.YHAXCashDispenserFen.CUInitialCount = CUInitialCountFen;
+		  
+		CashDispenserFenEnr.clearAll();
+	    CashDispenserFenEnr.appendEvent("ExchangeCompleted", onExchangeCompletedFen);
+	    CashDispenserFenEnr.appendEvent("DeviceError", onExchangeCompletedFailedFen);
+	    top.YHAXCashDispenserFen.CompletedCashUnitExchange();
+	}catch(e){
+		top.journalPrinter.addJournalWithTime("硬币钞箱信息更新失败");
+	}
+}
+
+//更新本地钞箱配置成功回调函数
+function onConfigurationCompleted(){
+	if(!checkDevStatus() && ResetCounts < 2){
+		//加钞完成后，检测硬件状态，故障自动复位
+		ResetCounts++;
+		Reset(false,1);
+	}else{
+		top.serviceCtrl.stopUserTimeout();
+		ResetCounts = 0;
+		if (typeof(top.YHAXReceiptPrint) != "undefined"){
+			printReceipt();
+		}
+		printJournal();
+		onServiceSuccessful(); 
+		
+	}
+}
+
+/*
+ * 钞箱状态转义
+ */
+function converStatus(uStatus){
+	switch(uStatus) {
+		case "HEALTHY" : return "正常"; 
+		case "FULL" : return "钞满";
+		case "HIGH" : return "将满";
+		case "LOW" : return "将空";
+		case "EMPTY" :return "钞空";
+		case "INOPERATIVE" :return "无效";
+		case "MISSING" :return "缺失";
+		case "UNKNOWN" :return "未知";
+	}
+	return uStatus;
+}
+/*
+ * 钞箱类型转义
+ */
+function converType(uType){
+	switch(uType) {
+		case "REJECTCASSETTE" : return "拒钞箱"; 
+		case "BILLCASSETTE" : return "取款箱";
+		case "RETRACTCASSETTE" : return "回收箱";
+		case "COINCYLINDER" : return "硬币箱";
+		case "COINDISPENSER" : return "硬币箱";
+		case "RECYCLINGCASSETTE" :return "循环箱";
+		case "CASHIN" :return "存款箱";
+		case "RECYCLER" :return "循环箱";
+		case "RETRACT" :return "回收箱";
+		case "REJECT" :return "拒钞箱";
+		default : return "其他"
+	}
+	return uType;
+}
+/*
+ * 硬币钞箱币值转义
+ */
+function converNoteValue(uNoteValue){
+	switch(uNoteValue) {
+		case 100 : return "元"; 
+		case 10 : return "角";
+		case 1 : return "分";
+	}
+	return uNoteValue;
+}
+/*
+ *主机交易结果转义
+ */
+function converHostTransStatus(uStatus){
+	if(uStatus.length =0){return "";}
+	switch(uStatus) {
+		case "0" : return "交易成功"; 
+		case "1" : return "交易失败";
+		case "0" : return "交易未知";
+	}
+	return "交易未知";
+}
+/*
+ *终端动作结果转义
+ */
+function converTermTransStatus(uStatus){
+	if(uStatus.length =0){return "";}
+	switch(uStatus) {
+		case "0" : return "未动作"; 
+		case "1" : return "已送钞";
+		case "2" : return "出钞失败";
+		case "3" : return "结果未知"; 
+		case "4" : return "验钞成功";
+		case "5" : return "入钞成功";
+		case "6" : return "入钞失败"; 
+		case "7" : return "退钞成功";
+		case "8" : return "退钞失败";
+		case "9" : return "送钞失败"; 
+		case "10" : return "关门故障";
+		case "11" : return "超时未取";
+	}
+	return "状态未知";
+}
+
+/*
+ *冲正结果转义
+ */
+function converReverSeenTryStatus(uStatus){
+	if(uStatus.length =0){return "";}
+	switch(uStatus) {
+		case "0" : return "无需冲正";
+		case "1" : return "冲正成功";
+		case "2" : return "冲正失败";
+		case "3" : return "结果未知";
+	}
+	return "未知";
+}
+//交易成功
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+	//交易成功之后发送钞箱变动交易到P端
+    top.trans.send909014Async();
+	//交易成功，记钞箱变动日志(cash.txt)
+	var CashBoxRecode = new top.CashBoxCheck().getCashBoxRecord();
+    var strJrn = "----------ClearCash CashBoxRecode---------" + "\r\n" + CashBoxRecode;
+    top.journalPrinter.addCashJournalWithTime(strJrn,false);
+}
+
+//交易失败
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+  onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  oFailedTitle.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLServiceFailedTip");
+}
+    
+/*打印清钞凭条*/
+function printReceipt() {
+	var strPrt = "";
+	var strNewLine = "\r\n";
+	strPrt += "*****************清钞清单*****************" + strNewLine;
+	strPrt += "时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep()+ strNewLine;
+	strPrt += "网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username")+ strNewLine;
+	strPrt += "---------------钞箱信息明细---------------"+ strNewLine;
+	strPrt += "钞箱ID  类型    面值   初始数量  结存数量"+ strNewLine;
+     var strUnit = "";
+	 for (var i=0; i<strRecordArr.length; i++){
+		if("硬币箱" == strRecordArr[i][1])
+			strUnit = "枚";
+		else
+			strUnit = "张";
+		strPrt += new top.StringCtrl(strRecordArr[i][0]).formatStrRight(' ', 8)+
+                  new top.StringCtrl(strRecordArr[i][1]).formatStrRight(' ', 7)+
+                  new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 6)+
+                  new top.StringCtrl(strRecordArr[i][4]).formatStr(' ', 7) + strUnit + 
+                  new top.StringCtrl(strRecordArr[i][5]).formatStr(' ', 9) + strUnit +
+                  strNewLine;
+     }
+	 //strPrt += "本地钞箱总余额:" + new top.StringCtrl("").formatStrAmount(strTotalAmount) +"元");
+     strPrt += "-----------------加钞记录-----------------" + strNewLine;
+     strPrt += "加钞时间:" + addCashTime + "   批次号:" + addCashCycle + strNewLine;
+     //strPrt += "取款钞箱余额:" + cdmSurplusAmount + "元" + strNewLine;
+     //strPrt += "存款钞箱余额:" + cimSurplusAmount + "元" + strNewLine;
+     //strPrt += "加钞金额:"  + addCashAmount + "元  钞箱总余额:" +surplusAmount + "元" + strNewLine;
+     strPrt += "加钞金额:"  + addCashAmount + "元" + strNewLine;
+     if(faieldWithDralCount > 0){
+    	 strPrt += " "+ strNewLine;
+    	 strPrt += "取款异常笔数:" + faieldWithDralCount + "  取款异常金额:" + faieldWithDralTotal + "元" + strNewLine;
+         var faieldWithDralHead = "";	//取款异常明细表头
+         var ReverPrinter = "";			//取款异常
+         var NoReverPrinter = "";		//取款异常不冲正
+         var FailedReverPrinter = "";	//取款异常冲正失败
+         var UnknownReverPrinter = "";	//取款异常冲正未知
+         var FaidDrawCompPrinter = "";  //对公取款异常
+         var isNewLine = "";
+         faieldWithDralHead = "  日期       时间     交易金额    主机结果" + "\r\n" +
+         					  "终端结果    终端流水号        账号/卡号";
+         //对取款异常返回数据进行分类，0-不冲正  2-冲正失败  3-冲正未知
+         for(var i=0;i< faieldWithDralCount;i++){
+        	 if(i==faieldWithDralCount-1)
+        		 isNewLine = "";
+        	 else
+        		 isNewLine = "\r\n";
+        	 
+        	 ReverPrinter =
+        		new top.StringCtrl(faieldWithDralRecord[i][1]).formatStrRight(' ', 22) +
+				new top.StringCtrl(parseFloat(faieldWithDralRecord[i][3]).toFixed(2) + "元").formatStr(' ', 12) +
+				new top.StringCtrl(converHostTransStatus(faieldWithDralRecord[i][5])).formatStr(' ', 10) +
+				"\r\n" + 
+				new top.StringCtrl(converTermTransStatus(faieldWithDralRecord[i][7])).formatStrRight(' ', 9) +
+				new top.StringCtrl(faieldWithDralRecord[i][8]).formatStrRight(' ', 17) +
+				new top.StringCtrl(faieldWithDralRecord[i][2]).formatStrRight(' ', 20) +
+				isNewLine + isNewLine;
+        	 if("0" == faieldWithDralRecord[i][9]){
+        		 NoReverPrinter += ReverPrinter;
+        	 }else if("2" == faieldWithDralRecord[i][9]){
+        		 FailedReverPrinter += ReverPrinter;
+        	 }else if("3" == faieldWithDralRecord[i][9]){
+        		 UnknownReverPrinter += ReverPrinter;
+        	 }
+    	 }
+         if(NoReverPrinter.length >0){
+        	 strPrt += "------------取款异常不冲正明细------------"+ strNewLine;
+        	 strPrt += faieldWithDralHead+ strNewLine;
+        	 strPrt += NoReverPrinter+ strNewLine;
+         }
+         if(FailedReverPrinter.length >0){
+        	 strPrt += "-----------取款异常冲正失败明细-----------"+ strNewLine;
+        	 strPrt += faieldWithDralHead+ strNewLine;
+        	 strPrt += FailedReverPrinter+ strNewLine;
+         }
+         if(UnknownReverPrinter.length >0){
+        	 strPrt += "-----------取款异常冲正未知明细-----------"+ strNewLine;
+        	 strPrt += faieldWithDralHead+ strNewLine;
+        	 strPrt += UnknownReverPrinter+ strNewLine;
+         }
+     }
+     
+     
+     
+     
+     if(faieldDepositCount > 0){
+    	 strPrt += " "+ strNewLine;
+    	 strPrt += "存款异常笔数:" + faieldDepositCount + "  存款异常金额:" + faieldDepositTotal + "元" + strNewLine;
+    	 strPrt += "---------------存款异常明细---------------"+ strNewLine;
+    	 strPrt += "  日期       时间    交易金额   主机结果"+ strNewLine;
+    	 strPrt += "终端结果    终端流水号         账号/卡号"+ strNewLine;
+    	 for(var j=0;j< faieldDepositCount;j++){
+    		 strPrt +=  new top.StringCtrl(faieldDepositRecord[j][1]).formatStrRight(' ', 22) +
+						new top.StringCtrl(parseFloat(faieldDepositRecord[j][3]).toFixed(2) + "元").formatStr(' ', 12) +
+	   					new top.StringCtrl(converHostTransStatus(faieldDepositRecord[j][5])).formatStr(' ', 10) + 
+						strNewLine;
+			 strPrt +=  new top.StringCtrl(converTermTransStatus(faieldDepositRecord[j][7])).formatStrRight(' ', 9) +
+						new top.StringCtrl(faieldDepositRecord[j][8]).formatStrRight(' ', 17) +
+						new top.StringCtrl(faieldDepositRecord[j][2]).formatStrRight(' ', 20) +
+   						strNewLine;
+    		//不是最后一行，加空行
+    		if(j!=faieldDepositCount-1){
+    			strPrt += " "+ strNewLine;
+    		}
+   		 }
+     }
+     
+     if(faieldWithDralCompCount > 0){
+    	 strPrt += " "+ strNewLine;
+    	 strPrt += "对公取款异常笔数:" + faieldWithDralCompCount + strNewLine;
+    	 strPrt += "对公取款失败金额:" + faieldWithDralCompTotal + "元" + strNewLine;
+    	 strPrt += "-------------对公取款异常明细-------------"+ strNewLine;
+    	 strPrt += "  日期       时间    交易金额   主机结果"+ strNewLine;
+    	 strPrt += "终端结果    终端流水号         账号/卡号"+ strNewLine;
+    	 for(var j=0;j< faieldWithDralCompCount;j++){
+    		 strPrt +=  new top.StringCtrl(faieldWithDralcompRecord[j][1]).formatStrRight(' ', 22) +
+						new top.StringCtrl(parseFloat(faieldWithDralcompRecord[j][3]).toFixed(2) + "元").formatStr(' ', 12) +
+	   					new top.StringCtrl(converHostTransStatus(faieldWithDralcompRecord[j][5])).formatStr(' ', 10) + 
+						strNewLine;
+			 strPrt +=  new top.StringCtrl(converTermTransStatus(faieldWithDralcompRecord[j][7])).formatStrRight(' ', 9) +
+						new top.StringCtrl(faieldWithDralcompRecord[j][8]).formatStrRight(' ', 17) +
+						new top.StringCtrl(faieldWithDralcompRecord[j][2]).formatStrRight(' ', 20) +
+   						strNewLine;
+    		//不是最后一行，加空行
+    		if(j!=faieldWithDralCompCount-1){
+    			strPrt += " "+ strNewLine;
+    		}
+   		 }
+     }
+     strPrt += "------------------------------------------";
+     top.receiptprinter.set(strPrt);
+     top.receiptprinter.printAndEject();
+     //将凭条信息打印到Cash.txt文件中
+     top.journalPrinter.addCashJournal(strPrt + strNewLine,false);
+}
+
+/*打印清钞流水*/
+function printJournal() {
+	var strUnit = "";
+	var strJrn = "";
+	strJrn += "****************清钞清单****************" + top.journalPrinter.strNewLine;
+	strJrn += "时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep() + top.journalPrinter.strNewLine;
+	strJrn += "网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username") + top.journalPrinter.strNewLine;
+	strJrn += "----------------------------------------" + top.journalPrinter.strNewLine;
+	strJrn += "--------------钞箱信息明细--------------" + top.journalPrinter.strNewLine;
+	strJrn += "钞箱ID  类型    面值   初始数量   结存数量" + top.journalPrinter.strNewLine;
+     for (var i=0; i<strRecordArr.length; i++){
+		if("硬币箱" == strRecordArr[i][1])
+			strUnit = "枚";
+		else
+			strUnit = "张";
+		 strJrn +=   new top.StringCtrl(strRecordArr[i][0]).formatStrRight(' ', 8)+
+	                 new top.StringCtrl(strRecordArr[i][1]).formatStrRight(' ', 8)+
+	                 new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 6)+
+	                 new top.StringCtrl(strRecordArr[i][4]).formatStr(' ', 7)+ strUnit +
+	                 new top.StringCtrl(strRecordArr[i][5]).formatStr(' ', 9)+ strUnit;
+    	 strJrn += top.journalPrinter.strNewLine;
+     }
+     strJrn += "----------------加钞记录----------------" + top.journalPrinter.strNewLine;
+     strJrn += "加钞时间:" + addCashTime + "   批次号:" + addCashCycle + top.journalPrinter.strNewLine;
+     strJrn += "S端取款钞箱余额:" + cdmSurplusAmount + "元" + top.journalPrinter.strNewLine;
+     strJrn += "S端存款钞箱余额:" + cimSurplusAmount + "元" + top.journalPrinter.strNewLine;
+     strJrn += "加钞金额:"  + addCashAmount + "元  S端钞箱总余额:" +surplusAmount + "元" + top.journalPrinter.strNewLine;
+     if(faieldWithDralCount > 0){
+    	 strJrn += "取款异常笔数:" + faieldWithDralCount + "  取款异常金额:" + faieldWithDralTotal + "元" + top.journalPrinter.strNewLine;
+    	 strJrn += "--------------取款异常明细--------------" + top.journalPrinter.strNewLine;
+    	 strJrn +=   new top.StringCtrl("日期").formatStr(' ', 7)+
+	    			 new top.StringCtrl("时间").formatStr(' ', 10)+
+	    			 new top.StringCtrl("账号/卡号").formatStr(' ', 19)+
+	    			 new top.StringCtrl("金额").formatStr(' ', 16)+
+	    			 new top.StringCtrl("手续费").formatStr(' ', 15)+
+	    			 new top.StringCtrl("主机交易状态").formatStr(' ', 15)+
+	    			 new top.StringCtrl("主机流水号").formatStr(' ', 16)+
+	    			 new top.StringCtrl("终端交易状态").formatStr(' ', 18)+
+	    			 new top.StringCtrl("终端流水号").formatStr(' ', 16)+
+	    			 new top.StringCtrl("冲正结果").formatStr(' ', 14);
+    	 strJrn += top.journalPrinter.strNewLine;
+         for(var i=0;i< faieldWithDralCount;i++){
+        	 if(faieldWithDralRecord[i][9] != "1"){
+	        	 strJrn +=   new top.StringCtrl(faieldWithDralRecord[i][1]).formatStrRight(' ', 24)+
+		        			 new top.StringCtrl(faieldWithDralRecord[i][2]).formatStrRight(' ', 22)+
+		        			 new top.StringCtrl(parseFloat(faieldWithDralRecord[i][3]).toFixed(2)).formatStr(' ', 10)+"元" +
+		        			 new top.StringCtrl(parseFloat(faieldWithDralRecord[i][4]).toFixed(2)).formatStr(' ', 10)+"元" +
+		        			 new top.StringCtrl(converHostTransStatus(faieldWithDralRecord[i][5])).preandsufStr(' ', 12)+
+		        			 new top.StringCtrl(faieldWithDralRecord[i][6]).preandsufStr(' ', 18)+
+		        			 new top.StringCtrl(converTermTransStatus(faieldWithDralRecord[i][7])).preandsufStr(' ', 12)+
+		        			 new top.StringCtrl(faieldWithDralRecord[i][8]).preandsufStr(' ', 18)+
+		        			 new top.StringCtrl(converReverSeenTryStatus(faieldWithDralRecord[i][9])).preandsufStr(' ', 8);
+	        	 strJrn += top.journalPrinter.strNewLine;
+        	 }
+    	 }
+         strJrn += "----------------------------------------" + top.journalPrinter.strNewLine;
+     }
+     if(faieldDepositCount > 0){
+    	 strJrn += "存款异常笔数:" + faieldDepositCount + "  存款异常金额:" + faieldDepositTotal + "元" + top.journalPrinter.strNewLine;
+    	 strJrn += "--------------存款异常明细--------------" + top.journalPrinter.strNewLine;
+    	 strJrn +=   new top.StringCtrl("日期").formatStr(' ', 7)+
+	    			 new top.StringCtrl("时间").formatStr(' ', 10)+
+	    			 new top.StringCtrl("账号/卡号").formatStr(' ', 19)+
+	    			 new top.StringCtrl("金额").formatStr(' ', 16)+
+	    			 new top.StringCtrl("手续费").formatStr(' ', 15)+
+	    			 new top.StringCtrl("主机交易状态").formatStr(' ', 15)+
+	    			 new top.StringCtrl("主机流水号").formatStr(' ', 16)+
+	    			 new top.StringCtrl("终端交易状态").formatStr(' ', 18)+
+	    			 new top.StringCtrl("终端流水号").formatStr(' ', 16);
+    	 strJrn += top.journalPrinter.strNewLine;
+    	 for(var j=0;j< faieldDepositCount;j++){
+    		 strJrn +=   new top.StringCtrl(faieldDepositRecord[j][1]).formatStrRight(' ', 24)+
+	        			 new top.StringCtrl(faieldDepositRecord[j][2]).formatStrRight(' ', 22)+
+	        			 new top.StringCtrl(parseFloat(faieldDepositRecord[j][3]).toFixed(2)).formatStr(' ', 10)+"元" +
+	        			 new top.StringCtrl(parseFloat(faieldDepositRecord[j][4]).toFixed(2)).formatStr(' ', 10)+"元" +
+	        			 new top.StringCtrl(converHostTransStatus(faieldDepositRecord[j][5])).preandsufStr(' ', 12)+
+	        			 new top.StringCtrl(faieldDepositRecord[j][6]).preandsufStr(' ', 18)+
+	        			 new top.StringCtrl(converTermTransStatus(faieldDepositRecord[j][7])).preandsufStr(' ', 12)+
+	        			 new top.StringCtrl(faieldDepositRecord[j][8]).preandsufStr(' ', 18);
+        	 strJrn += top.journalPrinter.strNewLine;
+   		 }
+    	 strJrn += "----------------------------------------" + top.journalPrinter.strNewLine;
+     }
+     //对公取款
+     if(faieldWithDralCompCount > 0){
+    	 strJrn += "对公取款异常笔数:" + faieldWithDralCompCount + "  对公取款异常金额:" + faieldWithDralCompTotal + "元" + top.journalPrinter.strNewLine;
+    	 strJrn += "------------对公取款异常明细------------" + top.journalPrinter.strNewLine;
+    	 strJrn +=   new top.StringCtrl("日期").formatStr(' ', 7)+
+	    			 new top.StringCtrl("时间").formatStr(' ', 10)+
+	    			 new top.StringCtrl("账号/卡号").formatStr(' ', 19)+
+	    			 new top.StringCtrl("金额").formatStr(' ', 16)+
+	    			 new top.StringCtrl("手续费").formatStr(' ', 15)+
+	    			 new top.StringCtrl("主机交易状态").formatStr(' ', 15)+
+	    			 new top.StringCtrl("主机流水号").formatStr(' ', 16)+
+	    			 new top.StringCtrl("终端交易状态").formatStr(' ', 18)+
+	    			 new top.StringCtrl("终端流水号").formatStr(' ', 16);
+    	 strJrn += top.journalPrinter.strNewLine;
+    	 for(var j=0;j< faieldWithDralCompCount;j++){
+    		 strJrn +=   new top.StringCtrl(faieldWithDralcompRecord[j][1]).formatStrRight(' ', 24)+
+	        			 new top.StringCtrl(faieldWithDralcompRecord[j][2]).formatStrRight(' ', 22)+
+	        			 new top.StringCtrl(parseFloat(faieldWithDralcompRecord[j][3]).toFixed(2)).formatStr(' ', 10)+"元" +
+	        			 new top.StringCtrl(parseFloat(faieldWithDralcompRecord[j][4]).toFixed(2)).formatStr(' ', 10)+"元" +
+	        			 new top.StringCtrl(converHostTransStatus(faieldWithDralcompRecord[j][5])).preandsufStr(' ', 12)+
+	        			 new top.StringCtrl(faieldWithDralcompRecord[j][6]).preandsufStr(' ', 18)+
+	        			 new top.StringCtrl(converTermTransStatus(faieldWithDralcompRecord[j][7])).preandsufStr(' ', 12)+
+	        			 new top.StringCtrl(faieldWithDralcompRecord[j][8]).preandsufStr(' ', 18);
+        	 strJrn += top.journalPrinter.strNewLine;
+   		 }
+    	 strJrn += "----------------------------------------" + top.journalPrinter.strNewLine;
+     }
+     
+     top.journalPrinter.addJournal(strJrn);
+}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLShowCardBoxInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">钞箱信息</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="60%" height="60%">
+                        <thead class="ADMTable_Head" id="oTHead"></thead>
+                        <tbody id="oTBody"  class="ADMTable_Record"></tbody>
+                    </table>
+                    <pre class="Error_Title" id="error_input">&nbsp;</pre>
+                    <pre class="Tip_Title" id="amountCounts_Title">&nbsp;</pre>
+                </td>
+            </tr>
+        </table>
+    </div>
+   <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+</div>
+
+<div id="oLshowServerInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">清机数据统计</span>
+                    <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" width="65%" height="60%">
+                        <tr height="50"><td width="55%">&nbsp;</td><td width="45%">&nbsp;</td></tr>
+                        <tr>
+				            <td id="addCashTime_Title"></td>
+				            <td id="addCashCycle_Title"></td>
+			            </tr>
+			            <tr>
+				            <td id="cdmSurplusAmount_Title"></td>
+				            <td id="cimSurplusAmount_Title"></td>
+			            </tr>
+			            <tr>
+				            <td id="addCashAmount_Title"></td>
+				            <td id="surplusAmount_Title"></td>
+			            </tr>
+			            <tr>
+				            <td id="faieldWithDralCount_Title"></td>
+				            <td id="faieldWithDralTotal_Title"></td>
+			            </tr>
+			            <tr>
+				            <td id="faieldDepositCount_Title"></td>
+				            <td id="faieldDepositTotal_Title"></td>
+			            </tr>
+			             <tr>
+				            <td id="faieldWithDralCompCount_Title"></td>
+				            <td id="faieldWithDralCompTotal_Title"></td>
+			            </tr>
+                    </table>
+				</td>
+            </tr>
+        </table>
+    </div>
+   <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm">提交清钞</button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+</div>
+
+<div id="oLInfoTip1" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title1"></span></td>
+			</tr>
+	    </table>
+	</div>
+</div>
+
+<div id="oLInfoTip2" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title2"></span></td>
+			</tr>
+	    </table>
+	</div>
+	   <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	   <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLInfoTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+</div>
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">清钞成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

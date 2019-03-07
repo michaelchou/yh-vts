@@ -1,0 +1,967 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>设备加存单</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var isCdsAmount = false; //是否需要校验加存单数
+function doMouseDown() {
+	//top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+
+// 服务流程处理入口
+function serverEntrance() {
+if(top.YHAXDocumentScanner.StDeviceStatus!="HEALTHY"){
+	onHardwareError();
+}else
+top.trans.sendCDSSettleCycLogStatusAsync();
+	
+}
+
+function onHardwareError() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+	 	top.serviceCtrl.navigate2Maintenance();
+	}
+
+	window.operateCtrl.enableInput();
+	Tip_Title2.innerHTML  = "<span class=\"Tip_Title\">存单发放模块状态不正常，暂不支持本操作</span>";
+	top.wins.showMain("oLInfoTip2");	  
+}
+
+
+
+
+var CUCurrentCount=new Array();//各存单箱剩余数量
+var CUInitialCount=new Array();//各存单箱初始数量
+var CURetainCount=new Array();//各存单箱回收数量
+var selectedBox;//选中的存单箱编号
+var boxInfoStr="";//存单箱信息(字符串格式)
+var surplusCount=0; //存单箱总剩余数量
+var refillCount=0;//存单箱总初始数量
+//配置标题和数据
+
+var strHeadingArr = new Array(
+	"存单箱编号",
+	"存单箱类型",
+    "存单箱状态",
+	"加存单数",
+	"当前存单数"
+  //,  "阀值"
+ 
+);
+
+//从数据库获取本终端的存单段信息串
+onAsyncCDSSettleCycLogStatusComplete = function(){
+	loadBoxInfo();
+	showBoxInfo();
+  }
+
+
+
+
+//存单箱信息
+var strRecordArr = new Array();
+//存单段信息
+var strSegmentArr = new Array();
+//存单箱加存单张数
+var iCountArr = new Array();
+//存单箱加存单类型
+//var strCdsTypeArr = new Array();
+//选择存单箱序号
+var index;
+
+
+//测试
+ var boxInfoArr= new Array();
+ 
+    boxInfoArr[0] = new Array();
+    boxInfoArr[0][0] = 1;  //Number
+    boxInfoArr[0][1] = "SUPPLYBIN";  //Type
+    boxInfoArr[0][2] = "HEALTHY";  //Status
+    boxInfoArr[0][3] = 0;  //InitialCount
+    boxInfoArr[0][4] = 0;  //CurrentCount
+   //strRecordArr[i][5] = boxInfoArr[i][5];  //Threshold
+     iCountArr[0]=0;
+     
+//      for(var i=1;i<2;i++){
+//      boxInfoArr[i] = new Array();
+//     boxInfoArr[i][0] = i+1;  //Number
+//     boxInfoArr[i][1] = "SUPPLYBIN";  //Type
+//     boxInfoArr[i][2] = "HEALTHY";  //Status
+//     boxInfoArr[i][3] = 0;  //InitialCount
+//     boxInfoArr[i][4] = 0;  //CurrentCount
+  ////strRecordArr[i][5] = boxInfoArr[i][5];  //Threshold
+//      iCountArr[i]=0;
+//      }
+//初始化一次性读取存单箱信息
+ function loadBoxInfo()
+ {
+	//生产
+	for(i=0;i<boxInfoArr.length;i++){
+	
+	    strRecordArr[i] = new Array();
+	    strRecordArr[i][0] = boxInfoArr[i][0];  //Number
+	    strRecordArr[i][1] = boxInfoArr[i][1];  //Type
+	    strRecordArr[i][2] = boxInfoArr[i][2];  //Status
+	    strRecordArr[i][3] = 0;  //InitialCount
+	    strRecordArr[i][4] = 0;  //CurrentCount
+	  //  strRecordArr[i][5] = boxInfoArr[i][5];  //Threshold
+	     iCountArr[i]=0;
+	}
+}
+
+//显示存单箱信息，设备加存单
+function showBoxInfo() {
+	window.operateCtrl.disableInput(true);
+	onKey_Cancel = onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Enter = onKey_F6 = function() {
+		config();
+	}
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	// 清空当前显示的内容
+	var oTHead=document.getElementById('oTHead');
+	var oTBody=document.getElementById('oTBody');
+    while (oTHead.rows.length > 0)
+     oTHead.deleteRow(0);
+    while (oTBody.rows.length > 0)
+     oTBody.deleteRow(0);
+	// 	thead
+	  var oRow = oTHead.insertRow();
+	 for (var j=0; j<strHeadingArr.length; j++)
+    {
+       var oCell = oRow.insertCell();
+      oCell.innerHTML =strHeadingArr[j];
+      oCell.align = "center";
+    }
+     var oCell = oRow.insertCell();
+      oCell.innerHTML = "操作";
+      oCell.align = "center";
+      oCell.colSpan=2;
+//       tbody 
+        for (var i=0; i<strRecordArr.length; i++){
+        if(strRecordArr[i][1] == "RETAINBIN"){
+                    continue;
+		}
+     		var oRow =oTBody.insertRow(); 
+	      for (var j=0; j<strRecordArr[i].length; j++){
+		          var oCell = oRow.insertCell();
+		            oCell.innerHTML =strRecordArr[i][j];
+	 		          oCell.align="right";
+		     }
+		         var oCell = oRow.insertCell();
+		          
+		           oCell.innerHTML ="<button class=\"buttonAddCard\" >"+"新增"+"</button>";		 
+		            oCell.align="center";  
+		            oCell.id = "add_"+i;
+                    oCell.onclick = function () {
+                    add(this.id);
+                   }
+		         
+		          var oCell = oRow.insertCell();
+		          oCell.innerHTML ="<button class=\"buttonAddCard\" >"+"查询"+"</button>";		 
+		         
+		            oCell.align="center";  
+		            oCell.id = "list"+i;
+                    oCell.onclick = function () {
+                    list(this.id);
+                   }
+        } 
+	
+	top.wins.showMain("oLShowCdSBoxInfo");
+	window.operateCtrl.enableInput();
+}
+
+//存单箱加存单
+function add(id) {
+	 onKey_F7 = onKey_F6 = function() {
+		strRecordArr[index][4]=strRecordArr[index][3]=   iCountArr[index];
+		var data=getTableContent("oTBodyAddCds");
+		strSegmentArr[index]=data;
+	//	var cardType=document.getElementById('cardType');	
+		//alert(cardType.options[cardType.options.selectedIndex].value);
+		//strCdsTypeArr[index]=cardType.options[cardType.options.selectedIndex].value;
+		showBoxInfo();		
+	}
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	  onKey_Enter = function()
+	     {
+	       addRow();
+	     }
+
+	 index=id.slice(4,5);
+	 boxNum.innerHTML  = "<span class=\"Tip_Content\">存单箱编号:"+ strRecordArr[index][0] +"</span>";
+ 	 boxCount.innerHTML = "<span class=\"Tip_Content\">加存单数:"+ iCountArr[index]+"</span>";
+	window.operateCtrl.enableInput();
+	
+	// 清空当前显示的内容	
+	var oTBody=document.getElementById('oTBodyAddCds');
+     while (oTBody.rows.length > 0)
+     oTBody.deleteRow(0);	
+//       tbody
+  	    var  data=strSegmentArr[index];	    
+  	   // alert(data);
+  	    if(typeof(data)=="undefined"){
+  	   		//alert("uu");
+  	   	}else{   
+	        for (var i=0; i<data.length; i++){
+			    var newTr = oTBody.insertRow();
+		        //添加3列 sertCell() 方法用于在 HTML 表的一行的指定位置插入一个空的 <td> 元素
+		        var newTd0 = newTr.insertCell();
+		        var newTd1 = newTr.insertCell();
+		        var newTd2 = newTr.insertCell(); 
+		        //分别给每一列赋值
+		        newTd0.innerText=data[i][0] ;
+		        newTd1.innerText=data[i][1] ;; 
+		        newTd2.innerHTML ="<button class=\"buttonAddCard_delete\" >"+"删除"+"</button>";		        
+		         newTd2. onclick=function () {
+		                  		deleteTable(this);
+		                  	   error_Input.innerHTML = "";
+		               	    startSegment.value="";
+		               	    endSegment.value="";
+		               	    startSegment.focus();
+		          }	        
+        	}
+       }
+// 		var cardType=document.getElementById('cardType');	
+// 		for(var i=0;i<cardType.length;i++){
+// 			if(cardType[i].value==strCdsTypeArr[index])
+// 			cardType[i].selected="selected";
+// 		}	
+	top.wins.showMain("oLAddCds");
+	 error_Input.innerHTML = "";
+	   startSegment.value="";
+	    endSegment.value="";
+    	    startSegment.focus();
+    	    
+}
+
+//    一个表格，行数动态增加的i
+     function addRow()
+    {
+    // 获取input元素节点数组
+      var inputNodes = document.getElementsByTagName("input");
+ 
+      var str = new String(inputNodes[0].value);
+      var str1 = new String(inputNodes[1].value);
+       if(check_Input()==false)
+       return;
+          iCountArr[index] +=parseInt(str1,"10")-parseInt(str,"10")+1;
+       	 boxCount.innerHTML = "<span class=\"Tip_Content\">加存单数:"+ iCountArr[index]+"</span>";
+         //添加一行 insertRow() 方法用于在表格中的指定位置插入一个新行
+        var oTBodyAddCds=document.getElementById("oTBodyAddCds");
+         var newTr = oTBodyAddCds.insertRow();
+        //添加四3 sertCell() 方法用于在 HTML 表的一行的指定位置插入一个空的 <td> 元素
+        var newTd0 = newTr.insertCell();
+        var newTd1 = newTr.insertCell();
+        var newTd2 = newTr.insertCell();
+        //分别给每一列赋值
+         newTd0.innerText= inputNodes[0].value;
+        newTd1.innerText= inputNodes[1].value;
+        newTd2.innerHTML ="<button class=\"buttonAddCard_delete\" >"+"删除"+"</button>";		        
+         newTd2. onclick=function () {
+                  		deleteTable(this);
+                   }
+         error_Input.innerHTML = ""; 
+         startSegment.value="";
+	    endSegment.value="";
+    	startSegment.focus();
+    }
+    function deleteTable(r)
+    {
+      //获取当前表格行号
+      var i = r.parentNode.rowIndex;
+       var oTBodyAddCds=document.getElementById("oTBodyAddCds");
+       var start=oTBodyAddCds .rows[i-1].cells[0].innerHTML;
+       var end=oTBodyAddCds .rows[i-1].cells[1].innerHTML;
+         //调用deleteRow()删除本行
+      document.getElementById('oTableAddCds').deleteRow(i);
+          iCountArr[index] -=parseInt(end,"10")-parseInt(start,"10")+1;
+       	 boxCount.innerHTML = "<span class=\"Tip_Content\">加存单数:"+ iCountArr[index]+"</span>";
+       	 
+       	 error_Input.innerHTML="";
+         startSegment.value="";
+ 	    endSegment.value="";
+     	startSegment.focus();
+     }
+      /** 
+     * 遍历表格内容返回数组
+     * @param  Int   id 表格id
+     * @return Array
+     */
+    function getTableContent(id){
+        var mytable = document.getElementById(id);
+        var data = [];
+        for(var i=0,rows=mytable.rows.length; i<rows; i++){
+            for(var j=0,cells=mytable.rows[i].cells.length; j<cells; j++){
+                if(!data[i]){
+                    data[i] = new Array();
+                }
+                data[i][j] = mytable.rows[i].cells[j].innerHTML;
+            }
+        }
+        return data;
+    }
+    //存单段信息
+function list(id) {
+	 onKey_F7 =onKey_Enter = onKey_F6 = function() {
+		 	showBoxInfo();
+	}
+
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        	top.serviceCtrl.navigate2Quit();
+     }
+ 		  index=id.slice(4,5);
+// 		 不设存单类型
+//			var cardtype="";
+// 		  if(iCountArr[index]!=0){
+// 		  	if( strCdsTypeArr[index] =="061") cardtype="鑫通存单"
+// 		 	else cardtype= strCdsTypeArr[index];
+// 		  }
+		 boxNumList.innerHTML  = "<span class=\"Tip_Content\">存单箱编号:"+ strRecordArr[index][0] +"</span>";
+	//	 cardTypeList.innerHTML  = "<span class=\"Tip_Content\">加存单类型:"+ cardtype +"</span>";
+ 		 boxCountList.innerHTML = "<span class=\"Tip_Content\">加存单数:"+ iCountArr[index]+"</span>";
+	window.operateCtrl.enableInput();
+	
+	// 清空当前显示的内容
+	
+	var oTBody=document.getElementById('oTBodyListCDS');
+     while (oTBody.rows.length > 0)
+     oTBody.deleteRow(0);
+//       tbody
+  	    var  data=strSegmentArr[index];
+    	   // alert(data);
+  	    if(typeof(data)=="undefined"){
+  	   		//alert("uu");
+  	   	}else{
+  	        for (var i=0; i<data.length; i++){
+		 	    var newTr = oTBody.insertRow();
+		        //添加3列 sertCell() 方法用于在 HTML 表的一行的指定位置插入一个空的 <td> 元素
+		        var newTd0 = newTr.insertCell();
+		        var newTd1 = newTr.insertCell();
+		        //分别给每一列赋值
+		         newTd0.innerText=data[i][0] ;
+		        newTd1.innerText=data[i][1] ;
+   		     
+       		 }
+        }
+	top.wins.showMain("oLListCds");
+}
+//只允许输入数字
+function CheckValue(){
+    var str="";
+   	 var elem= top.MainFrame.document.getElementById(top.MainFrame.document.activeElement.id);
+	 str=elem.value;
+	var pattern=/^(\d+)$/;
+	 var result=pattern.test(str);
+	 if(result==false){
+		 	 if(elem.value.length>=1){
+		 		elem.value=elem.value.slice(0,-1);
+		 	 }
+			 elem.focus();
+	 }else {
+			 if(elem.value.length>elem.maxLength){
+					elem.value=elem.value.slice(0,elem.maxLength);
+		 	 }
+			 elem.focus();
+	 }
+	return result;
+}
+    //加存单设置
+function config() {
+	window.operateCtrl.disableInput(true);
+	onConfigurationCompleted = function(){
+		 if (typeof(top.YHAXReceiptPrint) != "undefined")
+ 		 {
+			printReceipt();
+	      }
+ 	      printJournal();
+        onServiceSuccessful(); 
+    }
+    onConfigurationFailed = function(){
+        onServiceFailed("存单箱配置失败", "", "ConfigurationFailed");
+    } 
+    onConfigurationInitiated = function(){
+          var arr = strRecordArr;
+          for(i=0;i<boxInfoArr.length;i++){
+        
+                CUCurrentCount[i] = strRecordArr[i][3];
+                CUInitialCount[i] = strRecordArr[i][4];
+                CURetainCount[i]  = "0";
+      
+          }
+     
+          for(i=0;i<CUCurrentCount.length;i++)
+            surplusCount += parseInt(CUCurrentCount[i],"10");
+          for(i=0;i<CUInitialCount.length;i++)
+            refillCount += parseInt(CUInitialCount[i],"10"); 
+            
+          CUCurrentCount = CUCurrentCount.toString();
+          CUInitialCount = CUInitialCount.toString();
+          CURetainCount  = CURetainCount.toString();
+         
+          for(var i=0;i<boxInfoArr.length;i++){
+           	if(typeof(strSegmentArr[i])=="undefined"){
+           		continue;
+           	}
+           		
+           	data=strSegmentArr[i];
+	        for(var j=0;j<data.length;j++){
+	           	boxInfoStr+=strRecordArr[i][0];//num
+           		boxInfoStr+=",";
+           		boxInfoStr+=strRecordArr[i][1];//type
+           		boxInfoStr+=",";
+           		var init=parseInt(data[j][1],"10")-parseInt(data[j][0],"10")+1;
+           			
+           		boxInfoStr+=init;//init
+           		boxInfoStr+=",";
+           		boxInfoStr+=init;//count
+           		boxInfoStr+=",";
+           		boxInfoStr+=strRecordArr[i][2];//status
+           		boxInfoStr+=",";
+           	 //   boxInfoStr+=strCdsTypeArr[i];
+           		//boxInfoStr+=",";
+           				
+	           	boxInfoStr+=data[j][0];
+ 	           	boxInfoStr+=",";
+ 	           	boxInfoStr+=data[j][1];
+ 	           	boxInfoStr+=",";
+	           	boxInfoStr = boxInfoStr.substring(0,boxInfoStr.length-1);
+	           	boxInfoStr+="|";  			
+	        }
+	           			
+          }
+          //alert(boxInfoStr);
+          //后端交易字段
+          var strCardUnitInfo="";
+            for(var i=0;i<boxInfoArr.length;i++){
+		       if(typeof(strSegmentArr[i])=="undefined"){
+		        	continue;
+           		}
+           		
+           	data=strSegmentArr[i];
+	        for(var j=0;j<data.length;j++){
+	       	    strCardUnitInfo+="2001";
+           		strCardUnitInfo+=",";
+           				
+	           	strCardUnitInfo+=data[j][0];
+ 	           	strCardUnitInfo+=",";
+ 	           	
+ 	   			var init=parseInt(data[j][1],"10")-parseInt(data[j][0],"10")+1;      			
+           		strCardUnitInfo+=init;
+           	 	strCardUnitInfo+=",";
+           	 	
+ 	           	strCardUnitInfo+=data[j][1];
+	           	strCardUnitInfo+="|";  			
+	        }           			
+          }
+            
+            
+          top.journalPrinter.addJournal(boxInfoStr);       
+          top.pool.set("cdsBoxInfoStr",boxInfoStr);
+          top.pool.set("surplusCount",surplusCount);
+          top.pool.set("refillCount",refillCount);
+          top.wins.showMain("oLInfoTip");
+      	  Tip_Title.innerHTML  = "<span class=\"Tip_Title\">正在进行加存单交易处理，请稍候</span>";
+      	  
+          top.pool.set("strCardUnitInfo",strCardUnitInfo);
+          //alert(strCardUnitInfo);
+          //发加存单交易
+          top.pool.set("strAddFlag", "cds");
+          top.trans.send911101Async();   
+    	//	onAsync911101Complete();
+    }
+	 onAsync911101Complete= function(){
+	        //更新本地
+         top.trans.sendAddCDSAsync();   
+	    }
+    onAsyncAddCDSComplete = function(){
+     Tip_Title.innerHTML  = "<span class=\"Tip_Title\">正在进行存单箱配置信息，请稍候</span>";
+    //生产
+   		 top.YHAXDocumentScanner.SetBinCountSync(refillCount);
+      //测试
+  	  onConfigurationCompleted();
+    }
+    onNotSupported = function(){
+      onServiceFailed("存单箱配置失败", "", "NotSupported");
+    }
+    onDeviceError = function(){
+      onServiceFailed("存单箱配置失败", "", "DeviceError");
+    }
+    data=strSegmentArr;
+    var segments=0;
+    for(i=0,rows=data.length; i<rows; i++){
+        if(typeof(data[i])!="undefined"){
+          segments+=data[i].length;
+        }
+    }
+    if(segments>=20||segments<=0){
+    	onSegmentsError();
+    	return;
+    }
+    
+	//判断卡段是否有重复
+	var typeAndSegments=new Array();
+	    data=strSegmentArr;
+	   for(var i=0,j=0; i<data.length; i++){
+        if(typeof(data[i])!="undefined"){
+      
+         var data1=new Array();
+         data1=data[i];
+         for(var k=0;k<data1.length;k++){
+            typeAndSegments[j]=new Array();
+         	typeAndSegments[j][0]="";   
+         	typeAndSegments[j][1]=data1[k][0];
+         	typeAndSegments[j][2]=data1[k][1];
+         	j++;
+         }
+        }
+       }
+         var result=isExist(typeAndSegments);
+        // alert(result);
+         if(result==true){
+         	onSegmentsRepeatError();      
+         	return;  
+         }
+       
+ 
+	
+	onConfigurationInitiated(); 
+}
+    
+    
+function onSegmentsError() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+	 showBoxInfo();
+	}
+
+	window.operateCtrl.enableInput();
+	Tip_Title2.innerHTML  = "<span class=\"Tip_Title\">存单段数量必须在1-20之间，请重新配置</span>";
+	top.wins.showMain("oLInfoTip2");
+	  
+}
+
+function onSegmentsRepeatError() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		 showBoxInfo();
+	}
+	window.operateCtrl.enableInput();
+	Tip_Title2.innerHTML  = "<span class=\"Tip_Title\">存单段有重复，请重新配置</span>";
+	top.wins.showMain("oLInfoTip2");  
+}
+
+//判断类型相同的存单段是否有重复存单
+//参数：存单段[存单类型，起始段，结束段]
+//返回 true:有重复 false:无重复
+//
+function isExist(segments){			
+	for(var i=0;i<segments.length;i++){
+			var start=parseInt(segments[i][1],"10");
+			var end=parseInt(segments[i][2],"10");
+			for(var j=start;j<=end;j++){
+				for (var k=0;k<segments.length;k++){
+					if(k==i)
+						continue;
+					if(segments[k][0]!=segments[i][0])
+						continue;
+					var startArray=parseInt(segments[k][1],"10");
+					var endArray=parseInt(segments[k][2],"10");
+					if(j>=startArray && j<=endArray){
+						//alert(j+"重复"+i +","+k);
+						
+						return true;
+					}
+						
+				}
+				
+			}
+	}
+	return false;	
+}		
+
+
+//打印加存单凭条
+function printReceipt() {
+ top.receiptprinter.set("***************加存单清单***************");
+	top.receiptprinter.set("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+    top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username"));
+    top.receiptprinter.set("----------------------------------------");
+    top.receiptprinter.set("*************存单箱信息明细*************");
+    top.receiptprinter.set("存单箱ID       初始/剩余存单数     ");
+     for (var i=0; i<strRecordArr.length; i++){
+   			 if(strRecordArr[i][1] == "RETAINBIN"){
+               		 continue;
+              }
+                 if(strRecordArr[i][3] == 0){
+               		 continue;
+              }
+             top.receiptprinter.set(new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 8)+  new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 11)+"/"+strRecordArr[i][4]);
+         }
+            top.receiptprinter.set("*************存单段信息明细*************");
+    		top.receiptprinter.set("存单箱ID    起始存单段  结束存单段  数量");
+	 for(var i=0;i<boxInfoArr.length;i++){
+    
+       	if(typeof(strSegmentArr[i])=="undefined"){
+       		continue;
+       	}
+        	var data=strSegmentArr[i];
+        	
+        for(var j=0;j<data.length;j++){
+        	var boxInfoStr="";         	
+       		var init=parseInt(data[j][1],"10")-parseInt(data[j][0],"10")+1;
+       	boxInfoStr+= new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 8);
+       	boxInfoStr+=	 new top.StringCtrl(data[j][0]).formatStr(' ', 14);
+       	boxInfoStr+=	  new top.StringCtrl(data[j][1]).formatStr(' ', 12);
+       	boxInfoStr+=	   new top.StringCtrl(init).formatStr(' ', 6);
+     	top.receiptprinter.set(boxInfoStr);
+       		
+       	}
+       }
+    
+	   top.receiptprinter.set("----------------------------------------");
+		top.receiptprinter.printAndEject();
+}
+   
+//打印加存单流水	
+function	printJournal(){
+    top.journalPrinter.addJournal("***************加存单清单***************");
+    top.journalPrinter.addJournal("\r\n");
+	top.journalPrinter.addJournal("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+	top.journalPrinter.addJournal("\r\n");
+    top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+    top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+    top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));   
+    top.journalPrinter.addJournal("\r\n");
+    top.journalPrinter.addJournal("----------------------------------------");
+    top.journalPrinter.addJournal("\r\n");
+    top.journalPrinter.addJournal("*************存单箱信息明细*************");
+    top.journalPrinter.addJournal("\r\n");
+    top.journalPrinter.addJournal("存单箱ID       初始/剩余存单数     ");
+    top.journalPrinter.addJournal("\r\n");
+      for (var i=0; i<strRecordArr.length; i++){
+   			 if(strRecordArr[i][1] == "RETAINBIN"){
+               		 continue;
+              }
+               if(strRecordArr[i][3] == 0){
+               		 continue;
+              }
+               top.journalPrinter.addJournal(new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 8)+  new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 11)+"/"+strRecordArr[i][4]);
+
+            //   top.journalPrinter.addJournal(strRecordArr[i][0]+"                 "+strRecordArr[i][3]+"/"+strRecordArr[i][4]);
+       
+           top.journalPrinter.addJournal("\r\n");
+	}
+    top.journalPrinter.addJournal("*************存单段信息明细*************");
+    top.journalPrinter.addJournal("\r\n");
+    top.journalPrinter.addJournal("存单箱ID    起始存单段  结束存单段  数量");
+    top.journalPrinter.addJournal("\r\n");
+   
+    for(var i=0;i<boxInfoArr.length;i++){
+    
+       	if(typeof(strSegmentArr[i])=="undefined"){
+       		continue;
+       	}
+        	var data=strSegmentArr[i];
+        	
+        for(var j=0;j<data.length;j++){
+        	var boxInfoStr="";
+//         	boxInfoStr+=strRecordArr[i][0];//num
+//         	boxInfoStr+="           ";
+//         	boxInfoStr+=data[j][0];
+//         	boxInfoStr+="    ";
+//         	boxInfoStr+=data[j][1];
+	           	
+        		var init=parseInt(data[j][1],"10")-parseInt(data[j][0],"10")+1;
+//        		boxInfoStr+="    ";	
+//        		boxInfoStr+=init;//init
+
+    	boxInfoStr+= new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 8);
+       	boxInfoStr+=	 new top.StringCtrl(data[j][0]).formatStr(' ', 14);
+       	boxInfoStr+=	  new top.StringCtrl(data[j][1]).formatStr(' ', 12);
+       	boxInfoStr+=	   new top.StringCtrl(init).formatStr(' ', 6);
+       	 	top.journalPrinter.addJournal(boxInfoStr);
+       	 	top.journalPrinter.addJournal("\r\n");
+       	}
+       }
+    
+    top.journalPrinter.addJournal("----------------------------------------");
+    top.journalPrinter.addJournal("\r\n");
+	}
+    //加存单成功
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+//交易失败
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+  onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  oFailedTitle.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLServiceFailedTip");
+}
+    
+//用密码键盘输入时输入框校验
+//校验加存单数
+function check_Input() {
+    error_Input.innerHTML = "";  
+   var str=  startSegment.value;
+   var str1=  endSegment.value;
+    if(str.length==0){
+    	    error_Input.innerHTML = "请输入起始存单段";
+    	    startSegment.value="";
+    	    startSegment.focus();
+    	    return false;
+    }
+    if(!new top.StringCtrl(str).isAllDigit()){
+     error_Input.innerHTML = "起始存单段必须为数字";
+    	    startSegment.value="";
+    	    startSegment.focus();
+    	      return false;
+    }
+    if(str.length!=8){
+	    error_Input.innerHTML = "起始存单段必须为8位数字";
+	    startSegment.value="";
+	    startSegment.focus();
+	    return false;
+}
+    if(str1.length==0){
+    	    error_Input.innerHTML = "请输入结束存单段";
+    	    endSegment.value="";
+    	    endSegment.focus();
+    	    return false;
+    }
+     if(!new top.StringCtrl(str).isAllDigit()){
+     error_Input.innerHTML = "结束存单段必须为数字";
+    	    endSegment.value="";
+    	    endSegment.focus();
+    	      return false;
+    }
+     if(str1.length!=8){
+ 	    error_Input.innerHTML = "结束存单段必须为8位数字";
+ 	    endSegment.value="";
+ 	    endSegment.focus();
+ 	    return false;
+ }
+     if(parseInt(str1,"10")-parseInt(str,"10")<0){
+     	error_Input.innerHTML = "结束存单段不能小于起始存单段!";
+     	 endSegment.value="";
+     	   startSegment.value="";
+    	    startSegment.focus();  	     
+     	  return false;
+    }
+    if(parseInt(str1,"10")-parseInt(str,"10")+1+  iCountArr[index]> 150){
+     	error_Input.innerHTML = "存单箱加存单数不能大于150!";
+     	 endSegment.value="";
+     	   startSegment.value="";
+    	    startSegment.focus();	     
+     	  return false;
+    }
+    
+    error_Input.innerHTML ="";
+   return true;
+}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLShowCdSBoxInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">设备加存单</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="60%" height="60%">
+                        <thead class="ADMTable_Head" id="oTHead"></thead>
+                        <tbody id="oTBody"  class="ADMTable_Record"></tbody>
+                    </table>
+                   
+                </td>
+            </tr>
+          
+        </table>
+    
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm" >加存单提交</button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+        
+</div>
+<div id="oLAddCds" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">存单箱加存单</span>
+                    <br/> <br/>
+                        <table cellpadding="3" cellspacing="1" width="60%" height="5%" border="0">
+                        <tr>
+                            <td ><span id="boxNum"></span></td>
+                      
+<!--                             <td><span class="Tip_Content">加存单类型:</span> -->
+<!--                                     <select id="cardType" style="height: 55px;width: 160px;font-size:20px;"> -->
+<!--                                     <option value="061" selected>鑫通存单</option> -->
+<!--                                     <option value="060" >如意存单</option> -->
+<!--                                     <option value="062">黑存单</option> -->
+<!--                                 </select> -->
+<!--                             </td> -->
+                            <td><span class="Tip_Content"  id="boxCount">&nbsp;&nbsp;&nbsp;&nbsp;加存单数:</span></td>
+                         
+                        </tr>
+                         <tr>
+                        <td  class="Tip_Content">起始存单段:<input type="text"  name="startSegment"  id="startSegment" class="input_short2" maxlength="8"  onkeyup="javascript:CheckValue();"></td>
+                        <td  class="Tip_Content">结束存单段:<input type="text"  name = "endSegment"  id="endSegment" class="input_short2" maxlength="8"  onkeyup="javascript:CheckValue();"></td>
+                        <td  onclick="addRow()" ><span  class="buttonAddSegment"><br/>添加 </span></td>
+                        </tr>
+                          
+                    </table>
+                      <pre class="Error_Title" id="error_Input">&nbsp;</pre>
+                       <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTableAddCds" width="60%" height="15%">
+                        <thead class="ADMTable_Head" id="oTHeadAddCds">
+                          <td >起始存单段</td><td >结束存单段</td><td >操作</td>
+                        </thead>
+                        <tbody id="oTBodyAddCds"  class="ADMTable_Record"></tbody>
+                    </table>
+                    <br/><br/><br/>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm">提交</button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLListCds" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">详细信息</span>
+                    <br/> <br/>
+                        <table cellpadding="3" cellspacing="1" width="60%" height="5%" border="0">
+                        <tr>
+                            <td ><span id="boxNumList"></span></td>
+                      
+<!--                             <td><span id="cardTypeList"></span> -->
+                                    
+<!--                             </td> -->
+                            <td><span class="Tip_Content"  id="boxCountList">加存单数:</span></td>
+                         
+                        </tr>
+                             
+                    </table>
+                   
+                       <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTableListCds" width="60%" height="15%">
+                        <thead class="ADMTable_Head" id="oTHeadListCDS">
+                          <td >起始段</td><td >结束段</td>
+                        </thead>
+                        <tbody id="oTBodyListCDS"  class="ADMTable_Record"></tbody>
+                    </table>
+                    <br/><br/><br/>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLInfoTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   </div>
+   <div id="oLInfoTip2" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title2"></span></td>
+			</tr>
+	    </table>
+	</div>
+	   <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>	
+   </div>
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">加存单成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

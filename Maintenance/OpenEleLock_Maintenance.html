@@ -1,0 +1,168 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<style></style>
+<title>正常开锁</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+	
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+	// 服务流程处理入口
+	function serverEntrance()
+	{
+	     top.journalPrinter.addJournalWithTime("正常开锁  锁类型：" + typeof(top.SGP1506KM3000D));			
+		 if (typeof(top.SGP1506KM3000D) != "undefined")//电子密码锁
+		 {
+			 try{
+				 top.SGP1506KM3000D.SetUsedType(true);//初始化电子密码锁控件
+			 }catch(e){
+				 top.journalPrinter.addJournalWithTime("正常开锁 SGP1506KM3000D error info:" + e );
+			 }
+		 }
+		onKey_Enter = onKey_F6 = function()
+		{
+			oLMenu6.innerHTML = "";
+			top.pool.set("OpenEleLockAllowed",true);
+			Tip_Title.innerHTML  = "<span class=\"Tip_Title\">操作过程中请勿退出本界面，否则将终止该交易</span>";
+			Tip_Title1.innerHTML  = "<span class=\"Tip_Alarm\">双iButton电子钥匙开锁：在锁具上按任意键唤醒，依次输入【*6#】后</br>分别按压iButton电子钥匙</br>PDA开锁：在锁具上按任意键唤醒锁具，选择PDA界面【实时交互模式】</br>依次在锁具上输入【*1#】后按照PDA界面提示完成操作</span>";
+			top.wins.showMain("oLConfirmTip");
+		}
+		 onKey_F7 = function()
+		 {
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Maintenance();
+		 }
+		 onKey_Cancel = onKey_F8 = function()
+		 {
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Quit();
+		 }
+		 window.operateCtrl.enableInput();
+		 Tip_Select.innerHTML  = "<span class=\"Tip_Title\">是否使用正常开锁？</span>";
+	     top.wins.showMain("oLSelectTip");
+	}
+	
+	//接收到服务器响应之后回调函数
+	onAsync930000Complete = function(){
+		top.serviceCtrl.stopUserTimeout();
+		window.operateCtrl.enableInput();
+		onKey_F7 = function(){
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Maintenance();
+		}
+		onKey_Cancel = onKey_F8 = function(){
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Quit();
+		}
+		var strRetEleLockXml = top.pool.get("strEleLockRetMsg");
+		var RetCode = "" + top.eleLock.GetNodeVal(strRetEleLockXml,"Ex_RetCode");
+		var TrCode = top.eleLock.convertTranCode(top.eleLock.GetNodeVal(strRetEleLockXml,"Ex_TrCode"));
+		var result  = "";
+		if("0000" == RetCode){
+			result = TrCode + "成功";
+		}else if(RetCode != null || RetCode != ""){
+			var RetMsg = top.eleLock.convertRetCode(RetCode);	//根据返回码获取错误信息说明
+			if(RetMsg == null || RetMsg == "")
+			RetMsg = top.eleLock.GetNodeVal(strRetEleLockXml,"Ex_RetMsg");	//如果convertRetCode中未定义该错误，则从返回报文中获取
+			result  = TrCode + "失败</br>失败信息：" + RetMsg ;
+		}else{
+			result  = TrCode + "失败，电子密码锁系统返回异常";
+		}
+		Show_RetMsg.innerHTML  = "<span class=\"Tip_Title\">" + result + "</span>";
+		top.wins.showMain("oLSuccessTip");
+	}
+	
+	//交易失败
+	function onServiceFailed(title, retcode, retdesc)
+	{
+	  window.operateCtrl.disableInput(true);
+	 	top.serviceCtrl.stopUserTimeout();
+	  onKey_F7 = function() {
+			top.pool.set("OpenEleLockAllowed",false);
+			top.serviceCtrl.navigate2Maintenance();
+		}
+	  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+	  {
+	    top.pool.set("OpenEleLockAllowed",false);
+		top.serviceCtrl.navigate2Quit();
+	  }
+	  oFailedTitle.innerHTML = title;
+	  oFailedRetDesc.innerHTML = retdesc;
+	  window.operateCtrl.enableInput();
+	  top.wins.showMain("oLServiceFailedTip");
+	}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLSelectTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+				<tr class="FirstLine">
+				  <td align="center" colspan="2"><span id="Tip_Select"></span></td>
+				</tr>
+			</table>
+		</div>
+	   <span class="MMENU6" id="oLMenu6"><button onclick="javascript:onKey_F6();" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+	   <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	   <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+  
+  <div id="oLConfirmTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr>
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+			<tr>
+			  <td align="center" colspan="2"><span id="Tip_Title1"></span></td>
+			</tr>
+		</table>
+	</div>
+	  <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	  <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+  
+  <div id="oLSuccessTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+				<tr>
+				  <td align="center" colspan="2"><span id="Show_RetMsg"></span></td>
+				</tr>
+				<tr>
+				  <td align="center" colspan="2"><span id="Show_Hint">&nbsp;</span></td>
+				</tr>
+			</table>
+		</div>
+	   <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	   <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+  <div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+   <span class="MMENU7" id="oLMenu7"><button onclick="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onclick="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+ </div>
+</body>
+</html>

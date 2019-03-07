@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='gb2312'?>
+<!DOCTYPE hibernate-configuration
+PUBLIC "-//Hibernate/Hibernate Configuration DTD//EN"
+"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+  <session-factory>
+    <!--WebSphere的DB2数据库连接池-->
+        <property name="hibernate.dialect">org.hibernate.dialect.DB2Dialect</property>
+		<property name="connection.datasource">jdbc/itsdbpool</property>
+		<property name="hibernate.show_sql">true</property>
+    <!--DB2数据库连接-->
+		<!--property name="hibernate.connection.driver_class">com.ibm.db2.jcc.DB2Driver</property>
+		<property name="hibernate.connection.url">jdbc:db2://10.20.160.50:50001/itsdb</property>
+		<property name="hibernate.connection.username">svn</property>
+		<property name="hibernate.connection.password">147258</property>
+		<property name="hibernate.connection.pool.size">20</property>
+		<property name="hibernate.show_sql">true</property>
+		<property name="jdbc.fetch_size">50</property>
+		<property name="jdbc.batch_size">25</property>
+		<property name="jdbc.use_scrollable_resultset">false</property>
+		<property name="hibernate.dialect">org.hibernate.dialect.DB2Dialect</property-->
+
+	<!--MYSQL数据库连接-->
+		<!--property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+		<property name="hibernate.connection.url">jdbc:mysql://127.0.0.1:3306/srcb1?autoReconnect=true&amp;useUnicode=true&amp;characterEncoding=UTF8</property>
+		<property name="hibernate.connection.username">root</property>
+		<property name="hibernate.connection.password">root</property>
+		<property name="hibernate.connection.pool.size">20</property>
+		<property name="hibernate.show_sql">true</property>
+		<property name="jdbc.fetch_size">50</property>
+		<property name="jdbc.batch_size">25</property>
+		<property name="jdbc.use_scrollable_resultset">false</property>
+		<property name="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</property-->
+
+    <!--缓存配置-->
+    <!--单机缓存-->
+    <property name="cache.provider_class">org.hibernate.cache.EhCacheProvider</property>
+    <!--查询缓存-->
+    <property name="cache.use_query_cache">true</property>
+	
+	
+	<mapping resource="hbm/Trial.hbm.xml"/>
+	<mapping resource="hbm/Org.hbm.xml"/>
+    <mapping resource="hbm/Misc.hbm.xml"/>
+	<mapping resource="hbm/DevManu.hbm.xml"/>
+	<mapping resource="hbm/DevModel.hbm.xml"/>
+	<mapping resource="hbm/DevType.hbm.xml"/>
+	<mapping resource="hbm/Terminal.hbm.xml"/>
+	<mapping resource="hbm/Module.hbm.xml"/>
+	<mapping resource="hbm/DevModelModule.hbm.xml"/>
+	<mapping resource="hbm/TerminalModule.hbm.xml"/>
+	<mapping resource="hbm/ServiceMenu.hbm.xml"/>
+    <mapping resource="hbm/TerminalService.hbm.xml"/>
+	<mapping resource="hbm/CardTypeService.hbm.xml"/>
+	<mapping resource="hbm/CardUnitStatus.hbm.xml"/>
+	<mapping resource="hbm/CardSettleCycleLog.hbm.xml"/>
+	<mapping resource="hbm/CardTransLog.hbm.xml"/>
+    <mapping resource="hbm/CDSUnitStatus.hbm.xml"/>
+	<mapping resource="hbm/CDSSettleCycleLog.hbm.xml"/>
+	<mapping resource="hbm/CDSTransLog.hbm.xml"/>
+    <mapping resource="hbm/UKeyUnitStatus.hbm.xml"/>
+	<mapping resource="hbm/UKeySettleCycleLog.hbm.xml"/>
+	<mapping resource="hbm/UKeyTransLog.hbm.xml"/>
+	<mapping resource="hbm/OtherTransLog.hbm.xml"/>
+	<mapping resource="hbm/HostRetCode.hbm.xml"/>
+	<mapping resource="hbm/Province.hbm.xml"/>
+	<mapping resource="hbm/City.hbm.xml"/>
+	<mapping resource="hbm/Bank.hbm.xml"/>
+	<mapping resource="hbm/RouteBank.hbm.xml"/>
+	<mapping resource="hbm/FlushData.hbm.xml"/>
+	<mapping resource="hbm/TemplateMenu.hbm.xml"/>
+	<mapping resource="hbm/TemplateMenuRelation.hbm.xml"/>
+	<mapping resource="hbm/ExpLog.hbm.xml"/>
+	<mapping resource="hbm/PadCheck.hbm.xml"/>
+	<mapping resource="hbm/BrunchRegister.hbm.xml"/>
+	<mapping resource="hbm/BranchMap.hbm.xml"/>
+	
+	<mapping resource="hbm/SettleCycleLog.hbm.xml"/>
+	<mapping resource="hbm/TransLogDeposit.hbm.xml"/>
+	<mapping resource="hbm/TransLogWithdrawal.hbm.xml"/>
+	
+
+    <!--设置特定类的二级缓存并发访问策略-->
+	<class-cache class="com.yihuacomputer.cols.entity.Org" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.Trial" usage="transactional"/>
+    <class-cache class="com.yihuacomputer.cols.entity.Misc" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.DevManu" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.DevModel" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.DevType" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.Terminal" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.Module" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.DevModelModule" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.TerminalModule" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.ServiceMenu" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.TerminalService" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.CardTypeService" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.HostRetCode" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.Province" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.City" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.Bank" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.RouteBank" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.TemplateMenu" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.TemplateMenuRelation" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.PadCheck" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.BrunchRegister" usage="transactional"/>
+	<class-cache class="com.yihuacomputer.cols.entity.BranchMap" usage="transactional"/>
+  </session-factory>
+</hibernate-configuration>
+

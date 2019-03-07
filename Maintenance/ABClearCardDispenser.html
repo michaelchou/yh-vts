@@ -1,0 +1,952 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>异常清卡</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+function doMouseDown() {
+//	top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+
+// 服务流程处理入口
+function serverEntrance() {
+
+// top.pool.set("strPan","6235526031000020949");
+//    	top.pool.set("strMangerVouchNo","6235526031000020949");
+// 		top.pool.set("iTransLogId", "5");
+// 		top.pool.set("iTermTxStatus", "3");
+// 		top.pool.set("strMangerTransType", "1");
+// 		top.pool.set("strMangerVouchType", "061");
+// 		top.pool.set("strMangerTransCode", "901104");
+// 		top.pool.set("strMangerIDCardNum", top.pool.get("strIDCardNum"));
+//     top.trans.sendUpdateTermStatusAsync();
+
+
+	if(top.YHAXCardDispenser.StDeviceStatus!="HEALTHY"||
+		top.YHAXCardReader.StDeviceStatus!="HEALTHY"
+	){
+		onHardwareError();
+	}else
+	    top.trans.sendQueryCardDispenserAsync();
+  
+}
+
+function onHardwareError() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+	 	top.serviceCtrl.navigate2Maintenance();
+	}
+
+	window.operateCtrl.enableInput();
+	Tip_Title2.innerHTML  = "<span class=\"Tip_Title\">发卡模块或读卡器状态不正常，暂不支持本操作</span>";
+	top.wins.showMain("oLInfoTip2");	  
+}
+var cardTypeValues=top.misc.getValuesByName("strCardType");
+var cardTypeDescs=top.misc.getDescsByName("strCardType");
+
+var cardExplogInfoStr="";//吞卡明细信息
+var transCount=0;//交易吞卡
+var dispenseCount=0;//吞卡吞卡
+//吞卡详细数据信息
+ var cardExplogInfoArr1= new Array();
+ 
+
+ 
+var recyclebinCount=0;//回收箱计数
+var transUnknownCount=0;//发卡交易失败卡号未知回收
+var CUCurrentCount=new Array();//各卡箱剩余数量
+var CUInitialCount=new Array();//各卡箱初始数量
+var CURetainCount=new Array();//各卡箱回收数量
+var selectedCardBox;//选中的卡箱编号
+var cardBoxInfoStr="";//卡箱信息(字符串格式)
+var cardTransLogStr="";//发卡交易信息
+var cardSurplusCount=0; //卡箱总剩余数量
+var cardRefillCount=0;//卡箱总初始数量
+//配置标题和数据
+var strHeadingArr = new Array(
+	"卡箱编号",
+	"卡类型",
+  	"加卡数",
+  	"发卡数",
+	"剩余卡数",
+	"废卡数"
+  //,  "阀值"
+ 
+);
+
+
+
+
+
+
+//卡箱信息
+var strRecordArr = new Array();
+//卡段信息
+var strSegmentArr = new Array();
+//卡箱加卡张数
+var iCountArr = new Array();
+//卡箱加卡类型
+var strCardTypeArr = new Array();
+//选择卡箱序号
+var index;
+var explogInfoStr="";//吞card信息
+
+//生产
+var cardBoxInfoArr0= top.carddispenser.getCardUnitInfo();//获取卡箱信息
+//测试
+// var cardBoxInfoArr0= new Array();//获取卡箱信息
+// for(var i=0;i<4;i++){
+// 	cardBoxInfoArr0[i]=new Array();
+// 	cardBoxInfoArr0[i][0]=i+1;
+// }
+
+
+//从数据库获取本终端的卡段信息串
+onAsyncQueryCardDispenserComplete = function(){
+      cardBoxInfoStr=  top.pool.get("cardBoxInfoStr");
+      //alert(cardBoxInfoStr);
+     cardTransLogStr=  top.pool.get("cardTransLogStr");
+         explogInfoStr= top.pool.get("explogInfoStr");
+     loadCardBoxInfo();
+	showCardBoxInfo();
+  }
+//每个字段以','分割，每条记录以'|'分割
+// var cardBoxInfoStr="2,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+//     cardBoxInfoStr+="2,SUPPLYBIN,150,10,HEALTHY,061,101,200,80,5,1,2,2|";
+//     cardBoxInfoStr+="3,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+//     cardBoxInfoStr+="3,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+//     cardBoxInfoStr+="4,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+//     cardBoxInfoStr+="4,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+
+//卡段详细数据信息
+ var cardBoxInfoArr1= new Array();
+ 
+ //卡段详细显示信息
+ var strRecordArr1= new Array();
+   
+//初始化一次性读取并统计卡箱信息
+ function loadCardBoxInfo()
+ {
+	//生产
+	 var cardBoxInfoArr= new Array();
+   
+     cardBoxInfoArr=cardBoxInfoStr.split('|');
+     
+     for (var i=0;i<cardBoxInfoArr.length-1;i++){
+        cardBoxInfoArr1[i]=new Array();
+     	cardBoxInfoArr1[i]=cardBoxInfoArr[i].split(',');
+     }
+      var initCount=0;
+    var successCount=0;
+	var curCount=0;
+	var destroyedCount=0;
+	var j=0;
+	
+	for(var i=0;i<cardBoxInfoArr1.length;i++){
+		if(i==0){
+			strRecordArr[j] = new Array();
+			
+			strRecordArr[j][0] = cardBoxInfoArr1[i][0];  //boxNumber
+			  
+			   var cardtype=cardBoxInfoArr1[i][5];
+                  	for(var c=0;c<cardTypeValues.length;c++){
+		  				if(  cardBoxInfoArr1[i][5] ==cardTypeValues[c]){
+		  		 				cardtype=cardTypeDescs[c];
+		  			 			break;  		 
+		  		 		}
+		  		  }
+			strRecordArr[j][1] = cardtype; //cardType  cardBoxInfoArr1[i][5];
+		
+			//alert(strRecordArr[j][0]);
+		}
+		else if(strRecordArr[j][0]!=cardBoxInfoArr1[i][0] ){
+		
+		//alert(successCount);
+		//alert(curCount);
+		//alert(destroyedCount);
+			strRecordArr[j][2] = initCount;  //initCount
+			strRecordArr[j][3] = successCount;  //successCount
+			strRecordArr[j][4] = curCount;  //curCount
+			strRecordArr[j][5] = destroyedCount;  //successCount
+			j+=1;
+			initCount=0;
+			successCount=0;
+			curCount=0;
+			destroyedCount=0;
+			
+			strRecordArr[j] = new Array();
+			
+			strRecordArr[j][0] = cardBoxInfoArr1[i][0];  //boxNumber
+			
+			   var cardtype=cardBoxInfoArr1[i][5];
+                  	for(var c=0;c<cardTypeValues.length;c++){
+		  				if(  cardBoxInfoArr1[i][5] ==cardTypeValues[c]){
+		  		 				cardtype=cardTypeDescs[c];
+		  			 			break;  		 
+		  		 		}
+		  		  }
+			strRecordArr[j][1] = cardtype; //cardType  cardBoxInfoArr1[i][5];
+		
+		
+		}
+			initCount+=parseInt( cardBoxInfoArr1[i][2]);  //init
+			successCount+=parseInt(cardBoxInfoArr1[i][8])+parseInt(cardBoxInfoArr1[i][9])+parseInt(cardBoxInfoArr1[i][11])+parseInt(cardBoxInfoArr1[i][12]);  
+			    curCount+=parseInt(cardBoxInfoArr1[i][3]); 
+	      destroyedCount+=parseInt(cardBoxInfoArr1[i][10]);  
+		 // alert(successCount);
+		//alert(curCount);
+		//alert(destroyedCount);
+	  
+	}
+			strRecordArr[j][2] = initCount;  //initCount
+		    strRecordArr[j][3] = successCount;  //successCount
+			strRecordArr[j][4] = curCount;  //successCount
+			strRecordArr[j][5] = destroyedCount;  //successCount
+			
+//alert(strRecordArr.length);
+// 			 str="";
+// 			 for(var i=0;i<strRecordArr.length;i++){
+// 				for(var j=0;j<strRecordArr[i].length;j++){
+// 				str+=strRecordArr[i][j]+",";
+// 			}
+// 			alert(str);
+		
+// 			}
+  
+}
+
+//显示卡箱信息
+function showCardBoxInfo() {
+	window.operateCtrl.disableInput(true);
+	onKey_Cancel = onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Enter = onKey_F6 = function() {
+		loadSegmentInfo();
+		showSegmentInfo();
+	}
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	// 清空当前显示的内容
+	var oTHead=document.getElementById('oTHead');
+	var oTBody=document.getElementById('oTBody');
+    while (oTHead.rows.length > 0)
+     oTHead.deleteRow(0);
+    while (oTBody.rows.length > 0)
+     oTBody.deleteRow(0);
+	// 	thead
+	  var oRow = oTHead.insertRow();
+	 for (var j=0; j<strHeadingArr.length; j++)
+    {
+       var oCell = oRow.insertCell();
+      oCell.innerHTML =strHeadingArr[j];
+      oCell.align = "center";
+    }
+  //       tbody 
+        for (var i=0; i<strRecordArr.length; i++){
+      		var oRow =oTBody.insertRow(); 
+	      for (var j=0; j<strRecordArr[i].length; j++){
+		          var oCell = oRow.insertCell();
+		            oCell.innerHTML =strRecordArr[i][j];
+	 		          oCell.align="right";
+		     }
+	} 
+	
+	      var explogInfoArr= new Array();
+        var explogInfoArr1= new Array();//吞card数量
+           recyclebinCount=0;	//吞card未知数量
+      explogInfoArr=explogInfoStr.split('|');
+     
+     for (var i=0;i<explogInfoArr.length-1;i++){
+        explogInfoArr1[i]=new Array();
+     	explogInfoArr1[i]=explogInfoArr[i].split(',');
+     }
+        for (var i=0;i<explogInfoArr1.length;i++){
+      		if(explogInfoArr1[i][0]==null||explogInfoArr1[i][0]=="null"||explogInfoArr1[i][0]==""||explogInfoArr1[i][0].length<16){
+      			
+      			recyclebinCount++;
+      			continue;
+      		}
+        
+      }
+		 recyclebinCountSpan.innerHTML = "<span class=\"Tip_Content\">吞卡未知数:"+ recyclebinCount+"</span>";
+	top.wins.showMain("oLShowCardBoxInfo");
+	window.operateCtrl.enableInput();
+}
+
+//初始化统计卡段信息
+ function loadSegmentInfo()
+ {
+	
+     
+ 
+	
+	for(var i=0;i<cardBoxInfoArr1.length;i++){
+		
+			strRecordArr1[i] = new Array();
+			   var cardtype=cardBoxInfoArr1[i][5];
+                  	for(var c=0;c<cardTypeValues.length;c++){
+		  				if(  cardBoxInfoArr1[i][5] ==cardTypeValues[c]){
+		  		 				cardtype=cardTypeDescs[c];
+		  			 			break;  		 
+		  		 		}
+		  		  }
+			strRecordArr1[i][1] = cardtype; //cardType  cardBoxInfoArr1[i][5];
+			strRecordArr1[i][0] = cardBoxInfoArr1[i][0];  //boxNumber
+	
+			strRecordArr1[i][2] = cardBoxInfoArr1[i][6];  //startsegment
+			strRecordArr1[i][3] = cardBoxInfoArr1[i][7];  //endsegment
+			strRecordArr1[i][4] = cardBoxInfoArr1[i][2];  //init
+			strRecordArr1[i][5] = cardBoxInfoArr1[i][3];  //cur
+			strRecordArr1[i][6] = cardBoxInfoArr1[i][8];  //8
+			strRecordArr1[i][7] = cardBoxInfoArr1[i][9];  //9
+			strRecordArr1[i][8] = cardBoxInfoArr1[i][10];  //10
+			strRecordArr1[i][9] = cardBoxInfoArr1[i][11];  //11
+			//alert(strRecordArr[j][0]);
+	
+	}
+	
+  
+}
+  //卡段详细信息
+function showSegmentInfo() {
+
+onKey_Enter = onKey_F6 = function() {
+		 	confirmConfig();
+	}
+	 onKey_F7 = function() {
+		 	showCardBoxInfo();
+	}
+
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        	top.serviceCtrl.navigate2Quit();
+     }
+ 	
+	window.operateCtrl.enableInput();
+	
+var mrv = new top.MultiRecordView();
+var strHeadingArr = new Array
+(
+  "卡箱编号",
+   "卡类型",
+    "起始卡段",
+     "结束卡段",
+      "加卡张数",
+      "剩余张数",
+       "发卡已领",
+        "吞卡已发",
+         "吞卡已销",
+          "吞卡未知"        
+);  
+			   mrv.strClassName_Table_Head             			= "ADMTable_Head";
+			  mrv.strClassName_Table_Record           			= "ADMTable_Record";
+			  mrv.strClassName_Table_Record2         			= "ADMTable_Record2";
+			  mrv.strClassName_Table_RecordSelected    	= "ADMTable_RecordSelected";
+   			  mrv.oTHead = oTHeadListSegment;
+              mrv.oTBody = oTBodyListSegment;
+              mrv.oTablePageTip = oTablePageTip;
+              mrv.oMFirstPage  = oMFirstPage;
+              mrv.oMPrevPage = oMPrevPage;
+              mrv.oMNextPage = oMNextPage;
+              mrv.oMEndPage = oMEndPage;
+              mrv.strRecordArr = strRecordArr1;
+              mrv.strHeadingArr = strHeadingArr;
+              mrv.iRowsPerPage = 4;
+              onKey_F1 = function(){mrv.onFirstPage();}
+              onKey_F2 = function(){mrv.onPrevPage();}
+              onKey_F3 = function(){mrv.onNextPage();}
+              onKey_F4 = function(){mrv.onEndPage();}
+				mrv.show();
+	
+	top.wins.showMain("oLListCard");
+}
+      //异常清卡确认信息
+function confirmConfig() {
+
+onKey_Enter = onKey_F6 = function() {
+		
+		 config();
+	}
+	 onKey_F7 = function() {
+		 	showCardBoxInfo();
+	}
+
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        	top.serviceCtrl.navigate2Quit();
+     }
+ 	
+	window.operateCtrl.enableInput();
+		
+	top.wins.showMain("oLShowAbnormalInfo");
+}
+ //清卡设置
+function config() {
+	    window.operateCtrl.disableInput(true);
+	   onConfigurationCompleted = function(){
+   		   loadCardExpLogInfo();
+	   	 if (typeof(top.YHAXReceiptPrint) != "undefined")
+ 		 {
+			printReceipt();
+	      }
+ 	      printJournal();
+	      onServiceSuccessful(); 
+    	}
+
+    onConfigurationFailed = function(){
+        //alert("ConfigurationFailed");
+        onServiceFailed("卡箱配置失败", "", "ConfigurationFailed");
+    } 
+  onConfigurationInitiated = function(){
+        var arr = strRecordArr;
+          for(i=0;i<cardBoxInfoArr0.length;i++){
+                CUCurrentCount[i] = "0";
+                CUInitialCount[i] = "0";
+                CURetainCount[i]  = "0";
+            }      
+              CUCurrentCount = CUCurrentCount.toString();
+         CUInitialCount = CUInitialCount.toString();
+         CURetainCount  = CURetainCount.toString();
+           //  alert(CUCurrentCount);
+           //    alert(CUInitialCount);
+               //  alert(CURetainCount);
+                 
+       
+     
+              
+     
+         Tip_Title.innerHTML  = "<span class=\"Tip_Title\">正在进行清卡处理，请稍候</span>";
+         
+        
+         
+         
+         
+       var cardTransLogArr= new Array();
+        var cardTransLogArr1= new Array();
+   
+     cardTransLogArr=cardTransLogStr.split('|');
+     
+     for (var i=0;i<cardTransLogArr.length-1;i++){
+        cardTransLogArr1[i]=new Array();
+     	cardTransLogArr1[i]=cardTransLogArr[i].split(',');
+     }
+     //strPan List 去掉最后一位
+      var cardTransLogArr2= new Array();
+      transUnknownCount=0;
+      for (var i=0,j=0;i<cardTransLogArr1.length;i++){
+      		if(cardTransLogArr1[i][0]==null||cardTransLogArr1[i][0]=="null"||cardTransLogArr1[i][0]==""||cardTransLogArr1[i][0].length<16){
+       			transUnknownCount++;
+      			continue;
+      		}
+          	cardTransLogArr2[j]=cardTransLogArr1[i][0].slice(0,-1);
+          	j++;
+      }
+     //初始卡段变为卡信息
+      var segments= new Array();
+     
+     for (var i=0;i<strRecordArr1.length;i++){
+      var  data =new Array();
+      data=strRecordArr1[i];
+//       	strRecordArr1[i][0] = cardBoxInfoArr1[i][0];  //boxNumber
+// 			strRecordArr1[i][1] = cardBoxInfoArr1[i][5];  //cardType desc
+// 			strRecordArr1[i][2] = cardBoxInfoArr1[i][6];  //startsegment
+// 			strRecordArr1[i][3] = cardBoxInfoArr1[i][7];  //endsegment
+// 			strRecordArr1[i][4] = cardBoxInfoArr1[i][2];  //init
+        var cardbin=top.misc.getDescByNameAndValue("strCardTypeBin",cardBoxInfoArr1[i][5],"");
+           
+     
+       		for(var j=0;j<parseInt(strRecordArr1[i][4],"10");j++){
+       		    var segment=new top.StringCtrl(parseInt(strRecordArr1[i][2],"10")+j).prefixStr('0',10);//18位
+       			segments[segments.length]=cardbin+segment;
+       		}
+     
+       }
+      
+  
+         
+             	  //凭证上交由柜面，不发清卡交易，直接清本地库和硬件计数
+             	 onAsync911102Complete();           
+      }
+ 
+    
+       onAsync911102Complete= function(){
+        //更新加卡本地库
+         top.trans.sendClearCardDispenserAsync();   
+
+    }
+	
+    onAsyncClearCardDispenserComplete = function(){
+    		
+  	   	  setTimeout(function(){try{reset();}catch(e){}}, 500);     //reset_cardbin清卡计数  
+  	   	  
+  	 	//测试
+//   		 onConfigurationCompleted();   	  
+  		
+  	    //生产 	
+ 
+        top.YHAXCardDispenser.SetExtendedProperty("CUCurrentCount", CUCurrentCount);
+        top.YHAXCardDispenser.SetExtendedProperty("CUInitialCount", CUInitialCount);
+        top.YHAXCardDispenser.SetExtendedProperty("CURetainCount", CURetainCount);
+        Tip_Title.innerHTML  = "<span class=\"Tip_Title\">正在进行卡箱配置信息，请稍候</span>";
+        top.carddispenser.CompletedCardUnitConfiguration();
+    }
+    onNotSupported = function(){
+    	//alert("NotSupported");
+    	 onServiceFailed("卡箱配置失败", "", "NotSupported");
+    }
+    onDeviceError = function(){
+    //	alert("DeviceError");
+    	 onServiceFailed("卡箱配置失败", "", "DeviceError");
+    }
+   //alert("config");
+	   	data=strSegmentArr;
+	
+          
+	      var CardBoxConfig=new Array();
+        for(i=0;i<cardBoxInfoArr0.length;i++){
+       		 CardBoxConfig[i]=cardBoxInfoArr0[i][0];
+       	  }
+    //   alert(CardBoxConfig.toString());
+       
+       
+       top.wins.showMain("oLInfoTip");
+	   Tip_Title.innerHTML  = "<span class=\"Tip_Title\">初始化卡箱配置信息，请稍候</span>";
+	    //生产
+       top.carddispenser.InitiateCardUnitConfiguration(CardBoxConfig);
+	   //测试
+// 	   onConfigurationInitiated(); 
+}
+
+var timeoutid;
+var times;
+var IdcEnr = new top.EventHandling(top.YHAXCardReader);
+
+// 清吞卡计数
+function reset()
+{
+
+  onResetComplete = function()
+  {
+   IdcEnr.clearAll();
+   // alert("1111");
+	  Tip_Title.innerHTML  = "<span class=\"Tip_Title\">"+"清吞卡计数成功"+"</span>";
+  		if(timeoutid!=null){
+   			clearInterval(timeoutid);
+   		}	
+  }
+
+  onDeviceError = function()
+  {
+      IdcEnr.clearAll();
+   
+	  Tip_Title.innerHTML  = "<span class=\"Tip_Title\">"+"清吞卡计数失败"+"</span>";
+   		if(timeoutid!=null){
+   			clearInterval(timeoutid);
+   		}
+  }
+
+  IdcEnr.appendEvent("DeviceError", onDeviceError);
+  IdcEnr.appendEvent("FatalError", onDeviceError);
+ // alert(top.YHAXCardReader.StBinCount);
+  top.YHAXCardReader.ResetBinCountSync();
+ // setTimeout(onResetComplete(),500);
+ times=3;
+ timeoutid=setInterval(countdown,500);
+}
+//清卡计数倒计时
+function countdown(){
+	var count=top.YHAXCardReader.StBinCount;
+	  //alert(top.YHAXCardReader.StBinCount);
+	  times--;
+	if(count == 0){
+		onResetComplete();
+	}
+		
+  	if(times<=0)
+	{
+		onDeviceError();
+	}
+		
+}
+	//加载吞卡明细信息
+ function loadCardExpLogInfo()
+ {
+
+	 var cardExplogInfoArr= new Array();
+   	 cardExplogInfoStr=  top.pool.get("cardExplogInfoStr");
+     cardExplogInfoArr=cardExplogInfoStr.split('|');
+     
+     for (var i=0;i<cardExplogInfoArr.length-1;i++){
+        cardExplogInfoArr1[i]=new Array();
+     	cardExplogInfoArr1[i]=cardExplogInfoArr[i].split(',');
+     }
+  
+	
+
+	for(var i=0;i<cardExplogInfoArr1.length;i++){
+	
+		    if(cardExplogInfoArr1[i][1]=="Exp01001"){
+		   		 cardExplogInfoArr1[i][1]="交易吞卡";
+		    	 transCount+=1;
+		    }
+		    if(cardExplogInfoArr1[i][1]=="Exp01002"){
+		    	 cardExplogInfoArr1[i][1]="发卡回收";
+		    	 dispenseCount+=1;
+		    }
+
+		}
+	
+	  
+	}
+ //打印清卡凭条
+	function printReceipt() {
+	     top.receiptprinter.set("**************异常清卡清单**************");
+		 top.receiptprinter.set("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+		 top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username"));
+         top.receiptprinter.set("----------------------------------------");
+         top.receiptprinter.set("**************卡箱信息明细**************");
+         top.receiptprinter.set("卡箱ID   卡类型   加卡 发卡 剩余 废卡");
+           for (var i=0; i<strRecordArr.length; i++){
+                             top.receiptprinter.set(new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 6)+
+                                                   new top.StringCtrl(strRecordArr[i][1]).formatStr(' ', 11)+
+                                                   new top.StringCtrl(strRecordArr[i][2]).formatStr(' ', 5)+
+                							       new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 5)+
+                							       new top.StringCtrl(strRecordArr[i][4]).formatStr(' ', 5)+
+                							       new top.StringCtrl(strRecordArr[i][5]).formatStr(' ', 5)
+                 								  ) ;
+           }
+         top.receiptprinter.set("**************卡段信息明细**************");
+         top.receiptprinter.set("  卡箱ID  起始段   结束段   初始   当前");
+         top.receiptprinter.set("发卡已领 吞卡已发 吞卡已销 吞卡未知");
+     
+        for(var i=0;i<strRecordArr1.length;i++){
+            	var data= new Array();
+            	
+            	data=strRecordArr1[i];
+	     
+	        	var cardBoxInfoStr="";
+	    
+ 	   
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[0]).formatStr(' ', 5);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[2]).formatStr(' ', 12);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[3]).formatStr(' ', 11);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[4]).formatStr(' ', 4);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[5]).formatStr(' ', 7);
+ 	                    cardBoxInfoStr+="\r\n";
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[6]).formatStr(' ', 8);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[7]).formatStr(' ', 9);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[8]).formatStr(' ', 9);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[9]).formatStr(' ', 9);
+ 	                		  
+ 	        	 	 top.receiptprinter.set(cardBoxInfoStr);
+           	}
+           
+             top.receiptprinter.set("----------------------------------------");
+      		printReceipt_CardExpLog();
+	}
+	
+	
+       
+//打印清卡流水	
+	function	printJournal(){
+        top.journalPrinter.addJournal("**************异常清卡清单**************");
+        top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+		top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+        top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+        top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**************卡箱信息明细**************");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("卡箱ID   卡类型   加卡 发卡 剩余 废卡");
+        top.journalPrinter.addJournal("\r\n");
+          for (var i=0; i<strRecordArr.length; i++){
+			      top.journalPrinter.addJournal(new top.StringCtrl(strRecordArr[i][0]).formatStr(' ', 6)+
+			                                                   new top.StringCtrl(strRecordArr[i][1]).formatStr(' ', 11)+
+			                                                   new top.StringCtrl(strRecordArr[i][2]).formatStr(' ', 5)+
+			                							       new top.StringCtrl(strRecordArr[i][3]).formatStr(' ', 5)+
+			                							       new top.StringCtrl(strRecordArr[i][4]).formatStr(' ', 5)+
+			                							       new top.StringCtrl(strRecordArr[i][5]).formatStr(' ', 5)
+			                 								  ) ;     		         
+                top.journalPrinter.addJournal("\r\n");
+		}
+        top.journalPrinter.addJournal("**************卡段信息明细**************");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("  卡箱ID  起始段   结束段   初始   当前");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("发卡已领 吞卡已发 吞卡已销 吞卡未知");
+        top.journalPrinter.addJournal("\r\n");
+    
+       for(var i=0;i<strRecordArr1.length;i++){
+            	var data= new Array();
+            	
+            	data=strRecordArr1[i];
+	     
+	          	var cardBoxInfoStr="";
+       					cardBoxInfoStr+= new top.StringCtrl(data[0]).formatStr(' ', 5);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[2]).formatStr(' ', 12);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[3]).formatStr(' ', 11);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[4]).formatStr(' ', 4);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[5]).formatStr(' ', 7);
+ 	                    cardBoxInfoStr+="\r\n";
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[6]).formatStr(' ', 8);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[7]).formatStr(' ', 9);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[8]).formatStr(' ', 9);
+ 	                	cardBoxInfoStr+= new top.StringCtrl(data[9]).formatStr(' ', 9);
+ 	           	  
+ 	        	 	  top.journalPrinter.addJournal(cardBoxInfoStr);
+ 	        	 	  top.journalPrinter.addJournal("\r\n");
+           	}
+        
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+        printJournal_CardExpLog();
+ 	}
+ 	
+ 	//打印吞卡明细凭条
+	function printReceipt_CardExpLog() {
+	 top.receiptprinter.set("*************吞卡明细清单*************");
+		 top.receiptprinter.set("----------------------------------------");
+         top.receiptprinter.set("**********吞卡汇总信息*********");
+        top.receiptprinter.set("交易吞卡："+new top.StringCtrl(transCount).formatStr(' ', 4)+" "+"发卡回收："+new top.StringCtrl(dispenseCount).formatStr(' ', 4)+" ");
+         top.receiptprinter.set("**********吞卡信息明细*********");
+         top.receiptprinter.set("        卡号        吞卡类型  吞卡结果");
+         top.receiptprinter.set("        吞卡时间");
+           for (var i=0; i<cardExplogInfoArr1.length; i++){
+                             top.receiptprinter.set(new top.StringCtrl(cardExplogInfoArr1[i][0]).formatStr(' ', 19)+
+			                                                   new top.StringCtrl(cardExplogInfoArr1[i][1]).formatStr(' ', 9)+
+			                							       new top.StringCtrl(cardExplogInfoArr1[i][2]).formatStr(' ', 9)+
+			                							       "\r\n"+
+			                							       new top.StringCtrl(cardExplogInfoArr1[i][3]).formatStr(' ', 19)
+	
+			                 								  ) ;           
+ 		}
+             top.receiptprinter.set("----------------------------------------");
+      		top.receiptprinter.printAndEject();
+	}
+       
+//打印吞卡明细流水
+	function	printJournal_CardExpLog(){
+	    top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("*************吞卡明细清单*************");
+        top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+		top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+        top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+        top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********吞卡汇总信息*********");
+         top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("交易吞卡："+new top.StringCtrl(transCount).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("发卡回收："+new top.StringCtrl(dispenseCount).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("\r\n");
+     
+       
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********吞卡信息明细*********");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("        卡号        吞卡类型  吞卡结果");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("      交易时间");
+        top.journalPrinter.addJournal("\r\n");
+         for (var i=0; i<cardExplogInfoArr1.length; i++){
+        		 top.journalPrinter.addJournal(new top.StringCtrl(cardExplogInfoArr1[i][0]).formatStr(' ', 19)+
+			                                                   new top.StringCtrl(cardExplogInfoArr1[i][1]).formatStr(' ',9)+
+			                							       new top.StringCtrl(cardExplogInfoArr1[i][2]).formatStr(' ', 9)+
+			                							       "\r\n"+
+			                							       new top.StringCtrl(cardExplogInfoArr1[i][3]).formatStr(' ', 19)
+			                							 
+			                 								  );       
+                 top.journalPrinter.addJournal("\r\n");
+		}
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+ 	}
+	  
+    //清卡成功
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+//交易失败
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+  onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  oFailedTitle.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLServiceFailedTip");
+}
+    
+
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLInfoTip2" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title2"></span></td>
+			</tr>
+	    </table>
+	</div>
+	   <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>	
+   </div>
+<div id="oLShowCardBoxInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" >异常清卡</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="60%" height="40%">
+                        <thead class="ADMTable_Head" id="oTHead"></thead>
+                        <tbody id="oTBody"  class="ADMTable_Record"></tbody>
+                    </table>
+                     <br/>
+                   <span class="Tip_Content"  id="recyclebinCountSpan">未知吞卡数:</span>
+                </td>
+            </tr>
+             
+        </table>
+   <pre class="Error_Title" id="error_Input_1">&nbsp;</pre>
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm" >清卡提交</button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+        
+</div>
+<div id="oLListCard" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" >卡箱清卡</span>
+                    <br/> <br/>
+                                       
+                       <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTableListSegment" width="80%" height="15%">
+                        <thead class="ADMTable_Head" id="oTHeadListSegment">
+                         </thead>
+                        <tbody id="oTBodyListSegment"  class="ADMTable_Record"></tbody>
+                    </table>
+                       
+                           <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+            </tr>
+        </table>
+    </div>
+      <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+     <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+     <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+     <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+    
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm">清卡</button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLInfoTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   </div>
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">清卡成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLShowAbnormalInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" >异常清卡确认</span>
+                    <br/>  <br/>    <br/>    <br/>    <br/>    <br/>    <br/>    <br/>    <br/>    <br/>    <br/>  
+                  
+                         <pre class="Error_Title">本操作只限本地数据处理</pre>      
+                          <pre class="Error_Title"> 请到柜面系统做凭证上交后续处理</pre>     
+                </td>
+            </tr>
+        
+        </table>
+   
+     
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oConfirm">清卡确认</button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+        
+</div>
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

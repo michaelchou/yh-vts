@@ -1,0 +1,313 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>管理员界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  function doMouseDown(){
+	//top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  showMenu();
+}
+
+
+//选择的模块ID
+function reset(Key)
+{
+  if(Key == 0)
+  {
+    if (typeof(top.YHAXCardReader) != "undefined"){
+        top.serviceCtrl.navigate2("/Maintenance/CardReader_Maintenance.html");
+    }
+  }
+  else if(Key == 1)
+  {
+    if (typeof(top.YHAXPinPad) != "undefined"){
+      top.serviceCtrl.navigate2("/Maintenance/PinPad_Maintenance.html");
+    }
+  }
+  else if(Key == 2)
+  {
+    if (typeof(top.YHAXReceiptPrint) != "undefined"){
+      top.serviceCtrl.navigate2("/Maintenance/ReceiptPrint_Maintenance.html");
+    } 
+  }
+  else if(Key == 3)
+  {
+    if (typeof(top.YHAXPassbook) != "undefined"){
+     top.serviceCtrl.navigate2("/Maintenance/PassBook_Maintenance.html");
+    }  
+  }
+  else if(Key == 4)
+  {
+    if (typeof(top.YHAXIDCardReader) != "undefined"){
+      top.serviceCtrl.navigate2("/Maintenance/IDCardReader_Maintenance.html");
+    }
+  }
+  else if(Key == 5)
+  {
+    if (typeof(top.YHAXFingerScanner) != "undefined"){
+      top.serviceCtrl.navigate2("/Maintenance/FingerScanner_Maintenance.html");
+    } 
+  }
+  else if(Key == 6)
+  {
+    if (typeof(top.YHAXCardDispenser) != "undefined"){
+       top.serviceCtrl.navigate2("/Maintenance/CardDispenser_Maintenance.html");
+    } 
+  }
+    else if(Key == 7)
+  {
+    if (typeof(top.YHAXDocumentScanner) != "undefined"){
+       top.serviceCtrl.navigate2("/Maintenance/DocumentScanner_Maintenance.html");
+    } 
+  }
+    else if(Key == 8)
+  {
+    if (typeof(top.YHAXDocumentScanner2) != "undefined"){
+       top.serviceCtrl.navigate2("/Maintenance/DocumentScanner2_Maintenance.html");
+    } 
+  }
+    else if(Key == 9)
+  {
+    if (typeof(top.YHAXUkeyDispenser) != "undefined"){
+       top.serviceCtrl.navigate2("/Maintenance/UkeyDispenser_Maintenance.html");
+    } 
+  }
+    else if(Key == 10)
+  {
+    if (typeof(top.YHAXBarcodeReader) != "undefined"){
+       top.serviceCtrl.navigate2("/Maintenance/BarcodeReader_Maintenance.html");
+    } 
+  }
+
+}
+
+// 显示维护功能列表菜单
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+
+  
+  
+  
+  //参数
+  var ret = false;//是否成功标识
+  var strRecordArr = new Array();//存储当前页数据
+
+  if (typeof(top.YHAXCardReader) != "undefined"){
+  var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXCardReader.StDeviceStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"读卡器",
+					deviceStatus，
+					0
+	);
+  }
+  
+  if (typeof(top.YHAXPinPad) != "undefined"){
+  var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXPinPad.StDeviceStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"密码键盘",
+					deviceStatus，
+					1
+	);
+}
+    
+  if (typeof(top.YHAXReceiptPrint) != "undefined"){
+  var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXReceiptPrint.StDeviceStatus+" "+top.YHAXReceiptPrint.StPaperStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"凭条打印机",
+					deviceStatus，
+					2
+	);
+  }
+  alert(strRecordArr.length);
+  if (typeof(top.YHAXPassbook) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXPassbook.StDeviceStatus+" "+top.YHAXPassbook.StPaperStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"存折打印机",
+					deviceStatus，
+					3
+	);
+  }
+  if (typeof(top.YHAXIDCardReader) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXIDCardReader.StDeviceStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"二代证读卡器",
+					deviceStatus，
+					4
+	);
+  }
+  if (typeof(top.YHAXFingerScanner) != "undefined"){
+    var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXFingerScanner.StDeviceStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"指纹仪",
+					deviceStatus，
+					5
+	);
+ 
+  }
+  if (typeof(top.YHAXCardDispenser) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXCardDispenser.StDeviceStatus+" "+top.YHAXCardDispenser.StDispenserStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"发卡",
+					deviceStatus，
+					6
+	);
+  
+  }
+  if (typeof(top.YHAXDocumentScanner) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXDocumentScanner.StDeviceStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"存单发放",
+					deviceStatus，
+					7
+	);
+  
+  }
+  if (typeof(top.YHAXDocumentScanner2) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXDocumentScanner2.StDeviceStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"存单受理",
+					deviceStatus，
+					8
+	);
+	}
+	
+  if (typeof(top.YHAXUkeyDispenser) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXUkeyDispenser.StDeviceStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"UKEY",
+					deviceStatus，
+					9
+	);
+  }
+  
+  	
+//   if (typeof(top.YHAXHandWriter) != "undefined"){
+//    var deviceStatus="状态未知";
+//   try{deviceStatus=top.YHAXHandWriter.StDeviceStatus;}catch(e){}
+//   strRecordArr[strRecordArr.length] =new Array(		
+// 					"电子签名",
+// 					deviceStatus
+// 	);
+//   }
+  
+   if (typeof(top.YHAXBarcodeReader) != "undefined"){
+   var deviceStatus="状态未知";
+  try{deviceStatus=top.YHAXBarcodeReader.StDeviceStatus;}catch(e){}
+  strRecordArr[strRecordArr.length] =new Array(		
+					"条码/二维码",
+					deviceStatus，
+					10
+	);
+  }
+    
+   var deviceStatus="状态未知22222222222222222222222222222222222";
+  
+  for(var i=0;i<20;i++){
+  strRecordArr[strRecordArr.length] =new Array(		
+					"设备"+i,
+					deviceStatus
+					11+i
+	);
+	}
+  alert(strRecordArr.length);
+  
+  // 初始化维护功能列表
+var mrv = new top.MultiRecordView();
+var strHeadingArr = new Array
+(
+  "模块",
+  "状态"
+);  
+			  mrv.strClassName_Table_Head             			= "ADMTable_Head";
+			  mrv.strClassName_Table_Record           			= "ADMTable_Record";
+			  mrv.strClassName_Table_Record2         			= "ADMTable_Record2";
+			  mrv.strClassName_Table_RecordSelected    	= "ADMTable_RecordSelected";
+   			  mrv.oTHead = oTHead;
+              mrv.oTBody = oTBody;
+              mrv.oTablePageTip = oTablePageTip;
+              mrv.oMFirstPage  = oMFirstPage;
+              mrv.oMPrevPage = oMPrevPage;
+              mrv.oMNextPage = oMNextPage;
+              mrv.oMEndPage = oMEndPage;
+              mrv.strRecordArr = strRecordArr;
+              mrv.strHeadingArr = strHeadingArr;
+               mrv.oMSelNext = oMSelNext;
+              mrv.iRowsPerPage = 8;
+              onKey_F1 = function(){mrv.onFirstPage();}
+              onKey_F2 = function(){mrv.onPrevPage();}
+              onKey_F3 = function(){mrv.onNextPage();}
+              onKey_F4 = function(){mrv.onEndPage();}
+               onKey_F5 = function(){mrv.onSelNext();}
+ 
+ 
+  onKey_F7 = function()
+  {
+     top.serviceCtrl.navigate2Maintenance();
+  }
+  onKey_Cancel = onKey_F8 = function()
+  {
+     top.serviceCtrl.navigate2Quit();
+  }
+   onKey_Enter = onKey_F6 = function()
+  {
+      try{eval("reset" + "("+mrv.getCurSel() + ");");}catch(e){}
+  }
+  mrv.show();
+  top.wins.showMain("oLMtnMenu");
+  window.operateCtrl.enableInput();
+}
+ 
+  
+ 
+ 
+  
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMtnMenu" class="FULLSCR">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine"><td align="center">
+        <span class="Tip_Title" id="oPlsChooseMtnMenu"></span><br/>
+        <br/><table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="45%" height="60%">
+          <thead class="ADMTable_Head" id="oTHead"></thead>
+          <tbody id="oTBody"></tbody>
+        </table>
+        <span class="Tip_Content" id="oTablePageTip"></span>
+      </td></tr>
+      
+    </table>
+  </div>
+   <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+     <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+     <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+     <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+     <span class="MMENU5" id="oMSelNext"><button onmousedown="doMouseDown();setTimeout(onKey_F5,100);" class="Menu_Right" name="oSelNext" id="oSelNext"></button></span>
+  <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="Menu_Right" name="oConfirm" id="oConfirm"></button></span>
+  <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+  <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>	
+</div>
+
+</body>
+</html>

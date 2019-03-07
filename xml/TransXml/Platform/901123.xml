@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MappingRule description="维护客户信息">
+    <!-- id 唯一标识 -->
+    <!-- strAlignType 定长域对齐方式，1：右对齐，2：左对齐  默认1  -->
+	<!-- strFillContent 定长域补充内容      默认空格 -->
+	<!-- strLength 长度 -->
+	<!-- strSource 取值方式  $从平台中取 $$取默认值 -->
+	<!-- strDestKey 平台取值字段名称-->
+	<!-- strDefaultValue 默认值-->
+  <request>
+  	<field description="报文类型标识符">
+		<id>F0</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>4</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>0014</strDefaultValue>
+	</field>
+	<field description="交易处理码">
+		<id>F3</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTransCode</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="系统跟踪号">
+		<id>F11</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTerminalTsn</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="受卡机终端标识码 机具编号">
+		<id>F41</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTerminalNum</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="自定义域">
+	    <id>F60</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength></strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>checkCode,applyCounty,sex,birthDay,nationality,nation,job,idType,startDate,endDate,mobilePhone,telPhone,address,zipCode,deliveryAddress,deliveryZipCode,reselfBrnoCode,imageSource,BANK_NO,imageFlag,imageName,IMG_BATCHNO</strDefaultValue>
+	</field>
+	<field description="是否留存照片">
+	    <id>imageFlag</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>1</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strImageFlag</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="文件名">
+	    <id>imageName</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>35</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strImageName</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="校验通过码">
+	    <id>checkCode</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>32</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strCheckCode</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="申领区县">
+	    <id>applyCounty</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strApplyCounty</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="性别">
+	    <id>sex</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>1</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strSex</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="出生日期">
+	    <id>birthDay</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strBirthDay</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="国籍">
+	    <id>nationality</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>4</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strNationality</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="民族">
+	    <id>nation</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>2</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strNation</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="职业">
+	    <id>job</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>3</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strJob</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="证件类型">
+	    <id>idType</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>3</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strIDType</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="证件起始日期">
+	    <id>startDate</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strStartDate</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="证件截至日期">
+	    <id>endDate</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strRendDate</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="手机号码">
+	    <id>mobilePhone</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>20</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strMobilePhone</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="固定电话">
+	    <id>telPhone</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>20</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTelPhone</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="通讯地址">
+	    <id>address</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>200</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strAddress</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="通讯地址邮编">
+	    <id>zipCode</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strZipCode</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="指定投递地址">
+	    <id>deliveryAddress</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>200</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strDeliveryAddress</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="指定投递地址邮编">
+	    <id>deliveryZipCode</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strdeliveryZipCode</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="备选自领社区网点代码">
+	    <id>reselfBrnoCode</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>20</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strReselfBrnoCode</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="照片来源">
+	    <id>imageSource</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>1</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strImageSource</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="操作机构号">
+	    <id>BANK_NO</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strBANK_NO</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="影像批次号">
+	    <id>IMG_BATCHNO</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>20</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strBatchId</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<!-- <field description="文件名">
+	    <id>fileName</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>30</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strFileName</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field> -->
+	<field description="证件号码">
+	    <id>F61_1</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>20</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strIDCardNum</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="持卡人姓名">
+	    <id>F61_6_NM</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>50</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strIDName</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="是否记录交易流水">
+		<id>F999</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>4</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>true</strDefaultValue>
+	</field>	
+  </request>
+  <TransCheckField>
+    <field description="关键域检验">F3,F11</field>
+  </TransCheckField>
+</MappingRule>

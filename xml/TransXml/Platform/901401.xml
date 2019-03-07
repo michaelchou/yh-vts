@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MappingRule description="借记卡换卡交易">
+    <!-- id 唯一标识 -->
+    <!-- strAlignType 定长域对齐方式，1：右对齐，2：左对齐  默认1  -->
+	<!-- strFillContent 定长域补充内容      默认空格 -->
+	<!-- strLength 长度 -->
+	<!-- strSource 取值方式  $从平台中取 $$取默认值 -->
+	<!-- strDestKey 平台取值字段名称-->
+	<!-- strDefaultValue 默认值-->
+  <request>
+	<field description="报文类型标识符">
+		<id>F0</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>4</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>0010</strDefaultValue>
+	</field>
+	<field description="客户号">
+		<id>F1</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strCustomerId</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>	
+	<field description="卡号">
+		<id>F2</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>19</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strPan</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="交易处理码">
+		<id>F3</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTransCode</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>	
+	<field description="系统跟踪号">
+		<id>F11</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTerminalTsn</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="受卡方所在地时间 hhmmss">
+		<id>F12</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>6</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTransTime</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="受卡方所在地日期 yyyyMMdd">
+		<id>F13</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTransDate</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="服务点输入方式码">
+		<id>F22</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>3</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strICFlag</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="卡序列号">
+		<id>F23</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>3</strLength>
+		<strSource>$</strSource>
+		<strDestKey>str5F34</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>			
+	<field description="第二磁道数据">
+		<id>F35</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>37</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTrack2</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="第三磁道数据">
+		<id>F36</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>104</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTrack3</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="受卡机终端标识码 机具编号">
+		<id>F41</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>8</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTerminalNum</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="个人标识码数据">
+		<id>F52</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>32</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strPinBlock</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>	
+	<field description="安全控制信息 06-国际算法 04-国密算法">
+	    <id>F53</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strEncrypType</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="55域">
+	    <id>F55</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>999</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strField55</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="自定义域">
+	    <id>F60</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>100</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>cardType,retainCardNoFlag,oldCardNo,costFee,passWord,pindata,flag,amt1,origCardSeqId,IMG_BATCHNO</strDefaultValue>
+	</field>
+	<field description="卡种类">
+	    <id>cardType</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strCardProduct</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="是否保号">
+	    <id>retainCardNoFlag</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strRetainCardNoFlag</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="原卡号">
+	    <id>oldCardNo</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strOldCardNo</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>	
+	<field description="工本费">
+	    <id>costFee</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strCostFee</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="新卡交易密码">
+	    <id>passWord</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strTranspwd</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>	
+	<field description="新卡查询密码">
+	    <id>pindata</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strQuerypwd</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="换卡标志">
+	    <id>flag</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>1</strDefaultValue>
+	</field>
+	<field description="旧卡电子现金余额">
+	    <id>amt1</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strOldCardAmt</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="原卡序列号">
+	    <id>origCardSeqId</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strOldCardSeqId</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="影像批次号">
+	    <id>IMG_BATCHNO</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>20</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strBatchId</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>			
+	<field description="证件编号">
+	    <id>F61_1</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strIDCardNum</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="持卡人姓名">
+	    <id>F61_6_NM</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>16</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strIDName</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="客户流水号(业务批次号)">
+	    <id>F71</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>100</strLength>
+		<strSource>$</strSource>
+		<strDestKey>strSingleBusinessNum</strDestKey>
+		<strDefaultValue></strDefaultValue>
+	</field>
+	<field description="是否记录交易流水">
+		<id>F999</id>
+	    <strAlignType>1</strAlignType>
+	    <strFillContent></strFillContent>
+		<strLength>4</strLength>
+		<strSource>$$</strSource>
+		<strDestKey></strDestKey>
+		<strDefaultValue>true</strDefaultValue>
+	</field>	
+  </request>
+  <TransCheckField>
+    <field description="关键域检验">F3,F11</field>
+  </TransCheckField>
+</MappingRule>

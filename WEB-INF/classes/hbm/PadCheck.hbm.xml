@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.yihuacomputer.cols.entity.PadCheck" table="PadCheck" lazy="false">
+		<id name="id" type="int" column="id">
+			<generator class="identity" />
+		</id>
+		<property name="strTerminalNum" column="strTerminalNum" type="string" not-null="true" />
+		<property name="strTransCode" column="strTransCode" type="string"/>
+		<property name="strCheckSerialNo" column="strCheckSerialNo" type="string" not-null="true" />
+		<property name="strBusinessCode" column="strBusinessCode" type="string"/>
+		<property name="strBusinessName" column="strBusinessName" type="string"/>
+		<property name="strBatchId" column="strBatchId" type="string"/>
+		<property name="strCustomNo" column="strCustomNo" type="string"/>
+		<property name="strCustManagerNo" column="strCustManagerNo" type="string" />
+		<property name="strCustManagerName" column="strCustManagerName" type="string" />
+		<property name="status" column="iStatus" type="int" not-null="true" />
+	    <property name="dtStart" column="dtStart" type="timestamp"/>
+	    <property name="dtEnd" column="dtEnd" type="timestamp"/>
+		<property name="strMemo" column="strMemo" type="string" />
+	</class>
+</hibernate-mapping>

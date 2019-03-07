@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.yihuacomputer.cols.entity.BrunchRegister" table="BrunchRegister" lazy="false">
+		<id name="id" type="int" column="id">
+			<generator class="identity" />
+		</id>
+		<property name="strBankCode" column="strBankCode" type="string" />
+		<property name="strBankName" column="strBankName" type="string" />
+		<property name="strPanIn" column="strPanIn" type="string" />
+		<property name="strNameIn" column="strNameIn" type="string" />
+		<property name="strPanOut" column="strPanOut" type="string" />
+		<property name="strPanInType" column="strPanInType" type="string" />
+		<property name="strRouteCode" column="strRouteCode" type="string" />
+	</class>
+</hibernate-mapping>

@@ -1,0 +1,435 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>设备清存单：打印轧账数据</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+//存单段详细数据信息
+ var cdsTranslogInfoArr1= new Array();
+ var strRecordArrtrue=new Array();
+ //存单发放笔数
+var cdsopenCounttrue = 0;
+//存单受理笔数
+var cdscloseCounttrue = 0;
+
+//存单段详细数据信息
+var cdsTranslogInfoArr2= new Array();
+var strRecordArrfalse=new Array();
+ //存单发放笔数
+var cdsopenCountfalse = 0;
+//存单受理笔数
+var cdscloseCountfalse = 0;
+var cdsBoxInfoStr="";//存单箱信息(字符串格式)
+var cdsTranslogInfoStrtrue ="";
+var cdsTranslogInfoStrfalse ="";
+
+function doMouseDown() {
+//	top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+
+// 服务流程处理入口
+function serverEntrance() {
+	if(top.YHAXDocumentScanner.StDeviceStatus!="HEALTHY"){
+		onHardwareError();
+	}else{
+		//打印轧账数据：受理成功存单及异常存单
+		top.trans.sendQueryCDSCycleAsync();
+	}
+}
+
+function onAsyncQueryCDSComplete(){
+	cdsBoxInfoStr=  top.pool.get("cdsBoxInfoStr");
+	top.wins.showProcessingTip("正在查询轧账信息,请稍候...");
+	top.pool.set("successfulAcceptedCDS","true");
+	top.trans.sendQueryAcceptedCDSAsync();
+}
+function onQueryAcceptedCDSAsyncComplete()
+{
+	cdsTranslogInfoStrtrue = top.pool.get("cdsTransSucclogInfoStr");
+	top.wins.showProcessingTip("正在查询轧账信息,请稍候...");
+	top.pool.set("successfulAcceptedCDS","false");
+	top.trans.sendQueryAcceptedFailedCDSAsync();
+}
+function onQueryAcceptedFailedCDSAsyncComplete(){
+	top.pool.set("printType","");
+  //正常受理存单、异常受理存单信息
+	 cdsTranslogInfoStrfalse = top.pool.get("cdsTransFailedlogInfoStr");
+	 //进行轧账信息打印
+	 if(cdsTranslogInfoStrtrue != null && cdsTranslogInfoStrtrue != ""){
+		loadTrueDetailInfo();
+	 }
+	 if(cdsTranslogInfoStrfalse!= null && cdsTranslogInfoStrfalse!=""){
+		loadfalseDetailInfo();
+	 }
+	 if((cdsTranslogInfoStrtrue != null && cdsTranslogInfoStrtrue != "")|| 
+			 (cdsTranslogInfoStrfalse!= null && cdsTranslogInfoStrfalse!="")){
+		 printcdslog();	 
+		 top.receiptprinter.printAndEject();
+	 }
+	//等待6秒后，发起交易
+	setTimeout(function(){try{isClearCDSInfo();}catch(e){}}, 6*1000);  	
+}
+function isClearCDSInfo(){
+  //判断周期的开启是否是由于加单交易
+  if(top.pool.get("cdsSettleCyclMsg")=="1" && cdsBoxInfoStr==""){		
+	//这是无加单数据，只有销户受理周期,查询正常及异常受理存单
+	top.wins.showProcessingTip("正在进行清机,请稍候...");
+	top.trans.sendClearCDSAsync();
+  }else{
+	top.serviceCtrl.navigate2("/Maintenance/ABClearDepositCertificateSec.html");	
+  }
+}
+function onAsyncClearCDSComplete()
+{
+  if (typeof(top.YHAXReceiptPrint) != "undefined")
+  {
+	printReceipt();
+  }
+	printJournal();
+	onServiceSuccessful(); 
+}
+  //打印清存单凭条
+function printReceipt(){	
+	 top.receiptprinter.set("***************清存单清单***************");
+		 top.receiptprinter.set("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+       top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username"));
+        top.receiptprinter.set("----------------------------------------");
+          top.receiptprinter.set("*************存单箱信息明细*************");
+         top.receiptprinter.set("存单箱ID 初始 已发 剩余 作废");
+		 top.receiptprinter.set("                            ");
+         top.receiptprinter.set("*************存单段信息明细*************");
+         top.receiptprinter.set("存单箱ID   起始段   结束段   初始   当前");
+         top.receiptprinter.set("发放已领 回收已发 回收已销 回收未知");
+
+		 top.receiptprinter.set("----------------------------------------");
+	     top.receiptprinter.printAndEject();
+	}
+       
+//打印清存单流水	
+function printJournal(){
+        top.journalPrinter.addJournal("***************清存单清单***************");
+        top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+		top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+        top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+        top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));
+        top.journalPrinter.addJournal("\r\n");
+      top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("*************存单箱信息明细*************");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("存单箱ID 初始 已发 剩余 作废");
+        top.journalPrinter.addJournal("\r\n");
+
+        top.journalPrinter.addJournal("*************存单段信息明细*************");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("存单箱ID   起始段   结束段   初始   当前");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("发放已领 回收已发 回收已销 回收未知");
+        top.journalPrinter.addJournal("\r\n");
+
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+ 	}
+//清机成功
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+}
+function printcdslog()
+{
+	//打印受理清单
+	if(strRecordArrtrue.length>0){
+		     top.receiptprinter.set("***************存单轧账清单***************");
+			 top.receiptprinter.set("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+			 top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username"));
+			 top.receiptprinter.set("----------------------------------------");
+			 top.receiptprinter.set("**********存单交易汇总信息*********");
+			 top.receiptprinter.set("发放成功笔数："+new top.StringCtrl(cdsopenCounttrue).formatStr(' ', 4)+" ");
+			 top.receiptprinter.set("受理成功笔数："+new top.StringCtrl(cdscloseCounttrue).formatStr(' ', 4)+" ");
+			  
+			 top.receiptprinter.set("**********存单交易信息明细*********");
+			 top.receiptprinter.set("凭证号码         账号        交易类型");
+			 top.receiptprinter.set("      交易金额       交易时间   ");
+			 for (var i=0; i<strRecordArrtrue.length; i++){
+								 top.receiptprinter.set(new top.StringCtrl(strRecordArrtrue[i][0]).formatStr(' ', 8)+
+																   new top.StringCtrl(strRecordArrtrue[i][1]).formatStr(' ', 20)+
+																   new top.StringCtrl(strRecordArrtrue[i][2]).formatStr(' ', 9)+
+																   "\r\n"+
+																   new top.StringCtrl(strRecordArrtrue[i][4]).formatStr(' ', 12)+			                						
+																   new top.StringCtrl(strRecordArrtrue[i][5]).formatStr(' ', 23)
+																  ) ;           
+			}
+		top.receiptprinter.set("----------------------------------------");
+	}
+    //打印凭条
+	if(strRecordArrfalse.length>0){		    
+		 top.receiptprinter.set("***********受理存单失败轧账清单***********");
+		 top.receiptprinter.set("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+         top.receiptprinter.set("网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username"));
+         top.receiptprinter.set("----------------------------------------");
+         top.receiptprinter.set("**********存单交易汇总信息*********");
+         top.receiptprinter.set("发放失败数："+new top.StringCtrl(cdsopenCountfalse).formatStr(' ', 4)+" ");
+         top.receiptprinter.set("受理失败数："+new top.StringCtrl(cdscloseCountfalse).formatStr(' ', 4)+" ");
+         top.receiptprinter.set("**********存单交易信息明细*********");
+         top.receiptprinter.set("凭证号码         账号        交易类型");
+         top.receiptprinter.set("交易金额       交易时间    交易结果");
+         top.receiptprinter.set("");
+           for (var i=0; i<strRecordArrfalse.length; i++){
+                             top.receiptprinter.set(new top.StringCtrl(strRecordArrfalse[i][0]).formatStr(' ', 8)+
+			                                                   new top.StringCtrl(strRecordArrfalse[i][1]).formatStr(' ', 20)+
+			                							       new top.StringCtrl(strRecordArrfalse[i][2]).formatStr(' ', 9)+
+			                							       "\r\n"+
+			                							       new top.StringCtrl(strRecordArrfalse[i][4]).formatStr(' ', 12)+
+			                							       new top.StringCtrl(strRecordArrfalse[i][5]).formatStr(' ', 23)
+			                 								  ) ;      
+							top.receiptprinter.set(new top.StringCtrl(strRecordArrfalse[i][6]).formatStr(' ', 14));		                 								       
+ 		}
+	 top.receiptprinter.set("----------------------------------------");
+	}
+}
+
+//打印正常信息
+function loadTrueDetailInfo(){
+	//生产
+	 var cdsTranslogInfoArr= new Array();   
+     cdsTranslogInfoArr=cdsTranslogInfoStrtrue.split('|');
+     
+     for (var i=0;i<cdsTranslogInfoArr.length-1;i++){
+        cdsTranslogInfoArr1[i]=new Array();
+     	cdsTranslogInfoArr1[i]=cdsTranslogInfoArr[i].split(',');
+     }  
+	var j=0;
+	for(var i=0;i<cdsTranslogInfoArr1.length;i++){
+	
+			strRecordArrtrue[j] = new Array();			
+			strRecordArrtrue[j][0] = cdsTranslogInfoArr1[i][0];  //凭证号码
+			strRecordArrtrue[j][1] = cdsTranslogInfoArr1[i][1];  //账号
+			strRecordArrtrue[j][2] = cdsTranslogInfoArr1[i][2];  //交易类型
+			strRecordArrtrue[j][3] = cdsTranslogInfoArr1[i][3];  //存单金额
+			strRecordArrtrue[j][4] = cdsTranslogInfoArr1[i][4];  //交易金额
+			strRecordArrtrue[j][5] = cdsTranslogInfoArr1[i][5];  //交易时间
+	
+		    if(strRecordArrtrue[j][2]=="存单开户" || strRecordArrtrue[j][2]=="部提开户" || strRecordArrtrue[j][2]=="续存开户"){
+				cdsopenCounttrue += 1;
+		    }
+		    if(strRecordArrtrue[j][2]=="存单销户" || strRecordArrtrue[j][2]=="部提销户" || strRecordArrtrue[j][2]=="续存销户"){
+				cdscloseCounttrue += 1;
+		    }			
+			j+=1;
+		}
+	
+	//打印流水
+	if(strRecordArrtrue.length>0){			
+	    top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("***************存单轧账清单***************");
+        top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+		top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+        top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+        top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********存单交易汇总信息*********");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("发放成功笔数："+new top.StringCtrl(cdsopenCounttrue).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("受理成功笔数："+new top.StringCtrl(cdscloseCounttrue).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("\r\n");
+       
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********存单交易信息明细*********");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("凭证号码         账号        交易类型");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("      交易金额       交易时间   ");
+        top.journalPrinter.addJournal("\r\n");
+         for (var i=0; i<strRecordArrtrue.length; i++){
+        		 top.journalPrinter.addJournal(new top.StringCtrl(strRecordArrtrue[i][0]).formatStr(' ', 8)+
+			                                                   new top.StringCtrl(strRecordArrtrue[i][1]).formatStr(' ', 20)+
+			                							       new top.StringCtrl(strRecordArrtrue[i][2]).formatStr(' ', 9)+
+			                							       "\r\n"+
+			                							       new top.StringCtrl(strRecordArrtrue[i][4]).formatStr(' ', 12)+
+			                							       new top.StringCtrl(strRecordArrtrue[i][5]).formatStr(' ', 23)
+			                 								  );       
+                 top.journalPrinter.addJournal("\r\n");
+		}
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+  }
+}
+//打印异常信息
+function loadfalseDetailInfo(){
+	//生产
+	 var cdsTranslogInfoArr3= new Array();   
+     cdsTranslogInfoArr3=cdsTranslogInfoStrfalse.split('|');
+     
+     for (var i=0;i<cdsTranslogInfoArr3.length-1;i++){
+        cdsTranslogInfoArr2[i]=new Array();
+     	cdsTranslogInfoArr2[i]=cdsTranslogInfoArr3[i].split(',');
+     }
+  
+	var j=0;
+	for(var i=0;i<cdsTranslogInfoArr2.length;i++){	
+			strRecordArrfalse[j] = new Array();			
+			strRecordArrfalse[j][0] = cdsTranslogInfoArr2[i][0];  //凭证号码
+			strRecordArrfalse[j][1] = cdsTranslogInfoArr2[i][1];  //账号
+			strRecordArrfalse[j][2] = cdsTranslogInfoArr2[i][2];  //交易类型
+			strRecordArrfalse[j][3] = cdsTranslogInfoArr2[i][3];  //存单金额
+			strRecordArrfalse[j][4] = cdsTranslogInfoArr2[i][4];  //交易金额
+			strRecordArrfalse[j][5] = cdsTranslogInfoArr2[i][5];  //交易时间
+	        strRecordArrfalse[j][6] = cdsTranslogInfoArr2[i][6];  //交易结果
+		    
+			if(strRecordArrfalse[j][2]=="存单开户" || strRecordArrfalse[j][2]=="部提开户" || strRecordArrfalse[j][2]=="续存开户"){
+				cdsopenCountfalse += 1;
+		    }
+		    if(strRecordArrfalse[j][2]=="存单销户" || strRecordArrfalse[j][2]=="部提销户" || strRecordArrfalse[j][2]=="续存销户"){
+				cdscloseCountfalse += 1;
+		    }			
+			j+=1;
+		}			
+	//打印流水
+	if(strRecordArrfalse.length>0){						
+	   top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("***********受理存单失败轧账清单***********");
+        top.journalPrinter.addJournal("\r\n");
+		top.journalPrinter.addJournal("时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep());
+		top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("网点号:"+top.terminal.strOrgNum+" ");
+        top.journalPrinter.addJournal("终端号:"+top.terminal.strTerminalNum+" ");
+        top.journalPrinter.addJournal("柜员号:"+top.pool.get("maintenance_username"));
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********存单交易汇总信息*********");
+         top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("发放异常数："+new top.StringCtrl(cdsopenCountfalse).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("受理异常数："+new top.StringCtrl(cdscloseCountfalse).formatStr(' ', 4)+" ");
+        top.journalPrinter.addJournal("\r\n");
+       
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("**********存单交易信息明细*********");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("凭证号码         账号        交易类型");
+        top.journalPrinter.addJournal("\r\n");
+        top.journalPrinter.addJournal("交易金额       交易时间   ");
+        top.journalPrinter.addJournal("   交易结果");
+        top.journalPrinter.addJournal("\r\n");
+         for (var i=0; i<strRecordArrfalse.length; i++){
+        		 top.journalPrinter.addJournal(new top.StringCtrl(strRecordArrfalse[i][0]).formatStr(' ', 8)+
+			                                                   new top.StringCtrl(strRecordArrfalse[i][1]).formatStr(' ', 20)+
+			                							       new top.StringCtrl(strRecordArrfalse[i][2]).formatStr(' ', 9)+
+			                							       "\r\n"+
+			                							       new top.StringCtrl(strRecordArrfalse[i][4]).formatStr(' ', 12)+
+			                							     
+			                							       new top.StringCtrl(strRecordArrfalse[i][5]).formatStr(' ', 23)
+			                 								  );       
+                 top.journalPrinter.addJournal("\r\n");
+       		     top.journalPrinter.addJournal(new top.StringCtrl(strRecordArrfalse[i][6]).formatStr(' ', 14));
+       		     top.journalPrinter.addJournal("\r\n");            
+		}
+        top.journalPrinter.addJournal("----------------------------------------");
+        top.journalPrinter.addJournal("\r\n");
+	}
+}
+function onHardwareError(){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+	 	top.serviceCtrl.navigate2Maintenance();
+	}
+	window.operateCtrl.enableInput();
+	Tip_Title2.innerHTML  = "<span class=\"Tip_Title\">存单发放模块状态不正常，暂不支持本操作</span>";
+	top.wins.showMain("oLInfoTip2");	  
+}
+
+
+//交易失败
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+  onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  oFailedTitle.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLServiceFailedTip");
+}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLInfoTip2" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title2"></span></td>
+			</tr>
+	    </table>
+	</div>
+	   <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>	
+</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">清存单成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="ADMTable_Ob" width="57%">
+                        <tr class="ADMTable_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="ADMTable_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

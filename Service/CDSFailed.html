@@ -1,0 +1,57 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>存单模块交易失败页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+  top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 服务流程处理入口
+function serverEntrance()
+{
+	if(new top.CheckCard().cdDisStDeviceStatus() !="true"){
+		oFailedTitle.innerHTML = "由于设备故障，无法提供服务，已呼叫银行工作人员<br/><br/>给您带来不便，敬请谅解！("+new top.CheckCard().cdDisStDeviceStatus()+")<br/>";
+	}else{		
+		oFailedTitle.innerHTML = "正在呼叫银行工作人员<br/><br/>给您带来不便，敬请谅解！<br/>";
+	}
+	top.wins.showMain("oLServiceFailedTip");
+}
+var goMagNum=0;
+function goManager(num){
+    if(goMagNum == 0 && num == 3){
+		++goMagNum;
+	}else if(goMagNum == 2 && num == 3){
+		++goMagNum;
+	}else if(goMagNum == 1 && num == 4){
+		++goMagNum;
+	}else if(goMagNum == 3 && num == 4){
+		++goMagNum;
+	}else{
+		goMagNum=0;
+	}
+	if(goMagNum==2){
+        top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2("/Maintenance/Login_Maintenance.html");
+	}
+}
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLServiceFailedTip" class="FULLSCR"  style="visibility: hidden;">
+    <div class="FULLSCR">
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0" background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg">
+        <tr><td align="center">
+           <span class="Tip_Title" id="oFailedTitle"></span>
+        </td></tr>
+      </table>
+    </div>
+	<span class="MENUM3" onclick="goManager(3);"></span>
+    <span class="MENUM4" onclick="goManager(4);"></span>
+  </div>
+
+
+</body>
+</html>

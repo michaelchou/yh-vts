@@ -1,0 +1,69 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>管理员界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script language="javascript">
+  function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+     window.operateCtrl.disableInput(true);
+	 onKey_Enter = onKey_F6 = function()
+     {
+	   oConfirm.style.visibility = "hidden";
+	   Tip_Title.innerHTML  = "<span class=\"Tip_Title\">正在禁用USB，请稍候...</span>";
+	   setTimeout(function(){try{Confirm();}catch(e){}}, 3*1000);  
+     }
+	 onKey_F7 = function()
+     {
+        top.serviceCtrl.navigate2Maintenance();
+     }
+     onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	 window.operateCtrl.enableInput();
+	 top.wins.showMain("oLConfirmTip");
+	 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">是否确认要禁用USB？</span>";
+  }
+  //禁用USB
+  function Confirm()
+  {
+     //禁用USB
+	 var ret = top.YHAXCommonCtrl.USB("CloseUsb");
+	 if( ret == true){
+	   	 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">禁用USB成功</span>";
+	     // 记录终端流水
+         var strJrn = new top.StringCtrl("管机员禁用USB成功 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+         top.journalPrinter.addJournal(strJrn);
+	 }else{
+	     Tip_Title.innerHTML  = "<span class=\"TickCount_Title\">禁用USB失败</span>";
+	     // 记录终端流水
+         var strJrn = new top.StringCtrl("管机员禁用USB失败 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+         top.journalPrinter.addJournal(strJrn);
+	 }
+  }
+</script>
+</head>	
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLConfirmTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   <span class="MMENU6" id="oLMenu6"><button onmousedown="javascript:onKey_F6();"  class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="javascript:onKey_F7();" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="javascript:onKey_F8();" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+</body>
+</html>

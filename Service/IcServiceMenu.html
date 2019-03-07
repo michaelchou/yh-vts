@@ -1,0 +1,211 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>电子现金服务菜单页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 服务流程处理入口
+function serverEntrance()
+{
+  top.pool.set("strNavigate2Url", window.location.pathname);
+  if (top.cardreader.isCardPresent()){
+	   //if(top.pool.get("strICFlag") != "1"){
+		//	InsertICCard();//提示插入IC卡
+	   //}else{
+			showMenu();
+	  // }  
+  }else{
+      //top.serviceCtrl.navigate2InsertCard();
+	  showMenu();//流程测试
+  }
+}
+/*
+function InsertICCard()
+{
+	onCardEjected = function()
+      {
+	    top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+        // 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}
+		top.wins.showMain("oLTakeCardTip");
+      }
+	onCardTaken = function()
+      {
+        top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+      }
+	  onDeviceError_Idc = function()
+      {
+	    if (top.cardreader.isCardPresent()){
+	       top.YHAXCardReader.Capture();
+	    } 
+        onServiceFailed("电子现金业务失败", top.TERMRETCODE_CARD_FAILED, "硬件故障"); 
+      }
+	  onCardCapturedTipEnd = function()
+      {
+  	    top.serviceCtrl.navigate2Quit();
+      }
+      onCardCaptured = function()
+      {
+	      top.receiptprinter.set("  ");
+          top.receiptprinter.set(" 交易日期       时间       机器终端号"); 
+	      top.receiptprinter.set(" Trans Date     Time       Term No   "); 
+	      top.receiptprinter.set(" "+new top.DateTimeCtrl().getYYYYMMDD2()+"     "+new top.DateTimeCtrl().getHHmmSSWithSep()+"   "+top.terminal.strTerminalNum); 
+	      top.receiptprinter.set("  "); 
+	      top.receiptprinter.set(" 交易类别/TRX Type   交易流水/TRX Ref No"); 
+	      top.receiptprinter.set(" 吞卡                12345678  "); 
+	      top.receiptprinter.set("  "); 
+	      top.receiptprinter.set(" 交易失败"); 
+	      top.receiptprinter.printAndEject();
+	      var strtip = "已吞卡，请及时到我行营业网点办理相关领卡手续。<br/><br/>上海农商银行&nbsp;&nbsp;&nbsp;客服热线：021-962999";
+  	      top.wins.showInfoTip(strtip);
+ 	      top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15*1000);
+      }
+	top.cardreader.eject();
+}*/
+/*
+  根据当前位置，显示菜单
+ */
+var menus;
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("电子现金充值", 'CardLoad()');
+  menus[menus.length] = new Array("电子现金余额", 'QueryBalanceIC()');
+  menus[menus.length] = new Array("电子现金明细", 'QueryLoadDetail()');
+  var btn = document.all("oLMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oMenuTick);
+  top.wins.showMain("oLMenu");
+}
+//电子现金充值
+function CardLoad()
+{
+   startService("0002_902202_00001");	 
+}
+//电子现金余额
+function QueryBalanceIC()
+{
+   startService("0002_000000_00001");	 
+}
+//电子现金明细
+function QueryLoadDetail()
+{
+   startService("0002_000000_00002");	 
+}
+
+/*开始运行服务*/
+function startService(strServiceMenuAction)
+{
+	onPrintJudge(strServiceMenuAction);
+}
+
+/*不能打印凭条时友情提醒*/
+function onPrintJudge(strServiceAction)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onKey_F99 = onKey_Enter = function()
+  {
+	top.serviceCtrl.navigate2("/Service/" + strServiceAction + ".html");
+  }
+  onKey_F98 = onKey_Cancel = function()
+  {
+  	  top.serviceCtrl.navigate2Quit();
+  }
+  if (top.receiptprinter.ReceiptPrinterStatus()!="true")
+  {
+	 oImpNotice1.innerHTML = top.langcur.oReceiptOffLine;   
+  }
+  else
+  {
+      onKey_F99();
+	  return;	  
+  }
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oPrintTick);
+  top.wins.showMain("oLPrint");
+}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditCardLoad" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditCardQueryBalanceIC" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="CreditCardQueryLoadDetail" name="oMMenu3" id="oMMenu3"></button></span>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPrint" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oPrintTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		  <tr>
+            <td align="center">
+				<table cellpadding="10" cellspacing="1" class="Table_Ob" width="100%">
+					<tr><td align="center"><span class="Tip_Alarm" id="oImpNotice1"></span>
+					</td></tr>
+				</table>
+			 </td>
+		   </tr>
+		 </table>
+	  </div>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+  <span class="MENU99" id="oLMenu99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+
+  </div>
+<!------
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title">请取走您的卡,并重新插入IC卡！</span><br/><br/>
+      <img src="/Image/TakeCardTip.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>--->
+</body>
+</html>

@@ -1,0 +1,64 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>退卡页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+	top.inputmethod.Close();//影藏软键盘
+  if (top.cardreader.isCardPresent()){
+    doEjectCard();
+  }
+  else{
+	top.serviceCtrl.navigate2IdleMV();
+  }
+}
+
+function doEjectCard()
+{
+
+  onCardEjected = function()
+  {
+    top.wins.showMain("oLTakeCardTip");
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTakeCarTick);
+  }
+  onDeviceError_Idc = onCardTaken = function()
+  {
+    top.serviceCtrl.navigate2QuitMV();
+  }
+  
+  onCardCapturedTipEnd = function()
+  {
+  	top.serviceCtrl.navigate2QuitMV();
+  }
+  
+  onTimeout = function()
+  {
+	//top.cardreader.eject();
+	top.serviceCtrl.navigate2("/ServiceMV/Idle.html");
+  }
+  
+  top.cardreader.eject();
+}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+  <span class="Tip_Tick" id="oTakeCarTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr class="FirstLine"><td align="center">
+      <br/><span class="Tip_Title" id="oPlsTakeCard1"></span><span class="Tip_Title" id="oPlsTakeCard2"></span><br/><br/>
+      <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>
+</body>
+</html>

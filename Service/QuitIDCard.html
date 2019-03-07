@@ -1,0 +1,49 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>退身份证页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  if (top.idCardReader.isCardPresent())
+    doEjectIDCard();
+  else
+    top.serviceCtrl.navigate2Quit();
+}
+
+function doEjectIDCard()
+{
+  onCardEjected = function()
+  {
+    top.wins.showMain("oLTakeCardTip");
+    top.serviceCtrl.startUserTimeout(onCardTaken_ID, top.iUserTimeout,oTakeCardTick);
+  }
+  onDeviceError_ID = onCardTaken_ID = function()
+  {
+    top.serviceCtrl.navigate2SecondMenu();
+  }
+   
+  top.idCardReader.eject();
+}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr class="FirstLine"><td align="center">
+      <br/><span class="Tip_Title" id="oPlsTakeCard1"></span><span class="Tip_Title">取走您的身份证。</span><br/><br/>
+      <img src="../Image/id_out.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>
+</body>
+</html>

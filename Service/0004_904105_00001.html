@@ -1,0 +1,973 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>信用卡自动还款约定申请页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var CreditCardAcc = "";
+var USDFlag = false;
+var inputPinFlag = 0;//二次输入密码校验次数标志位
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+//禁止页面其他空间获得焦点的方法
+document.attachEvent("onclick",checkEvent);
+document.attachEvent("ondblclick",checkEvent);
+document.attachEvent("onfocusin",checkEvent);
+document.attachEvent("onkeypress",checkEvent);
+function checkEvent(){
+	top.wins.checkEvent(event.srcElement,'input_Password');
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 服务流程处理入口
+function serverEntrance()
+{
+  top.pool.set("strNavigate2Url", window.location.pathname);
+  if (top.cardreader.isCardPresent()){
+	   if(top.pool.get("strCardType") != "3"){
+			InsertCard();//提示插入信用卡
+	   }else{
+	        top.pool.set("strNavigate2Url","");
+			top.pool.set("CreditCardAcc",top.pool.get("strPan"));//保存信用卡卡号--区分人民币卡还是美元卡
+			top.pool.set("CreditCardPwd",top.pool.get("strPinBlock"));//保存信用卡卡号--区分人民币卡还是美元卡
+			
+			//发送信用卡自动还款约定查询交易
+			if(top.pool.get("strPan").substring(0,2) == "62"){
+			    top.pool.set("strCurrency","156");
+				top.pool.set("ReypayType","人民币还人民币");
+				
+				top.wins.showNewProcessingTip(top.langcur.oSend904107);
+				top.trans.send904107Async();
+				//onQueryUNRepay();//测试--查询成功-未签约
+				//onServiceSuccessful();//测试--查询成功-已签约
+			}else{
+				top.pool.set("strCurrency","840");
+				top.pool.set("ReypayType","美元还美元");
+				
+				top.wins.showNewProcessingTip(top.langcur.oSend904107);
+				top.trans.send904107Async();
+			}
+			
+	   } 
+  }else{
+  
+      top.serviceCtrl.navigate2InsertCard();
+	  
+  }
+}
+function InsertCard()
+{
+	onCardEjected = function()
+      {
+	    top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+        // 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}
+		top.wins.showMain("oLTakeCardTip");
+      }
+	onCardTaken = function()
+      {
+        top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+      }
+	  onDeviceError_Idc = function()
+      {
+	    if (top.cardreader.isCardPresent()){
+	       top.YHAXCardReader.Capture();
+	    } 
+        onServiceFailed(top.langcur.oAutoPayAppFail, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError); 
+      }
+	  onCardCapturedTipEnd = function()
+      {
+  	    top.serviceCtrl.navigate2Quit();
+      }
+      onCardCaptured = function()
+      {
+    	  top.pool.set("printType","3");//选择打印的凭条类型
+	      top.receiptprinter.printAndEject();
+	      top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+ 	      top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15*1000);
+      }
+	//屏蔽安全退出及返回Home的功能 
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";	  
+	top.cardreader.eject();
+	top.serviceCtrl.changeNaviStatus('1');
+}
+
+
+//查询成功-已签约
+function onServiceSuccessful()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+   onKey_Cancel = onKey_F98 = function()
+  {
+	top.serviceCtrl.navigate2SecondMenu();
+  }
+  
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  
+  //户名
+  text_ReypayoAccName.innerHTML = top.pool.get("strRespIDName");
+  //信用卡账户
+  text_CreditPan.innerHTML = top.pool.get("strPan");
+    
+  var succPan = top.pool.get("bindPan");
+  //活期账户
+  text_SuccPan.innerHTML = succPan;
+  //还款方式
+  text_ReypayType.innerHTML = top.pool.get("ReypayType");
+  //查询成功后显示安全退出及返回Home的功能
+  oLSafeQuit.style.visibility = "visible";
+  oLGoHome.style.visibility = "visible";
+  
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oLoadInqTick);
+  top.wins.showMain("oLQuerySuccessTip");
+}
+//查询成功-未签约-阅读协议
+function onQueryUNRepay()
+{
+	
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	if(top.pool.get("strPan").substring(0,2) == "62"){
+		
+		watchBook();
+	}else{
+		isUSD904107 = true;
+		
+		top.pool.set("ReypayType","人民币购汇还美元");
+		top.wins.showNewProcessingTip(top.langcur.oSend904107);
+		top.trans.send904208Async();
+	}
+}
+
+function onQueryUNRepay904208()
+{
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	watchBook();
+}
+
+//阅读协议
+function watchBook() {
+	changeCheckBoxFlag = false;
+	checkbox.className = "uncheckBox";
+	oLSelect.style.visibility = "hidden";
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+
+	var obj = document.getElementById("bookContent"); //获取阅读协议div的对象
+	var pgindex = 1; //初始化当前页
+	var allpages = Math.ceil(parseInt(obj.scrollHeight) / parseInt(obj.offsetHeight));//获取页面数量
+	obj.scrollTop = 0; //初始化显示第一页
+	if (allpages > 1) {
+		document.getElementById("nextPage").style.visibility = "visible";//初始化显示下一页按钮
+	}
+	//根据value值判断是上一页还是下一页
+	gotopage = function(value) {
+		try {
+			value == "-1" ? showPage(--pgindex) : showPage(++pgindex);
+		} catch (e) {
+		}
+	}
+
+	//跳转到指定页
+	showPage = function(pageINdex) {
+		if (pageINdex == 1)
+			document.getElementById("prevPage").style.visibility = "hidden";
+		if (pageINdex == allpages)
+			document.getElementById("nextPage").style.visibility = "hidden";
+		if (pageINdex > 1 && pageINdex < allpages) {
+			document.getElementById("prevPage").style.visibility = "visible";
+			document.getElementById("nextPage").style.visibility = "visible";
+		}
+		obj.scrollTop = (pageINdex - 1) * parseInt(obj.offsetHeight);//根据高度，输出指定的页
+		pgindex = pageINdex;
+	}
+
+	onKey_F99 = onKey_Enter = function() {
+		document.getElementById("nextPage").style.visibility = "hidden";
+		document.getElementById("prevPage").style.visibility = "hidden";
+		
+		top.pool.set("strIDName",top.pool.get("strRespIDName"));//获取信用卡客户户名
+		top.pool.set("strIDCardNum",top.pool.get("strRespIDNo"));//获取信用卡客户身份证号
+		
+		top.wins.showNewProcessingTip("正在查询活期卡号，请稍候...");
+		top.trans.send910201Async();//发送联网核查-根据身份证&户名查询客户号
+		
+		
+	}
+	onKey_F98 = onKey_Cancel = function() {
+		document.getElementById("nextPage").style.visibility = "hidden";
+		document.getElementById("prevPage").style.visibility = "hidden";
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	Tip_WatchBook.innerHTML = top.langcur.oWatchBook;
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oWatBookTick);
+	// 播放提示音
+	try {top.soundPlayer.playback("/Sound/WatchBook.mp3");} catch (e) {}
+	top.wins.showMain("oLWatchBookTip");
+	top.serviceCtrl.changeNaviStatus('2');
+	//查询成功后显示安全退出及返回Home的功能
+    oLSafeQuit.style.visibility = "visible";
+    oLGoHome.style.visibility = "visible";
+}
+
+//协议选择
+function selectCheck() {
+	if (!changeCheckBoxFlag) {
+		changeCheckBoxFlag = true;
+		checkbox.className = "checkBox";
+		oLSelect.style.visibility = "";
+	} else {
+		changeCheckBoxFlag = false;
+		checkbox.className = "uncheckBox";
+		oLSelect.style.visibility = "hidden";
+	}
+}
+//联网核查成功-获取客户号成功
+function onNetworkVirificationSuccessful()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+
+  //查询客户下所有卡
+  top.trans.send901118Async();
+}
+
+//选择活期账户
+function onInqCardLossSuccessful()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  oLInputPassword.style.visibility = "hidden";
+  var strItemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+  strItemCount = parseInt(strItemCount, 10);
+  if(strItemCount <= 0) {
+	onServiceFailed("自动还款约定申请失败", "", "未查到活期卡号");
+	return;
+  }
+  viewMultiRecord();
+  
+  onKey_Cancel = onKey_F98 = function()
+  {
+	top.serviceCtrl.navigate2SecondMenu();
+  }
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oChooseOneTick);
+  top.wins.showMain("oLChooseOneTip");
+  top.serviceCtrl.changeNaviStatus('3');
+  //查询成功后显示安全退出及返回Home的功能
+  oLSafeQuit.style.visibility = "visible";
+  oLGoHome.style.visibility = "visible";
+}
+
+function viewMultiRecord() {
+	var mrv = new top.MultiRecordView();
+	var strRecordArr = new Array();
+	var strHeadingArr = new Array(top.langcur.oSerialNumber, top.langcur.oTextStrPan2, "卡状态", "卡产品", "余额(元)", "开卡日期", "开卡网点");
+	var strAlignArr = new Array("center", "center", "center", "center", "center", "center", "center");
+	var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+	itemCount = parseInt(itemCount, 10);
+	
+	for(var i = 1; i <= itemCount; i++)
+	{	
+		//卡号
+		var cardNo = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/cardNo");
+		//卡状态
+		var status = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/activeStatus");			
+		if(status =="04"){
+			status = "正常";
+		}else if(status =="15"){
+			status = "口头挂失";
+		}else if(status =="22") {
+				status = "锁卡";
+		}
+		//卡种类
+		var cardType = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/cardType");
+		//卡描述
+		var cardProduction = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/cardName");
+		//余额
+		var acctBal = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/acctBal");
+		//开卡日期
+		var productType = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/productType");
+		//开卡网点
+		var branchName = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/branchName");
+		
+		strRecordArr[strRecordArr.length] = new Array(
+			i,
+			cardNo,
+			status,
+			cardProduction,
+			acctBal,
+			productType,
+			branchName,
+			i
+		);
+	}
+	mrv.oTHead = oTHead;
+	mrv.oTBody = oTBody;
+	mrv.oMFirstPage = oMFirstPage;
+	mrv.oMPrevPage = oMPrevPage;
+	mrv.oMNextPage = oMNextPage;
+	mrv.oMEndPage = oMEndPage;
+	mrv.strAlignArr = strAlignArr;
+	mrv.strRecordArr = strRecordArr;
+	mrv.strHeadingArr = strHeadingArr;
+	mrv.iRowsPerPage = 4;
+	onKey_F1 = function() {
+		mrv.onFirstPage();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oChooseOneTick);
+	}
+	onKey_F2 = function() {
+		mrv.onPrevPage();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oChooseOneTick);
+	}
+	onKey_F3 = function() {
+		mrv.onNextPage();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oChooseOneTick);
+	}
+	onKey_F4 = function() {
+		mrv.onEndPage();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oChooseOneTick);
+	}
+	mrv.show();
+}
+
+//选择活期账户信息
+function confirmTransInfo(record) {
+    window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	CreditCardAcc = top.pool.get("CreditCardAcc");
+	top.pool.set("strRepayPan", record[1]);//活期还款账号
+
+	top.pool.set("strPan",top.pool.get("strRepayPan"));
+	top.pool.set("SuccPan",top.pool.get("strRepayPan"));
+	error_InputPassword.innerHTML = "";
+	//对所选活期还款账号验密
+	inputPin();
+	
+}
+	
+//活期账号验密
+var bQuitSelected = false;
+function inputPin()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onPlainCancelled = function()
+  {
+    top.pinpad.bufferPIN();
+    window.operateCtrl.enableInput();
+	// 播放提示音
+	top.soundPlayer.playback("/Sound/InputPassword.mp3");
+    top.wins.showMain("oLInputPassword");
+    top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oInpPwdTick);
+    input_Password.value = "";
+    input_Password.focus();
+  }
+  onKey_F98 = onKey_Cancel = function()
+  {
+    top.pool.set("strPan",top.pool.get("CreditCardAcc"));
+    top.pool.set("strPinBlock", top.pool.get("CreditCardPwd"));
+    bQuitSelected = true;
+    if (input_Password.value.length < top.pinpad.iMaxPinLen)
+    {
+    	top.pinpad.cancelPINEntry();
+    }
+	top.wins.showNewProcessingTip("正在查询活期卡号，请稍候...");
+	top.trans.send910201Async();//发送联网核查-根据身份证&户名查询客户号
+  }
+  onGetPinBlockOK = function (pinblock)
+  {
+    if (bQuitSelected)
+    {
+      // 用户选择了退卡
+      top.serviceCtrl.navigate2Quit();
+      return;
+    }
+    if (input_Password.value.length < top.pinpad.iMinPinLen)
+    {
+      // 密码位数不足，则重新输入
+      error_InputPassword.innerHTML = top.langcur.oPlsReInputPwd;
+      top.serviceCtrl.startFlowCtrlTimeout(inputPin, 200);
+      return;
+    }
+    top.pool.set("strPinBlock", pinblock);
+	top.pool.set("DebitCardPWD", pinblock);
+	
+	top.wins.showNewProcessingTip("正在发起活期账号验密交易，请稍候...");
+	top.trans.send901612Async();
+  }
+  onDeviceError_Pinpad = onPinInputTimeout = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  input_Password.onkeypress = function()
+  {
+    error_InputPassword.innerHTML = "";
+  }
+  //屏蔽安全退出及返回Home的功能
+  oLSafeQuit.style.visibility = "hidden";
+  oLGoHome.style.visibility = "hidden";
+  top.pinpad.cancelUserEntry();//关闭明文输入
+  bQuitSelected = false;
+  top.serviceCtrl.changeNaviStatus('4');
+  
+}	
+
+//活期账号验密成功
+function onVerifyServiceSuccessful()
+{
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	oLInputPassword.style.visibility = "hidden";
+	//判断信用卡是人民币或美元卡
+	if(CreditCardAcc.substring(0,2) == "62"){
+	    USDFlag = false;
+		
+		top.pool.set("repaytypeSelect","人民币还人民币");
+		top.pool.set("strPinBlock", top.pool.get("CreditCardPwd"));
+		top.pool.set("strPan",top.pool.get("CreditCardAcc"));
+		onReypayConfirm();
+	}else{
+		
+		top.pool.set("hostAccount", top.exchxmlasync.msgxmldomResp.getElementValue("F34"));
+		top.pool.set("strCustomerId",top.pool.get("customNo"));
+		
+		//902109--查询活期账号下是否有美元子账户
+		top.wins.showNewProcessingTip("正在处理，请稍候...");
+		top.trans.send902109Async();
+	}
+}
+
+//验密失败
+function onServiceSecondFailedGH()
+{
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+    //alert("失败");
+	
+	if(inputPinFlag < 2){
+		//alert("发起验密");
+		inputPinFlag++;
+		error_InputPassword.innerHTML = "密码输入错误，请重新输入密码,3次输错卡将被锁！";
+	    inputPin();
+		
+	}
+	else
+	{
+	   //alert("验密3次错");
+	   inputPinFlag = 0;
+	   window.operateCtrl.disableInput(true);
+       top.serviceCtrl.stopUserTimeout();
+	   //try{top.soundPlayer.playback("/Sound/CardLock.mp3");}catch(e){}
+	   onServiceFailed("验密失败", "", "密码错误次数超多");
+	}
+}
+
+function onQueryCurrentSubAccountSuccessful() {
+
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//查询是否存在美元外币子账户
+	var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+	itemCount = parseInt(itemCount, 10);
+	for (var i = 1; i <= itemCount; i++) {
+		var currCode = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/currCode");
+		if(currCode == "USD"){
+			USDFlag = true;
+			break;
+		}
+	}
+
+	onRepayTypeSelect();
+}
+
+//还款方式选择
+function onRepayTypeSelect()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+  Error_TitleTypeSelect.innerHTML = "";
+   onKey_Enter = onKey_F99 = function()
+  {
+    if(document.getElementById("repaytypeSelect").value == null || document.getElementById("repaytypeSelect").value == "" ){
+		Error_TitleTypeSelect.innerHTML = "请选择还款方式";
+	}else{
+		//发送查询相应币种的活期账户
+		var t2 = document.getElementById("repaytypeSelect");
+		top.pool.set("repaytypeSelect",t2.options[t2.selectedIndex].text);//页面展示用
+		top.pool.set("servcdSelect",t2.options[t2.selectedIndex].value);//发交易用
+
+		onReypayConfirmGH();
+	}
+  }
+   onKey_Cancel = onKey_F98 = function()
+  {
+		top.wins.showNewProcessingTip("正在查询活期卡号，请稍候...");
+		top.trans.send910201Async();//发送联网核查-根据身份证&户名查询客户号
+  }
+  
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //信用卡账户
+  CreditPan.innerHTML = top.pool.get("CreditCardAcc");
+  document.getElementById("repaytypeSelect").options.length = 0;
+  document.getElementById("repaytypeSelect").options.add(new Option("--请选择还款方式--",""));
+  document.getElementById("repaytypeSelect").options.add(new Option("人民币还美元","A3"));
+  if(USDFlag){
+	document.getElementById("repaytypeSelect").options.add(new Option("美元还美元","美元还美元"));
+  }
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oQueryUNRepayTick);
+  top.wins.showMain("oLQueryUNRepayTip");
+  top.serviceCtrl.changeNaviStatus('5');
+  //查询成功后显示安全退出及返回Home的功能
+  oLSafeQuit.style.visibility = "visible";
+  oLGoHome.style.visibility = "visible";
+}
+
+//签约信息确认页面
+function onReypayConfirm()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+   onKey_Cancel = onKey_F98 = function()
+  {
+	    top.wins.showNewProcessingTip("正在查询活期卡号，请稍候...");
+		top.trans.send910201Async();//发送联网核查-根据身份证&户名查询客户号
+  }
+   onKey_Enter = onKey_F99 = function()
+  {
+    top.pool.set("strCurrency","156");
+    
+	//发送信用卡自动还款约定申请交易
+	top.wins.showNewProcessingTip("正在发起信用卡自动还款约定申请交易，请稍候...");
+	top.trans.send904105Async();
+  }
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //户名
+  text_ReypayoAccName1.innerHTML = top.pool.get("strRespIDName");
+  //信用卡账户
+  text_CreditPan1.innerHTML = top.pool.get("CreditCardAcc");
+    
+  //活期账户
+  text_SuccPan1.innerHTML = top.pool.get("strRepayPan");
+  //还款方式
+  text_Type1.innerHTML = top.pool.get("repaytypeSelect");
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oReypayConfirmTick);
+  top.wins.showMain("oLReypayConfirmTip");
+  top.serviceCtrl.changeNaviStatus('6');
+  //查询成功后显示安全退出及返回Home的功能
+  oLSafeQuit.style.visibility = "visible";
+  oLGoHome.style.visibility = "visible";
+}
+
+//签约信息确认页面
+function onReypayConfirmGH()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+   onKey_Cancel = onKey_F98 = function()
+  {
+	onRepayTypeSelect();
+  }
+   onKey_Enter = onKey_F99 = function()
+  {
+    top.pool.set("strPan",top.pool.get("CreditCardAcc"));
+    top.pool.set("strPinBlock", top.pool.get("CreditCardPwd"));
+	//发送信用卡自动还款约定申请交易
+	if(top.pool.get("servcdSelect") != "" && top.pool.get("servcdSelect") != null && top.pool.get("servcdSelect") == "A3"){
+	    
+		top.wins.showNewProcessingTip("正在发起信用卡自动购汇还款申请交易，请稍候...");
+		top.trans.send904206Async();
+	}else{
+	    top.pool.set("strCurrency","840");
+	    top.pool.set("ReypayType","美元还美元");
+		top.wins.showNewProcessingTip("正在发起信用卡自动还款约定申请交易，请稍候...");
+		top.trans.send904105Async();
+	}
+	
+  }
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //户名
+  text_ReypayoAccNameGH.innerHTML = top.pool.get("strRespIDName");
+  //信用卡账户
+  text_CreditPan1GH.innerHTML = top.pool.get("CreditCardAcc");
+    
+  //活期账户
+  text_SuccPan1GH.innerHTML = top.pool.get("strRepayPan");
+  
+  //还款方式
+  text_Type1GH.innerHTML = top.pool.get("repaytypeSelect");
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oReypayConfirmTickGH);
+  top.wins.showMain("oLReypayConfirmTipGH");
+  top.serviceCtrl.changeNaviStatus('6');
+  //查询成功后显示安全退出及返回Home的功能
+  oLSafeQuit.style.visibility = "visible";
+  oLGoHome.style.visibility = "visible";
+}
+
+//还款约定申请成功
+function onReypaySuccessful()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  top.pool.set("strPinBlock", top.pool.get("CreditCardPwd"));
+  top.pool.set("strPan",top.pool.get("CreditCardAcc"));
+   onKey_Cancel = onKey_F98 = function()
+  {
+	top.serviceCtrl.navigate2SecondMenu();
+  }
+  if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+  {
+	oPrintReceipt.style.visibility = "hidden";	
+  }else
+  {  
+	  onKey_Enter = onKey_F99 = function()
+	  {
+		top.pool.set("printType","44");//选择打印的凭条类型
+		top.serviceCtrl.navigate2PrintReceipt();	
+	  }
+  }
+  
+  
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  
+  //显示安全退出及返回Home的功能
+  oLSafeQuit.style.visibility = "visible";
+  oLGoHome.style.visibility = "visible";
+  
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oReypayTick);
+  top.wins.showMain("oLReypaySuccessTip");
+  top.serviceCtrl.changeNaviStatus('7');
+}
+
+//失败
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  top.pool.set("strPinBlock", top.pool.get("CreditCardPwd"));
+  top.pool.set("strPan",top.pool.get("CreditCardAcc"));
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2SecondMenu();
+  }
+  oLoadFailed.innerHTML = "信用卡自动还款约定申请失败";
+  oFailedRetDesc.innerHTML = retdesc;
+
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oServiceFailedTick);
+  top.wins.showMain("oLServiceFailedTip");
+  top.serviceCtrl.changeNaviStatus('7');
+}
+
+function onProcessingTimeout()
+{
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	onServiceFailed("信用卡自动还款约定申请失败","","交易处理超时");
+}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div class="divFlowPage" id="divFlowPage">
+   <table border="0" cellpadding="0" cellspacing="0">
+	 <tr>
+	   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+	   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+	   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+	   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td><div class="stepLine" id="nodeline41"></div></td>
+	   <td><div class="stepLine" id="nodeline42"></div></td><td width="34" class="stepStatusIcon" id="node5"></td><td><div class="stepLine" id="nodeline51"></div></td>
+	   <td><div class="stepLine" id="nodeline52"></div></td><td width="34" class="stepStatusIcon" id="node6"></td><td><div class="stepLine" id="nodeline61"></div></td>
+	   <td><div class="stepLine" id="nodeline62"></div></td><td width="34" class="stepStatusIcon" id="node7"></td><td width="38"></td>
+	 </tr>
+	 <tr height="70">
+	   <td class="font25" align="center" colspan="3">插卡</td>
+	   <td class="font25" align="center" colspan="3">阅读协议</td>
+	   <td class="font25" align="center" colspan="3">选择卡号</td>
+	   <td class="font25" align="center" colspan="3">验密</td>
+	   <td class="font25" align="center" colspan="3">还款方式</td>
+	   <td class="font25" align="center" colspan="3">信息确认</td>
+	   <td class="font25" align="center" colspan="3">完成</td>
+	 </tr>
+  </table>
+</div>
+
+<div id="oLQuerySuccessTip" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oLoadInqTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="50%">
+          <tr class="Table_Head"><td colspan="2" align="center" id="oAlreadySig"></td></tr>
+		  <tr class="Table_Record"><td id="oAccName"></td><td class="Digit_Normal" id="text_ReypayoAccName"></td></tr>
+          <tr class="Table_Record"><td id="oCreditCardPan"></td><td class="Digit_Normal" id="text_CreditPan"></td></tr>
+          <tr class="Table_Record"><td id="oCurrentPan"></td><td class="Digit_Normal" id="text_SuccPan"></td></tr>
+		  <tr class="Table_Record"><td id="oRepayType"></td><td class="Digit_Normal" id="text_ReypayType"></td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLWatchBookTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br><br><br><br><br><br><br><br><br>
+		<span class="Tip_Tick" id="oWatBookTick"></span>
+		<table width="40%" height="50%" border="0" cellpadding="0" cellspacing="0" align="center">
+			<tr>
+				<td align="center" colspan="2"><span class="Tip_Title" id="Tip_WatchBook"></span></td>
+			</tr>
+			<tr height="25">
+				<td align="center" colspan="2"></td>
+			</tr>
+			<tr>
+				<td colspan="2" align="left">
+					<div id="bookContent" class="scrollText"><br>
+						<h2 align="center">上海农商银行信用卡（个人）自动还款业务协议书</h2>
+						<p>上海农商银行信用卡（个人）包括人民币信用卡和外币（美元）信用卡，甲方（转出账户客户）自愿向乙方（上海农商银行营业网点，详见银行签章）申请办理上海农商银行信用卡（个人）自动还款业务，由乙方从甲方在指定个人结算账户中定期扣款，以归还甲方人民币或外币的欠款，并达成以下协议：</p>
+						<p>1、本业务只能由主卡持有人本人提出申请，即转出账户必须与主卡持卡人为同一人。信用卡账户作为转入账户，且其自动还款业务的自动还款约定和撤销须由甲方本人提出申请。甲方自动还款约定成功后，在信用卡本期已出账单到期还款日前二天之前签订的自动还款协议，则自动还款协议自本月生效；如在信用卡本期已出账单到期还款日前二天后签订的自动还款协议，则自动还款协议自下月生效。</p>
+						<p>2、因我行同一身份持卡人所持有的多张信用卡共享信用额度（包括本卡、联名卡和认同卡），因此甲方转入账户发生欠款的，乙方将在每月到期还款日，从转出账户中自动扣收款项归还甲方该转入账户同一信用额度下所有卡片的欠款。扣款金额按约定的自动还款种类进行扣款。甲方须保证转出账户状态正常并在乙方扣款日（一般为到期还款日次日凌晨）当天有充足的资金归还欠款。</p>
+						<p>3、如转出账户金额不能全额归还转入账户欠款，则进行部分还款至转出账户余额为零元止。发生部分还款时，对欠款金额的还款顺序按照《上海农商银行信用卡章程》的有关规定执行。如未能及时还款，甲方应自行承担因此产生的各项费用。除扣款日外，乙方不在其他时间进行自动还款处理。</p>
+						<p>4、如甲方指定的转出卡号因损坏，挂失等情况出现卡号变更的，原甲乙双方签订的自动还款协议将失效；甲方需要重新申请自扣还款服务，乙方不另行通知甲方。</p>
+						<br>
+						<p>5、甲方申请人民币自动购汇还款业务的，购汇还款的汇率以扣款当日的汇率为准。凡甲方申请以个人活期结算账户作为转出账户偿还信用卡外币欠款的，一律以现汇户转出。</p>
+						<p>6、除乙方变更或不提供本服务或甲方申请撤销自动还款业务外，信用卡自动还款服务期限自本协议签订之日起年。期满时，甲方不主动申请撤销，则自动还款业务按原先约定的方式自动顺延。</p>
+						<p>7、自动还款业务按规定收取手续费，乙方将在甲方成功签订自动还款协议时，从甲方转出账户中按乙方自动还款业务收费标准一次性扣收。如甲方账户内余额不足致使乙方扣款不成功，乙方将终止自动还款服务。</p>
+						<p>8、信用卡自动还款业务的撤销由甲方本人提出申请，凭转出账户卡或者存折和本人有效身份证件到我行营业网点办理，协议书不能单独作为撤销凭证。撤销成功后当月乙方将不再进行自动还款处理。甲方撤销自动还款业务时无需缴纳撤销手续费，原已缴纳的自动还款业务手续费也不退还。</p>
+						<p>声明条款：</p>
+						<p>1、如因甲方的转出账户/卡余额不足或被冻结止付等原因导致乙方不能按本协议约定提供相应服务的，乙方不承担违约责任。账户解除解冻后，如协议仍在服务期内，乙方将按《储蓄管理条例》银行支付结算的有关规定和本协议约定继续执行。</p>
+						<p>2、甲方应当密切关注转出账户余额变动等情况，如发生未成功进行自动还款的，乙方不另行通知甲方，甲方应当通过其他途径及时还款，以避免损失。</p>
+						<p>3、甲方撤销转入/转出账户的，须首先申请撤销自动还款业务，否则由此产生的损失将由甲方承担。/转账的默认额度以及每日在ATM机上提款的最高额度和次数限额进行调整，而无需预约通知申请人。</p>
+						<p>4、自动还款业务具体收费标准及其调整将由上海农商银行通过网点公告等形式告知客户，甲方应当密切关注。乙方有权根据上海农商银行有关优惠活动规定，在业务受理时或者优惠活动期内免收甲方自动还款业务手续费。此类活动结束后，甲方仍应按本协议约定支付费用。甲方如对上述收费持有异议，应当及时办理撤销手续。但是撤销前已经收取的手续费不予退还。</p>
+						<p>5、如遇自然灾害等不可抗力事件，或其他不可预见的非常情况发生，导致乙方不能正常执行协议的，乙方不承担任何责任。</p>
+						<p>6、本协议未尽事宜，由甲乙双方协商解决，协商不成，在乙方所在地法院诉讼解决。</p>
+						<p>7、本协议与上海农商银行信用卡（个人）自动还款业务申请书为不可分割的整体。客户信息和约定转账账户均以申请书上银行打印记录为准，甲方应当认真核对打印信息的准确性。</p>
+						<p>8、本协议壹式贰份，甲乙双方各执壹份，具有同等法律效力。</p>
+						<p>  </p>
+						<br><br><br><br><br><br><br><br><br>
+					</div>
+				</td>
+				<td>&nbsp;</td>
+				<td>
+					<a><img src="../Terminal/Style/Default/Img/prevPage.png" onclick="javascript:gotopage('-1');" id="prevPage" style="visibility: hidden;" /></a></br></br></br></br></br></br>
+					<a><img src="../Terminal/Style/Default/Img/nextPage.png" onclick="javascript:gotopage('1');" id="nextPage" /></a>
+				</td>
+			</tr>
+			<tr><td height="5px"></td></tr>
+			<tr onclick="selectCheck()">
+				<td width="5%" align="right"><div id="checkbox" class="uncheckBox" ></div></td>
+				<td width="95%" align="left"><div class="Tip_Agree">&nbsp;&nbsp;我已阅读并同意协议</div></td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+	<span class="MENU99" id="oLSelect"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLQueryUNRepayTip" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oQueryUNRepayTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+		  <td align="center">
+			<table cellpadding="10" cellspacing="1" class="Table_Ob" width="50%">
+			  <tr class="Table_Head"><td colspan="2" align="center" id="oAutoPayAppInfoInput"></td></tr>
+			  <tr class="Table_Record"><td id="oCreditCardPan"></td><td class="Digit_Normal" id="CreditPan"></td></tr>
+			  <tr class="Table_Record"><td id="oRepayType"></td>
+				<td class="Digit_Normal" id="repaytype">
+					<select id="repaytypeSelect" class="select"></select>
+				</td>
+			</tr>
+			</table>
+			<pre class="Error_Title" id="Error_TitleTypeSelect">&nbsp;</pre>
+		  </td>
+	  </tr>
+    </table>
+  </div>
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+  <span class="MENU99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLChooseOneTip" class="FULLSCR">
+	<div class="FULLSCR"><br/><br/><br/><br/><br/><br/><br/><br/>
+		<span class="Tip_Tick" id="oChooseOneTick"></span><br/>
+		<table width="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center"><span class="Tip_Title">请选择自动还款约定账号</span><br/></td>
+			</tr>
+			<tr>
+				<td align="center"><br/>
+					<table cellpadding="2" cellspacing="1" class="Table_Ob" id="oTable" width="90%">
+						<thead class="Table_Head" id="oTHead"></thead>
+						<tbody id="oTBody">
+						</tbody>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+	<span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+	<span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+	<span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()" class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+	<span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+</div>
+	
+<div id="oLReypayConfirmTip" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oReypayConfirmTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="50%">
+          <tr class="Table_Head"><td colspan="2" align="center" id="oConfirmInfo"></td></tr>
+		  <tr class="Table_Record"><td id="oAccName"></td><td class="Digit_Normal" id="text_ReypayoAccName1"></td></tr>
+          <tr class="Table_Record"><td id="oCreditCardPan"></td><td class="Digit_Normal" id="text_CreditPan1"></td></tr>
+          <tr class="Table_Record"><td id="oCurrentPan"></td><td class="Digit_Normal" id="text_SuccPan1"></td></tr>
+		  <tr class="Table_Record"><td id="oRepayType"></td><td class="Digit_Normal" id="text_Type1"></td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+	<span class="MENU99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+</div>
+ 
+<div id="oLReypayConfirmTipGH" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oReypayConfirmTickGH"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="50%">
+          <tr class="Table_Head"><td colspan="2" align="center" id="oConfirmInfo"></td></tr>
+		  <tr class="Table_Record"><td id="oAccName"></td><td class="Digit_Normal" id="text_ReypayoAccNameGH"></td></tr>
+          <tr class="Table_Record"><td id="oCreditCardPan"></td><td class="Digit_Normal" id="text_CreditPan1GH"></td></tr>
+          <tr class="Table_Record"><td id="oCurrentPan"></td><td class="Digit_Normal" id="text_SuccPan1GH"></td></tr>
+		  <tr class="Table_Record"><td id="oRepayType"></td><td class="Digit_Normal" id="text_Type1GH"></td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+	<span class="MENU99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+</div>
+
+ <div id="oLInputPassword" class="FULLSCR" style="visibility: hidden;"> 
+  <div class="FULLSCR">
+    <span class="Tip_Tick" id="oInpPwdTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <pre class="Tip_Title">请输入您选择的活期账号密码</pre>
+        <input type="password" id="input_Password" name="input_Password" size=10 maxlength=6 class="input_short" />
+		<br/><br/>
+		<img width="600px" height="430px" src="../Image/InputPin.gif" />
+		<table><tr height="52"><td class="Error_Title" id="error_InputPassword"></td></tr></table>
+      </td></tr><br/><br/>
+    </table>
+  </div>
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+ 
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oServiceFailedTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oLoadFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oFailedRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="oLReypaySuccessTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <span class="Tip_Tick" id="oReypayTick"></span>
+	<br/><br/><br/><br/>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td></td></tr>
+      <tr class="FirstLine"><td align="center">
+	  <img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+        <pre class="Tip_Title"  id="oAutoPayAppSucc"></pre>
+        <br/><br/>
+      </td></tr>
+    </table>
+  </div>  
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+  <span class="MENU99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="Menu_Right" id="oPrintReceipt" name="Menu_Right"></button></span>
+</div>
+
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title" id="oReInsertCreditCard"></span><br/><br/>
+      <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>
+
+
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+</body>
+</html>

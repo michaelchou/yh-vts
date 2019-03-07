@@ -1,0 +1,185 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>额度查询</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css"
+	type="text/css" />
+<script type="text/javascript">
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function() {serverEntrance();});
+
+	// 服务流程处理入口
+	function serverEntrance() {
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		if (top.cardreader.isCardPresent()) {
+			if(top.pool.get("strCardType") != "1"){
+				//提示插入本行借记卡
+				InsertCard();
+			}else{
+				top.pool.set("strNavigate2Url", "");
+				top.pool.set("strIDCardNum", top.pool.get("strRespIDNo"));
+				//发起额度查询交易
+		 		top.wins.showNewProcessingTip("");
+				top.trans.send906101SecondAsync();
+			}
+		}else{
+			top.serviceCtrl.navigate2InsertCard();
+		}
+	}
+	
+	function InsertCard() {
+		onCardEjected = function() {
+			top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeInvalCardTick);
+			// 播放提示音
+			try {
+				top.soundPlayer.playback("/Sound/TakeCardTip.mp3");
+			} catch (e) {
+			}
+			top.wins.showMain("oLTakeInvalCardTip");
+		}
+		onCardTaken = function() {
+			top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+		}
+		onDeviceError_Idc = function() {
+			if (top.cardreader.isCardPresent()) {
+				top.YHAXCardReader.Capture();
+			}
+			onServiceFailed("额度查询失败", top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError);
+		}
+		onCardCapturedTipEnd = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onCardCaptured = function() {
+			top.pool.set("printType","3");//选择打印的凭条类型
+	        top.receiptprinter.printAndEject();
+			top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+			top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+		}
+		//退卡前屏蔽安全退出及返回Home的功能 
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.cardreader.eject();
+	}
+	
+
+	// 显示成功信息
+	function onInqFxBalanceSuccess() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		document.getElementById("oCustomerName").innerHTML = top.pool.get("strRespIDName");
+		document.getElementById("oLimitBalance").innerHTML = "等值 " + top.pool.get("limitBalance2") + " 美元";
+		document.getElementById("oUsedBalance").innerHTML = "等值 " + top.pool.get("usedBalance2") + " 美元";
+		document.getElementById("oLimitBalanceJH").innerHTML = "等值 " + top.pool.get("limitBalance") + " 美元";
+		document.getElementById("oUsedBalanceJH").innerHTML = "等值 " + top.pool.get("usedBalance") + " 美元";
+		
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onKey_F98 = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		//交易成功后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		window.operateCtrl.enableInput();
+		top.wins.showMain("oLServiceSuccessTip");
+	}
+	
+	function onServiceFailed(title, retcode, retdesc) {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onTimeout = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		//交易失败后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		
+		oTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+		
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+		top.wins.showMain("oLServiceFailedTip");
+	}
+
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onselect="document.selection.empty()" onmouseup="document.selection.empty()">
+
+	<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+		<table width="100%" height="90%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center"><br/><br/>
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="50%">
+			        	<tr class="Table_Head"><td colspan="2" align="center">额度查询成功</td></tr>
+			        	<tr class="Table_Record"><td>客户名称</td><td class="Digit_Normal" id="oCustomerName"></td></tr>
+			        	<tr class="Table_Record"><td><span id="oFeSystemLastAmt"></span></td><td class="Digit_Normal" id="oLimitBalance"></td></tr>
+			        	<tr class="Table_Record"><td><span id="oFeSystemUsedAmt"></span></td><td class="Digit_Normal" id="oUsedBalance"></td></tr>
+			        	<tr class="Table_Record"><td>外管系统剩余结汇额度</td><td class="Digit_Normal" id="oLimitBalanceJH"></td></tr>
+			        	<tr class="Table_Record"><td>外管系统已用结汇额度</td><td class="Digit_Normal" id="oUsedBalanceJH"></td></tr>
+        			</table>
+				</td>
+			</tr>
+		</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	</div>
+
+	<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr>
+					<td align="center">
+						<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+							<tr class="Table_Head">
+								<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+							</tr>
+							<tr class="Table_Record">
+								<td id="oDescription"></td>
+								<td><span id="oFailedRetDesc"></span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+	<div id="oLTakeInvalCardTip" class="FULLSCR" style="visibility: hidden;">
+		<span class="Tip_Tick" id="oTakeInvalCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center"><span class="Tip_Title" id="oReInsertDebCard"></span><br />
+				<br /> <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+				</td>
+			</tr>
+		</table>
+	</div>
+	
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+	
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+</body>
+</html>

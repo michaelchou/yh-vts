@@ -1,0 +1,525 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>签约交易菜单页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 服务流程处理入口
+function serverEntrance()
+{
+   top.pool.set("strNavigate2Url", window.location.pathname);
+   showMenu();
+}
+
+/*
+  根据当前位置，显示菜单 
+ */
+var menus;
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("综合签约", 'CompSign()');
+  menus[menus.length] = new Array("签约管理", 'SignManage()');
+  var btn = document.all("oLMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() {
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);	  
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout, oMenuTick);
+  top.wins.showMain("oLMenu");
+}
+
+//综合签约
+function CompSign()
+{
+	startService("0001_901610_00001");
+}
+
+//签约管理
+function SignManage()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("手机银行", 'MobileBank()');
+  menus[menus.length] = new Array("个人网银", 'PerBankMenu()');
+  menus[menus.length] = new Array("短信通", 'SMSContactMenu()');
+  menus[menus.length] = new Array("ATM转账及限额", 'ATMTranfer()');
+  menus[menus.length] = new Array("小额免密免签管理", 'VisaFreeManage()');
+  menus[menus.length] = new Array("第三方快捷支付", 'ShowDebitCardQuickPayMenu()');
+  var btn = document.all("oLSignManageMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+     showMenu();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout, oSignManageMenuTick);
+  top.wins.showMain("oLSignManageMenu");
+}
+
+//手机银行
+function MobileBank(){
+	window.operateCtrl.disableInput(true);
+	  top.serviceCtrl.stopUserTimeout();
+	    
+	  //定义服务菜单数组
+	  menus = new Array();
+	  menus[menus.length] = new Array("注销", 'MobileBankCancle()');
+	  menus[menus.length] = new Array("查询", 'MobileBankQuery()');
+	  menus[menus.length] = new Array("修改", 'MobileBankModify()');
+	  menus[menus.length] = new Array("新增账户", 'MobileBankAddUser()');
+	  menus[menus.length] = new Array("删除账户", 'MobileBankDelUser()');
+	  menus[menus.length] = new Array("密码重置", 'MobileBankResetPin()');
+	  var btn = document.all("oLMobileBankMenu").getElementsByTagName("button");
+	  //初始化按钮菜单
+	  for(var i=0; i<btn.length-2; i++)
+	  {
+	  	  btn[i].style.visibility = "hidden";
+	  	  btn[i].innerHTML = "";
+	  	  btn[i].name = "";
+	  	  btn[i].onclick = function() { 
+	  	  };
+	  }
+	  for(var i=0; i<menus.length; i++)
+	  {
+	  	  btn[i].style.visibility = "";
+	  	  btn[i].id = menus[i][0];
+	  	  btn[i].name = menus[i][1];
+	  	  btn[i].onclick = function() { 
+			top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+	  	     eval(this.name);
+	  	  };
+	  }
+	  onKey_Cancel = onKey_F98 = function()
+	  {
+		  SignManage();
+	  }
+	  //请选择交易提示音
+	  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+	  window.operateCtrl.enableInput();
+	  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oMobileBankMenuTick);
+	  top.wins.showMain("oLMobileBankMenu");
+}
+//手机银行注销
+function MobileBankCancle(){
+	startService("0008_908102_00001");
+}
+//手机银行查询
+function MobileBankQuery(){
+	startService("0008_908103_00001");
+}
+//手机银行修改
+function MobileBankModify(){
+	startService("0008_908104_00001");
+}
+//手机银行新增账户
+function MobileBankAddUser(){
+	startService("0008_908107_00002");
+}
+//手机银行删除账户
+function MobileBankDelUser(){
+	startService("0008_908107_00003");
+}
+//手机银行密码重置
+function MobileBankResetPin(){
+	startService("0008_908108_00001");
+}
+
+//个人网银
+function PerBankMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("注销", 'PerBankCancel()');
+  menus[menus.length] = new Array("查询", 'PerBankQuery()');
+  menus[menus.length] = new Array("修改", 'PerBankModify()');
+  menus[menus.length] = new Array("新增账户", 'PerBankAddUser()');
+  menus[menus.length] = new Array("删除账户", 'PerBankDelUser()');
+  menus[menus.length] = new Array("密码重置", 'PerBankResetPin()');
+  var btn = document.all("oLPerBankMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() {
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);	  
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+	  SignManage();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oPerBankMenuTick);
+  top.wins.showMain("oLPerBankMenu");
+}
+
+//个人网银注销
+function PerBankCancel(){
+	startService("0008_908203_00001");
+}
+//个人网银查询
+function PerBankQuery(){
+	startService("0008_901608_00001");
+}
+//个人网银修改
+function PerBankModify(){
+	startService("0008_908207_00001");
+}
+//个人网银新增账户
+function PerBankAddUser(){
+	startService("0008_908213_00000");
+}
+//个人网银删除账户
+function PerBankDelUser(){
+	startService("0008_908213_00001");
+}
+//个人网银密码重置
+function PerBankResetPin(){
+	startService("0008_908214_00001");
+}
+
+//短信通菜单
+function SMSContactMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("短信通维护", 'SMSContactMod()');
+  menus[menus.length] = new Array("短信通关闭", 'SMSContactCancle()');
+  var btn = document.all("oLSMSMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() {
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+	  SignManage();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oSMSMenuTick);
+  top.wins.showMain("oLSMSMenu");
+}
+
+//短信通维护
+function SMSContactMod()
+{
+   startService("0008_908305_00001");
+}
+//短信通注销
+function SMSContactCancle()
+{
+   startService("0008_908306_00001");
+}
+
+//ATM转账及限额
+function ATMTranfer()
+{
+   startService("0001_901702_00001");
+}
+
+//小额免密免签管理
+function VisaFreeManage()
+{
+   startService("0001_901707_00001");
+}
+
+//第三方快捷支付管理菜单
+function ShowDebitCardQuickPayMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("手机号登记", 'PhoneNumReg()');
+  menus[menus.length] = new Array("限额管理", 'QuotaManage()');
+
+  
+  var btn = document.all("oLQuickPayMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_F98 = function()
+  {
+	  SignManage();
+  }
+  
+  //超时退出
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oQueryMenuTick);
+  top.wins.showMain("oLQuickPayMenu");
+}
+
+//手机号登记
+function PhoneNumReg()
+{
+   startService("0001_901804_00001");	 
+}
+//限额管理
+function QuotaManage()
+{
+   startService("0001_901805_00001");
+}
+
+/*开始运行服务*/
+function startService(strServiceMenuAction)
+{
+	onPrintJudge(strServiceMenuAction);
+}
+
+/*不能打印凭条时友情提醒*/
+function onPrintJudge(strServiceAction)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onKey_F99 = onKey_Enter = function()
+  {
+	top.serviceCtrl.navigate2("/Service/" + strServiceAction + ".html");
+  }
+  onKey_F98 = onKey_Cancel = function()
+  {
+  	  top.serviceCtrl.navigate2Quit();
+  }
+  if (top.receiptprinter.ReceiptPrinterStatus()!="true")
+  {
+	  oImpNotice1.innerHTML = top.langcur.oReceiptOffLine; 
+  }
+  else
+  {
+      onKey_F99();
+	  return;	  
+  }
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oPrintTick);
+  top.wins.showMain("oLPrint");
+}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="DebitCardSynSign" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="SignManage" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLSignManageMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oSignManageMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="MobileBank" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="InternetBank" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="SMSContactMenu" name="oMMenu3" id="oMMenu3"></button></span>
+   <span class="MENU4" id="oLMenu4"><button class="ATMTransfer" name="oMMenu4" id="oMMenu4"></button></span>
+  <span class="MENU5" id="oLMenu5"><button class="VisaFreeManage" name="oMMenu5" id="oMMenu5"></button></span> 
+  <span class="MENU6" id="oLMenu6"><button class="ShowDebitCardQuickPayMenu" name="oMMenu6" id="oMMenu6"></button></span>  
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLMobileBankMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oMobileBankMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="MobilebankCancle" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="MobilebankQuery" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="MobilebankModify" name="oMMenu3" id="oMMenu3"></button></span>
+  <span class="MENU4" id="oLMenu4"><button class="MobilebankAddUser" name="oMMenu4" id="oMMenu4"></button></span>
+  <span class="MENU5" id="oLMenu5"><button class="MobilebankDelUser" name="oMMenu5" id="oMMenu5"></button></span>
+  <span class="MENU6" id="oLMenu6"><button class="MobilePwdReset" name="oMMenu6" id="oMMenu6"></button></span>
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPerBankMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oPerBankMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="PerbankCancle" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="PerbankQuery" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="PerbankModify" name="oMMenu3" id="oMMenu3"></button></span>
+  <span class="MENU4" id="oLMenu4"><button class="PerbankAddUser" name="oMMenu4" id="oMMenu4"></button></span>
+  <span class="MENU5" id="oLMenu5"><button class="PerbankDelUser" name="oMMenu5" id="oMMenu5"></button></span>
+  <span class="MENU6" id="oLMenu6"><button class="PerbankPwdReset" name="oMMenu6" id="oMMenu6"></button></span> 
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLSMSMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oSMSMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="SMSContactMod" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="SMSContactCancle" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLQuickPayMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oQueryMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="PhoneNumReg" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="QuotaManage" name="oMMenu2" id="oMMenu2"></button></span>
+  
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPrint" class="FULLSCR" style="visibility: hidden;">
+      <div class="FULLSCR">
+		<span class="Tip_Tick" id="oPrintTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		  <tr>
+            <td align="center">
+				<table cellpadding="10" cellspacing="1" class="Table_Ob" width="100%">
+					<tr><td align="center"><span class="Tip_Alarm" id="oImpNotice1"></span>
+					</td></tr>
+				</table>
+			 </td>
+		   </tr>
+		 </table>
+	  </div>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+  <span class="MENU99" id="oLMenu99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+
+  </div>
+
+
+</body>
+</html>

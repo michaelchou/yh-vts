@@ -1,0 +1,646 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>存单开户:开户类型选择</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  // 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+//光标最后停留的标签id名称
+var last = "";
+function checkEvent()
+{
+  try
+  {
+	//如果光标停留在输入框上,更新last
+	if(document.activeElement.tagName == "INPUT"){
+		last = document.activeElement.id;
+	}
+	//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+	if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+		top.wins.checkEvent(event.srcElement, last);
+	}else{
+		top.wins.checkEvent(event.srcElement, event.srcElement.id);
+	}
+  }catch(e){}
+}
+//影像上传
+var imageType = "";  //上送影像平台类型
+var queryImageType = ""; //查询影像平台类型
+//是否校验手机号码
+var isTel = false;
+//是否有客户号
+var isHaveCustomNum = false;
+//影像上传
+var indexID = 0;
+var indexImage =0;
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+	if (typeof (top.YHAXDocumentScanner) == "undefined")
+	{
+		onServiceFailed(top.langcur.oCDSOpenFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oNoCDS);
+	}else if (typeof (top.YHAXReceiptPrint) == "undefined")
+	{
+		onServiceFailed(top.langcur.oCDSOpenFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oReceiptError);
+	}else if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	{
+		onServiceFailed(top.langcur.oCDSOpenFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oReceiptError);
+	}
+	else if (typeof(top.YHAXIDCardReader) == "undefined")
+	{
+		onServiceFailed(top.langcur.oCDSOpenFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oNoIDCardReader);
+	}else {
+		if(new top.CheckCard().cdStDeviceStatus() !="true"){
+			onServiceFailed(top.langcur.oCDSOpenFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER,new top.CheckCard().cdStDeviceStatus());
+		}else{
+			//存单开户前查询存单箱信息
+			top.wins.showNewProcessingTip(top.langcur.oCDSBoxQuery);
+			top.trans.sendQueryCDSAsync();
+		}
+	}  
+  }
+  function onAsyncQueryCDSComplete(){
+  	//身份证读取
+	//随机数
+	var strTransRandom = new top.StringCtrl(top.terminal.strTerminalNum).prefixStr('0',8)+""+new top.StringCtrl("").getRandom();
+	top.pool.set("strTransRandom",strTransRandom);
+	acceptIDCard();			  
+  }
+  // 允许读取身份证
+  function acceptIDCard() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onDeviceError_ID = onCardInvalid_ID = function() {
+		onServiceFailed(top.langcur.oCDSOpenFailed, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDReaderFailed);
+	}
+	onCardReaded = function() {		
+		idCardEject();
+	}
+	onCardInserted_ID = function() {
+		top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+	}
+	//退出身份证读取流程
+	onTimeout_ID = onKey_F98 = function() {
+		top.YHAXIDCardReader.CancelAccept();
+		top.serviceCtrl.navigate2QuitID();		
+	}
+	//插入身份证页面屏蔽安全退出及返回Home的功能
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+		
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout, oIdCardTick);
+	top.idCardReader.accept();
+	top.serviceCtrl.changeNaviStatus('1');
+	// 播放提示音
+	try {
+		top.soundPlayer.playback("/Sound/PutPerIDCard.mp3");
+	} catch (e) {}
+	top.wins.showMain("oLIDCardTip");
+  }  
+  // 提示取走二代身份证
+  function idCardEject() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onDeviceError_ID = onTimeout_ID = function() {
+		onServiceFailed(top.langcur.oCDSOpenFailed, top.TERMRETCODE_ID_EJECTFAILED,top.langcur.oEjectIDFailed);
+	}
+	onCardTaken_ID = function() {
+	}
+	//超时退出
+	onTimeout = function()
+	{	
+		top.idCardReader.IDCardEvents.clearAll();	
+		//进行联网核查流程
+        top.idCardReader.idCardTakenComplete();
+	}
+	top.serviceCtrl.startUserTimeout(onTimeout, 10, oIdCardTakeTick);
+	window.operateCtrl.enableInput();
+	top.idCardReader.eject();
+	// 播放提示音
+	try {
+		top.soundPlayer.playback("/Sound/TakeIDCard.mp3");
+	} catch (e) {}
+	top.wins.showMain("oLIDCardTakeTip");
+  }	
+  function onNetworkVirificationSuccessful(){
+	top.serviceCtrl.stopUserTimeout();
+	if (top.pool.get("customNo") != null && top.pool.get("customNo") != "") {
+		top.pool.set("mobile",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/mobileCall"));
+		isHaveCustomNum = true;
+		//老客户开始影像文件上传交易  
+		top.pool.set("strImageType", "IDType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+	} else {
+		isHaveCustomNum = false;
+		//新客户：先上传智能柜员目录
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+	}
+	top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+	top.wins.showNewProcessingTip(top.langcur.oSendImage);
+	top.trans.sendImageFileAsync();
+  }
+  //影像文件上传成功回调函数
+  function onImageFileSuccessful(){
+	top.serviceCtrl.stopUserTimeout();
+	var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+	top.pool.set("strBatchId",strBatchId);
+	if(indexID == 0)
+	{
+		//拍照
+		TakePic();
+	}
+	else if(indexID == 1)
+	{	
+		//如果是老客户，不进行信息补录
+		if(top.pool.get("customNo") != null && top.pool.get("customNo") != ""){
+			top.pool.set("strCustomerId",top.pool.get("customNo"));
+			//如果是老客户，进行影像查询
+			isHaveCustomNum = true;
+			top.pool.set("strImageType", "IDType");
+			top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+			top.trans.sendImageFileQueryAsync();				
+		}else{
+			isHaveCustomNum = false;
+			//信息补录
+			infoComfin();
+		}
+	}
+  }
+  //拍照
+  function TakePic()
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	onTimeout = function()
+	{
+	    top.cameras.display("Person","Destroy");//关闭摄像头
+		top.serviceCtrl.navigate2Quit();
+	}
+	top.serviceCtrl.changeNaviStatus('2');
+    window.operateCtrl.enableInput();
+	window.frames["ifreamPhoto"].CamerasLoad();//加载子页面摄像头相关方法
+	top.wins.showMain("oLTakePicTip");
+  }   
+  function PhotoPrevStep()//TakePhoto页面过度方法
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.navigate2Quit();//拍照返回后步骤
+	window.operateCtrl.enableInput();
+  }
+  function PhotoNextStep()//TakePhoto页面过度方法
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	indexID++;
+	top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+	top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+	top.wins.showNewProcessingTip(top.langcur.oSendImage);
+	top.trans.sendImageFileAsync();
+	window.operateCtrl.enableInput();
+  }
+  //信息补录页面
+  function infoComfin() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F99 = onKey_Enter = function() {
+		var phone = input_tel.value;
+		if (new top.StringCtrl(input_tel.value).checkPhone() || phone=="99999999999") {
+			isTel = false;
+			top.inputmethod.Close();
+			top.pool.set("strPhone", phone);
+			top.pool.set("strCustomerId",top.pool.get("customNo"));
+			//固定电话为空
+			if(input_homeTel.value == "" || input_homeTel.value == null){
+				top.pool.set("strHomeTel","99999999");
+			}else{
+				top.pool.set("strHomeTel",input_homeTel.value);
+			}
+			//如果是老客户，进行影像查询
+			if(isHaveCustomNum){
+				top.pool.set("strImageType", "IDType");
+			}else{
+				top.pool.set("strImageType", "ZNGYType");	
+			}
+			top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+			top.trans.sendImageFileQueryAsync();	
+		} else {
+			error_Tel.innerHTML = top.langcur.oInputTel;
+			input_tel.value = "";
+			input_tel.focus();
+			return false;
+		}
+	}
+	input_tel.onkeypress = function()
+	{
+		error_Tel.innerHTML = "&nbsp;";
+		input_tel.focus();
+	}
+	onKey_Cancel = onKey_F98 = function() {
+		isTel = false;
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2Quit();
+	}	
+	onTimeout = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2Quit();
+	}
+	//信息补录界面显示安全退出及返回Home的功能		
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";	
+	
+	text_pid1.innerHTML = top.pool.get("strIDCardNum");
+	text_name1.innerHTML = top.pool.get("strIDName");
+	text_gender1.innerHTML = top.pool.get("strIDSex");
+	text_birthday1.innerHTML = top.pool.get("strIDBorn");
+	text_ethnic1.innerHTML = top.pool.get("strIDNation");
+	text_grantDeptment1.innerHTML = top.pool.get("strIDGrantDept");
+	text_validateBegin1.innerHTML = top.pool.get("strIDBegin");
+	text_validateEnd1.innerHTML = top.pool.get("strIDEnd");
+	if(top.pool.get("mobile") =="99999999999"){
+		input_tel.value = "";
+	}else{
+		input_tel.value = top.pool.get("mobile");
+	}
+	top.serviceCtrl.changeNaviStatus('3');
+	// 播放提示音
+	try {top.soundPlayer.playback("/Sound/InputPhoneNum.mp3");} catch (e) {}
+	isTel = true;
+	top.inputmethod.ShowDigit(870,570);
+	Tip_Info.innerHTML = top.langcur.oCardDisInfo;
+	
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oInfoConfigTick);		
+	top.wins.showMain("oLInfoConfigTip");
+	input_tel.focus();
+	//input_tel.value = "";
+  }	
+  //图片查询结果
+  function onImageFileQuerySuccessful()
+  { 
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	if(indexImage == 0){
+		top.pool.set("idPhotoBackUrl",top.pool.get("back"));//反
+		top.pool.set("idPhotoUrl",top.pool.get("Front"));//正
+		//进行查询
+		indexImage ++;
+		top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+		top.pool.set("strImageType","ZNGYType");
+		top.trans.sendImageFileQueryAsync();
+	}else if(indexImage == 1){		
+		top.pool.set("scenePhotoUrl",top.pool.get("cameras"));//现场
+		//PAD审核
+		sendPadCheck();
+	}
+  }
+  //PAD审核
+  function sendPadCheck() {
+	var Msg = new top.JSONCtrl();			
+	Msg.setJson("customName","客户名称："+ top.pool.get("strIDName"));		
+	Msg.setJson("customNum","客户身份证："+ top.pool.get("strIDCardNum"));
+	top.pool.set("strCheckContent",Msg.jsonStr);
+	top.pool.set("strbusinessCode","910201");
+	top.pool.set("strbusinessName","存单开户身份证验证");		
+	//进行审核
+	top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+	top.trans.send910301Async();	
+  }
+  //超时处理
+  function onProcessingTimeout(){	
+	//审核超时
+	top.serviceCtrl.navigate2Quit(); 
+  }
+  //审核成功
+  function onCheckLoadingSuccessful() 
+  {
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+  	if(isHaveCustomNum){
+  		//保存业务办理人的客户号
+  	  top.pool.set("strCdsTransId",top.pool.get("customNo"));
+  	  chooseMenu(); 
+	}else{
+		//维护客户信息
+		top.wins.showNewProcessingTip(top.langcur.send901101Up);
+		top.trans.send901101Async();	
+	}
+  }
+  //维护客户信息成功
+  function onUpdateCustomInfoSuccessful()
+  {
+	top.wins.stopProcessingTimeout();
+	top.pool.set("strCustomerId",top.exchxmlasync.msgxmldomResp.getElementValue("F1"));
+	top.pool.set("customNo",top.exchxmlasync.msgxmldomResp.getElementValue("F1"));
+	//补身份证影像上传
+	top.wins.showNewProcessingTip(top.langcur.oSendImage);
+	top.trans.sendImageFileNewAsync();
+  }
+  //客户信息维护成功后进行补传影像
+  function onImageFileNewSuccessful(){
+	top.wins.stopProcessingTimeout();
+	top.pool.set("strCdsTransId",top.pool.get("customNo"));
+  	chooseMenu(); 	
+  }
+  /*
+	显示现金存单、转账存单
+  */
+  var menus;
+  function chooseMenu()
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//定义服务菜单数组
+	menus = new Array();
+	menus[menus.length] = new Array(top.langcur.oCDSCashOpen, 'AmountDepositRpt()');
+	menus[menus.length] = new Array(top.langcur.oCDSTransferOpen, 'TransferDepositRpt()');
+	var btn = document.all("oLMenu").getElementsByTagName("button");
+	//初始化按钮菜单
+	for(var i=0; i<btn.length-2; i++)
+	{
+		btn[i].style.visibility = "hidden";
+		btn[i].innerHTML = "";
+		btn[i].name = "";
+		btn[i].onclick = function() { 
+		};
+	}
+	for(var i=0; i<menus.length; i++)
+	{
+		btn[i].style.visibility = "";
+		btn[i].id = menus[i][0];
+		btn[i].name = menus[i][1];
+		btn[i].onclick = function() { 
+			top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+			eval(this.name);
+		};
+	}
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	top.serviceCtrl.changeNaviStatus('4');
+	//请选择交易提示音
+	try{top.soundPlayer.playback("/Sound/SelectCDSType.mp3");}catch(e){}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oMenuTick);
+	top.wins.showMain("oLMenu");
+  }	
+  //现金存单开户
+  function AmountDepositRpt()
+  {
+	top.serviceCtrl.stopUserTimeout();
+	//现金开户流程
+	top.serviceCtrl.navigate2("/Service/0005_DepOpen_00002.html");
+  }
+  //转账存单
+  function TransferDepositRpt()
+  {
+	top.serviceCtrl.stopUserTimeout();
+	//转账存单开户流程
+	top.serviceCtrl.navigate2("/Service/0005_DepTransferOpen_00001.html");
+  }	
+   //交易失败页面
+  function onServiceFailed(title, retcode, retdesc) 
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Cancel = onKey_F98 = function() {
+		//存单回收
+		if (typeof(top.YHAXDocumentScanner) != "undefined" && top.documentscanner.isCardPresent() ) {
+			top.YHAXDocumentScanner.Capture();
+		}
+		top.serviceCtrl.navigate2Quit();
+	}
+	oTitle.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onKey_F98, top.iFailedTimeout, oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip");
+  }
+  //用密码键盘输入时输入框校验
+  function CheckValue() {
+	if (isTel) {
+		input_checkTel();
+	}
+  }
+  function ShowKeyboard() {
+	top.inputmethod.ShowDigit(870,570);
+  }
+  //校验电话号码
+  function input_checkTel() {
+  try{
+		if (!new top.StringCtrl(input_tel.value).isAllDigit()) {
+			error_Tel.innerHTML = top.langcur.oInputRightTel;
+			input_tel.value = "";
+			input_tel.focus();
+		} else {
+			if ((input_tel.value).length == 11) {
+				if (!new top.StringCtrl(input_tel.value).checkPhone() && input_tel.value !="99999999999") {
+					error_Tel.innerHTML = top.langcur.oInputTel;
+					input_tel.value = "";
+					input_tel.focus();
+				}
+			}
+		}
+	}catch(e){}
+  }
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div class="divFlowPage" id="divFlowPage">
+	<table border="0" cellpadding="0" cellspacing="0">
+		<tr>
+		   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+		   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+		   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+		   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td width="38"></td>
+		 </tr>
+		 <tr height="70">
+
+		   <td class="font25" align="center" colspan="3" id="oFlowReadID"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowPhoto"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowInfo"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowCDSCheck"></td>
+		 </tr>
+	</table>
+</div>
+
+<div id="oLIDCardTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br><br><br><br><br><br> 
+		<span class="Tip_Tick" id="oIdCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr class="FirstLine" height="100">
+				<td align="center"><br /> <br /> <span class="Tip_Title" id="oInsertPerID"></span>
+					<br /> <img src="../Image/ID_in.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>			
+</div>
+
+<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br><br><br><br><br><br> 
+		<span class="Tip_Tick" id="oIdCardTakeTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr class="FirstLine" height="100">
+				<td align="center"><br /> <br /> <span class="Tip_Title" id="oIDCardTake"></span>
+						<br /> <img src="../Image/id_out.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+		</table>
+	</div>
+</div>
+<div id="oLInfoConfigTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+	<br><br><br><br><br><br><br><br><br><br><br>
+	<span class="Tip_Tick" id="oInfoConfigTick"></span>
+		<table width="100%" height="35%" border="0" cellpadding="0" cellspacing="0" align="center">
+			<tr>
+				<td align="center">
+					<table width="100%" height="90" border="0" cellpadding="0" cellspacing="0">
+						<tr>
+							<td height="45" align="center" colspan="2" class="Tip_Title" id ="Tip_Info"></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content" width="32%" id="oTextPid"></td>
+							<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="text_pid1"></span></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content" id="oTextName"></td>
+							<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="text_name1">&nbsp;&nbsp;</span></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content" id="oTextSex"></td>
+							<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="text_gender1"></span>&nbsp;&nbsp;</td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content" id="oTextBirth"></td>
+							<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="text_birthday1"></span></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content" id="oTextEth"></td>
+							<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="text_ethnic1"></span></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content" id="oTextDeptment"></td>
+							<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span
+									id="text_grantDeptment1"></span></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content" id="oTextValBegin"></td>
+							<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span
+									id="text_validateBegin1"></span></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content" id="oTextValEnd"></td>
+							<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span
+									id="text_validateEnd1"></span></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span id="oTextPhone"></span></td>
+							<td align="left" class="Tip_Title">&nbsp;&nbsp;<input
+									class="input_long" type="text" name="input_tel" id="input_tel"
+									maxlength="11" onclick="javascript:ShowKeyboard();"
+									onkeyup="return input_checkTel()" /></td>
+						</tr>
+						<tr>
+							<td height="25" align="right" class="Tip_Content">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;固定电话:</td>
+							<td align="left" class="Tip_Title">&nbsp;&nbsp;<input
+									class="input_long" type="text" name="input_homeTel" id="input_homeTel"
+									maxlength="8" onclick="javascript:ShowKeyboard();"/>
+							</td>
+						</tr>						
+					</table> <pre class="Error_Title" id="error_Tel"></pre>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+	<span class="MENU99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLTakePicTip" class="oLTakePicTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+	<tr height="100%">
+		<td align="center"><iframe id="ifreamPhoto" src="../Service/TakePhoto.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+	</tr>
+	</table>
+</div>
+	
+ <div id="oLMenu" class="FULLSCR">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oMenuTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		  <br/><br/><br/>
+		  <tr class="FirstLine">
+			 <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+		</table>
+	</div>
+	<span class="MENU1" id="oLMenu1"><button class="AmountDepositRpt" name="oMMenu1" id="oMMenu1"></button></span>
+	<span class="MENU2" id="oLMenu2"><button class="TransferDepositRpt" name="oMMenu2" id="oMMenu2"></button></span>
+	<span class="MENU98" id="oLMenu98"><button onclick="javascript:onKey_F98();" class="return" name="oReturn"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="Table_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+						</tr>
+						<tr class="Table_Record">
+							<td id="oDescription"></td>
+							<td><span id="oFailedRetDesc"></span></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div> 
+	
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+</body>
+</html>

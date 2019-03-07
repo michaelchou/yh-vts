@@ -1,0 +1,2948 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>外汇购汇</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+	var FxStatusFlag = false; 
+	var FxAmountFlag = false;
+    var readFlag=false;//阅读协议倒计时是否完成
+    var readFlag1=false;//阅读协议是否完翻阅到最后一页
+    var returnFlag=false;//返回标识
+    var timeoutBtn = null;//计数器
+    var date = new Date(); // new 一个Date对象
+	var curYear = date.getFullYear(); // 当前年份
+	var curYear1 = curYear;//
+	var curMonth = date.getMonth()+1;//当前月份
+    var selYear="";
+    var selMonth="";
+    var selUse="";
+    
+    var code="";//购汇用途代码（返回时展示上次填写数据）
+    
+    var selectIndex="";
+    var selectIndex_text="";
+    var input_date1="";
+    var select_date1="";
+    var radio="";
+    
+    var input_school="";
+    var input_schoolAmt="";
+    var input_lifeAmt="";
+    
+    var input_date2="";
+    var select_date2="";
+    
+    var input_date3="";
+    var input_relativesName="";
+    var input_relativesRelation="";
+    var select_date3="";
+    
+    var input_date4="";
+    var input_hospital="";
+    var select_date4="";
+    
+    var input_transName="";
+    
+    var input_safeName="";
+    
+    var input_referName="";
+    
+    var input_name="";
+    var input_project="";
+    var input_antcur="";
+    var input_detail="";
+    
+	var arrCountry = [
+        ["--请选择--"],
+        ["阿尔巴尼亚"],
+        ["阿尔及利亚"],
+        ["阿富汗"],
+        ["阿根廷"], 
+        ["阿联酋"], 
+        ["阿鲁巴"], 
+        ["阿曼"],
+        ["阿塞拜疆"],
+        ["埃及"],
+        ["埃塞俄比亚"],
+        ["爱尔兰"], 
+        ["爱沙尼亚"],
+        ["安道尔"], 
+        ["安哥拉"], 
+        ["安圭拉"], 
+        ["安提瓜和巴布达"],
+        ["奥地利"], 
+        ["澳大利亚"],
+        ["澳门"],
+        ["巴巴多斯"],
+        ["巴布亚新几内亚"],
+        ["巴哈马"],
+        ["巴基斯坦"],
+        ["巴拉圭"], 
+        ["巴林"],
+        ["巴拿马"], 
+        ["巴西"],
+        ["白俄罗斯"],
+        ["百慕大"], 
+        ["保加利亚"],
+        ["北马里亚纳"],
+        ["贝宁"],
+        ["比利时"],
+        ["冰岛"],
+        ["波多黎各"],
+        ["波兰"],
+        ["波斯尼亚和黑塞哥维那"],
+        ["玻利维亚"],
+        ["伯利兹"], 
+        ["博茨瓦纳"],
+        ["不丹"],
+        ["布基纳法索"],
+        ["布隆迪"], 
+        ["布维岛"], 
+        ["朝鲜"],
+        ["赤道几内亚"],
+        ["丹麦"],
+        ["德国"],
+        ["东帝汶"], 
+        ["多哥"],
+        ["多米尼加共和国"],
+        ["多米尼克"],
+        ["俄罗斯联邦"],
+        ["厄瓜多尔"],
+        ["厄立特里亚"],
+        ["法国"],
+        ["法罗群岛"],
+        ["法属波利尼西亚"],
+        ["法属圭亚那"],
+        ["法属南部领土"],
+        ["梵蒂冈"], 
+        ["菲律宾"], 
+        ["斐济"],
+        ["芬兰"],
+        ["佛得角"],
+        ["福克兰群岛（马尔维纳斯群岛）"],
+        ["冈比亚"], 
+        ["刚果(金)"],
+        ["刚果（布）"],
+        ["哥伦比亚"],
+        ["哥斯达黎加"],
+        ["格林纳达"],
+        ["格陵兰"], 
+        ["格鲁吉亚"],
+        ["古巴"],
+        ["瓜德罗普"],
+        ["关岛"],
+        ["圭亚那"],
+        ["哈萨克斯坦"],
+        ["海地"],
+        ["韩国"],
+        ["荷兰"],
+        ["荷属安的列斯"],
+        ["赫德岛和麦克唐纳岛"],
+        ["洪都拉斯"],
+        ["基里巴斯"],
+        ["吉布提"], 
+        ["吉尔吉斯斯坦"],
+        ["几内亚"], 
+        ["几内亚比绍"],
+        ["加拿大"], 
+        ["加纳"],
+        ["加蓬"],
+        ["柬埔寨"], 
+        ["捷克"],
+        ["津巴布韦"],
+        ["喀麦隆"], 
+        ["卡塔尔"], 
+        ["开曼群岛"],
+        ["科科斯（基林）群岛"],
+        ["科摩罗"], 
+        ["科特迪瓦"],
+        ["科威特"], 
+        ["克罗地亚"],
+        ["肯尼亚"], 
+        ["库克群岛"],
+        ["拉脱维亚"],
+        ["莱索托"], 
+        ["老挝"],
+        ["黎巴嫩"], 
+        ["立陶宛"], 
+        ["利比里亚"],
+        ["利比亚"], 
+        ["列支敦士登"],
+        ["留尼汪"], 
+        ["卢森堡"], 
+        ["卢旺达"], 
+        ["罗马尼亚"],
+        ["马达加斯加"],
+        ["马尔代夫"],
+        ["马耳他"], 
+        ["马拉维"], 
+        ["马来西亚"],
+        ["马里"],
+        ["马绍尔群岛"],
+        ["马提尼克"],
+        ["马约特"], 
+        ["毛里求斯"],
+        ["毛里塔尼亚"],
+        ["美国"],
+        ["美属萨摩亚"],
+        ["美属维尔京群岛"],
+        ["蒙古"],
+        ["蒙特塞拉特"],
+        ["孟加拉国"],
+        ["秘鲁"],
+        ["密克罗尼西亚"],
+        ["缅甸"],
+        ["摩尔多瓦"],
+        ["摩洛哥"], 
+        ["摩纳哥"], 
+        ["莫桑比克"],
+        ["墨西哥"], 
+        ["纳米比亚"],
+        ["南非"],
+        ["瑙鲁"],
+        ["尼泊尔"], 
+        ["尼加拉瓜"],
+        ["尼日尔"], 
+        ["尼日利亚"],
+        ["纽埃"],
+        ["挪威"],
+        ["诺福克岛"],
+        ["帕劳"],
+        ["皮特凯恩"],
+        ["葡萄牙"], 
+        ["前南马其顿"],
+        ["日本"],
+        ["瑞典"],
+        ["瑞士"],
+        ["萨尔瓦多"],
+        ["萨摩亚"], 
+        ["塞拉利昂"],
+        ["塞内加尔"],
+        ["塞浦路斯"],
+        ["塞舌尔"], 
+        ["沙特阿拉伯"],
+        ["圣诞岛"], 
+        ["圣多美和普林西比"],
+        ["圣赫勒拿"],
+        ["圣基茨和尼维斯"],
+        ["圣卢西亚"],
+        ["圣马力诺"],
+        ["圣皮埃尔和密克隆"],
+        ["圣文森特和格林纳丁斯"],
+        ["斯里兰卡"],
+        ["斯洛伐克"],
+        ["斯洛文尼亚"],
+        ["斯瓦尔巴群岛"],
+        ["斯威士兰"],
+        ["苏丹"],
+        ["苏里南"],
+        ["所罗门群岛"],
+        ["索马里"], 
+        ["塔吉克斯坦"],
+        ["泰国"],
+        ["坦桑尼亚"],
+        ["汤加"],
+        ["特克斯科斯群岛"],
+        ["特立尼达和多巴哥"],
+        ["突尼斯"], 
+        ["图瓦卢"], 
+        ["土耳其"], 
+        ["土库曼斯坦"],
+        ["托克劳"], 
+        ["瓦利斯和富图纳"],
+        ["瓦努阿图"],
+        ["危地马拉"],
+        ["委内瑞拉"],
+        ["文莱"],
+        ["乌干达"],
+        ["乌克兰"], 
+        ["乌拉圭"], 
+        ["乌兹别克斯坦"],
+        ["西班牙"], 
+        ["西撒哈拉"],
+        ["希腊"],
+        ["香港"],
+        ["新加坡"], 
+        ["新喀里多尼亚"],
+        ["新西兰"], 
+        ["匈牙利"], 
+        ["叙利亚"], 
+        ["牙买加"], 
+        ["亚美尼亚"],
+        ["也门"],
+        ["伊拉克"], 
+        ["伊朗"],
+        ["以色列"], 
+        ["意大利"], 
+        ["印度"],
+        ["印度尼西亚"],
+        ["英国"],
+        ["英属维尔京群岛"],
+        ["英属印度洋领土"],
+        ["约旦"],
+        ["越南"],
+        ["赞比亚"], 
+        ["乍得"],
+        ["直布罗陀"],
+        ["智利"],
+        ["中非"],
+        ["中国"],
+        ["中国台湾"]
+	];
+    var strCountry = "";
+    for (var i = 0; i < arrCountry.length; i++) {
+    	strCountry += "<option>" + arrCountry[i] + "</option>";
+    }
+    var indexID = 0;
+    var indexImage =0;
+	//Pad审核
+	var	isPadCheck = false;
+	//倒计时时间
+	var secs = 30;
+	var tenSecs = 10;
+	//是否改变阅读协议CheckBox的值
+	var changeCheckNoticeBoxFlag =false;
+	var changeCheckBoxFlag = false;
+	var changeMsgCheckBoxFlag = false;
+	//光标最后停留的标签id名称
+	var last = "";
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function() {serverEntrance();});
+
+	// 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+
+	function checkEvent() {
+		try {
+			//如果光标停留在输入框上,更新last
+			if(document.activeElement.tagName == "INPUT"){
+				last = document.activeElement.id;
+			}
+			//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+			if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+				top.wins.checkEvent(event.srcElement, last);
+			}else{
+				top.wins.checkEvent(event.srcElement, event.srcElement.id);
+			}
+		}
+		catch (e) {}
+	}
+
+	// 服务流程处理入口
+	function serverEntrance() {
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		if (typeof(top.YHAXIDCardReader) == "undefined")
+		{
+			onServiceFailed(top.langcur.oFxPurchaseFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oNoIDCardReader);
+		}else if(new top.CheckCard().cardSignStatus() !="true"){
+			onServiceFailed(top.langcur.oFxPurchaseFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, new top.CheckCard().cardSignStatus());
+		}else {
+			if (top.cardreader.isCardPresent()) {
+				if(top.pool.get("strCardType") != "1"){
+					InsertCard();//提示插入本行借记卡
+				}else{
+					top.pool.set("strNavigate2Url", "");
+					acceptIDCard();
+				}
+			}else{
+				top.serviceCtrl.navigate2InsertCard();
+			}
+		}
+	}
+
+	function InsertCard() {
+		top.serviceCtrl.stopUserTimeout();
+		onCardEjected = function() {
+			top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeInvalCardTick);
+			// 播放提示音
+			try {
+				top.soundPlayer.playback("/Sound/TakeCardTip.mp3");
+			} catch (e) {
+			}
+			top.wins.showMain("oLTakeInvalCardTip");
+		}
+		onCardTaken = function() {
+			top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+		}
+		onDeviceError_Idc = function() {
+			if (top.cardreader.isCardPresent()) {
+				top.YHAXCardReader.Capture();
+			}
+			onServiceFailed(top.langcur.oFxPurchaseFailed, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError);
+		}
+		onCardCapturedTipEnd = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onCardCaptured = function() {
+			top.pool.set("printType","3");//选择打印的凭条类型
+	        top.receiptprinter.printAndEject();
+			top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+			top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+		}
+		//退卡前屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.cardreader.eject();
+	}
+
+	// 允许读取身份证
+	function acceptIDCard() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onDeviceError_ID = onCardInvalid_ID = function() {
+			onServiceFailed(top.langcur.oFxPurchaseFailed, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDReaderFailed);
+		}
+		onCardReaded = function() {
+			idCardEject();
+		}
+		onCardInserted_ID = function() {
+			top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+		}
+		//退出身份证读取流程
+		onKey_Cancel = onKey_F98 = function() {
+			top.idCardReader.cancelAccept();
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		onTimeout_ID = onTimeout = function()
+		{
+			top.serviceCtrl.navigate2Quit();
+		}
+		//插入身份证页面屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oIdCardTick);
+		top.idCardReader.accept();
+		top.serviceCtrl.changeNaviStatus('1');
+		// 播放提示音
+		try {
+			top.soundPlayer.playback("/Sound/PutIDCard.mp3");
+		} catch (e) {
+		}
+		top.wins.showMain("oLIDCardTip");
+	}
+
+	// 提示取走二代身份证
+	function idCardEject() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("isPersonal","1");//人证合一
+		onDeviceError_ID = onTimeout_ID = function() {
+			onServiceFailed(top.langcur.oFxPurchaseFailed, top.TERMRETCODE_ID_EJECTFAILED, top.langcur.oEjectIDFailed);
+		}
+		onCardTaken_ID = function()
+		{
+		}
+		    //超时退出
+	    onTimeout = function()
+	    {
+	    	top.idCardReader.IDCardEvents.clearAll();
+			//进行联网核查流程
+	        top.idCardReader.idCardTakenComplete();
+	    }
+	    top.serviceCtrl.changeNaviStatus('2');
+		top.serviceCtrl.startUserTimeout(onTimeout, 10, oIdCardTakeTick);
+		window.operateCtrl.enableInput();
+		top.idCardReader.eject();
+		// 播放提示音
+		try {
+			top.soundPlayer.playback("/Sound/TakeIDCard.mp3");
+		} catch (e) {
+		}
+		top.wins.showMain("oLIDCardTakeTip");
+	}
+
+	function onNetworkVirificationSuccessful(){
+		//查看有无客户号。
+		if(top.pool.get("customNo") == null || top.pool.get("customNo") == "") {
+			onServiceFailed(top.langcur.oReLostFail, top.TERMRETCODE_ID_READFAILED, "您在我行无客户号，无法为您办理该业务");
+			return;
+		}
+		top.serviceCtrl.stopUserTimeout();
+		//开始影像文件上传交易
+		top.pool.set("strImageType", "IDType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+    }
+
+	//影像文件上传成功回调函数
+	function onImageFileSuccessful(){
+		top.serviceCtrl.stopUserTimeout();
+		var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+		top.pool.set("strBatchId", strBatchId);
+		if(indexID == 0)
+		{
+			//发起额度查询交易
+			top.pool.set("strCuststat","");
+			top.wins.showNewProcessingTip("正在账户额度查询，请稍候...");
+			top.trans.send906101Async();
+		}
+		else if(indexID == 1)
+		{
+			//阅读协议
+			watchBook();
+		}
+		else if(indexID == 2)
+		{
+			var htmlstr = infoToPic.innerHTML;
+			top.pool.set("htmlstr",htmlstr);
+			oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+			infoToPic.style.visibility = "hidden";
+			top.wins.showNewProcessingTip("交易处理中，请稍候...");
+			top.trans.sendBusinessApplicationAsync();
+		}
+	}
+
+	//关闭当前页面的计数器
+	function stopCurPageNoticeTick()
+	{
+	   if (timeoutBtn != null)
+	   {
+	      top.MainFrame.clearInterval(timeoutBtn);
+	      timeoutBtn = null;
+	   }
+	}
+	
+	//10秒倒计时方法
+function updateTenTime() { 
+	if(parseInt(tenSecs) == 0) {
+		stopCurPageNoticeTick();
+		document.getElementById("readButton").disabled = false;
+		document.getElementById("readButton").innerHTML = "确认";
+	} 
+	else { 
+            var printnr = parseInt(tenSecs);
+ 		    document.getElementById("readButton").innerHTML = "确认"+"(" + printnr +")";
+ 		  	tenSecs--;
+	}
+	
+}
+	
+	function onInqFxBalanceSuccess(){
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		
+		changeCheckNoticeBoxFlag = false;
+		checkNoticeBox.className = "uncheckBox";
+		oSelect.style.visibility = "hidden";
+		var curDate = new Date(); // new 一个Date对象
+		var strYear = curDate.getFullYear(); // 当前年份
+		var strMonth = curDate.getMonth()+1;//当前月份
+		var strDate = curDate.getDate();
+		var currentDate= strYear +"年" + new top.StringCtrl(strMonth).prefixStr('0', 2) + "月" + new top.StringCtrl(strDate).prefixStr('0', 2)+ "日";
+		
+		var noticeBookHtml="";
+		//增加是否待说明个人的判断   判断主体状态  01-正常  02-预关注对象  03-关注名单  
+		
+		if(top.pool.get("status") == "03" && top.pool.get("signPayFlag")=="0"){
+			//关注名单且未签署告知书 
+			top.pool.set("strCuststat","03");
+			noticeBookHtml = "<p align='center'>个人外汇业务“关注名单”告知书  </p><br>"
+				+ "<p>"+top.pool.get("customerName")+"&nbsp;&nbsp;&nbsp;&nbsp;"+top.pool.get("strIDCardNum")+"&nbsp;:</p><br>"
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;根据《国家外汇管理局关于进一步完善个人结售汇业务管理的通知》（汇发【2009】56号）等相关规定，</p>"
+				+ "<p>你办理的个人外汇业务，涉嫌再次出借本人额度协助他人或以借用他人额度等方式规避额度及真实性管理，</p>"
+				+ "<p>已被外汇局列入“关注名单”，列入期限自"+top.pool.get("focussDate") +"&nbsp;至 "+top.pool.get("focuseDate") +"，在关注期限内，你应凭本人有效</p>"
+				+ "<p>身份证件和有交易额的相关证明材料到银行办理个人结售汇业务，如你对被列入“关注名单”有异议，可</p>"
+				+ "<p>联系当地外汇局。</p><br><br>" 
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;特此告知。</p><br><br>"
+				+ "<p style='padding-left:450px'>告知日期："+currentDate+"</p>";
+			noticeBookContent.innerHTML = noticeBookHtml;
+		}else if(top.pool.get("isCheck") == "Y" && top.pool.get("isNotice")=="N"){
+			//待说明个人且未签署告知书
+			top.pool.set("strCuststat","04");
+			noticeBookHtml = "<p align='center'>个人外汇业务风险告知书</p><br>"
+				+ "<p>"+top.pool.get("customerName")+"&nbsp;&nbsp;&nbsp;&nbsp;"+top.pool.get("strIDCardNum")+"&nbsp;:</p><br>"
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;根据《国家外汇管理局关于进一步完善个人结售汇业务管理的通知》（汇发【2009】56号）等相关规定，</p>"
+				+ "<p>你办理的个人外汇业务，涉嫌出借本人额度协助他人规避额度及真实性管理，若再次出现上述行为，将被</p>"
+				+ "<p>外汇局列入“关注名单”管理。</p><br><br>"
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;特此告知。</p><br><br>"
+				+ "<p style='padding-left:450px'>告知日期："+currentDate+"</p>";
+			noticeBookContent.innerHTML = noticeBookHtml;
+		}else if(top.pool.get("status") == "02" && top.pool.get("signPayFlag")=="0"){
+			//预关注名单且未签署告知书 
+			top.pool.set("strCuststat","02");
+			noticeBookHtml = "<p align='center'>国家外汇管理局风险提示函</p><br>"
+				+ "<p>"+top.pool.get("customerName")+"&nbsp;&nbsp;&nbsp;&nbsp;"+top.pool.get("strIDCardNum")+"&nbsp;:</p><br>"
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;根据个人外汇管理相关规定，您办理的个人外汇业务，涉嫌出借本人额度协助他人规避额度及真实性管</p>"
+				+ "<p>理，若再次出现上述行为，将被外汇局列为“关注名单”管理。</p><br><br>"
+				+ "<p>&nbsp;&nbsp;&nbsp;&nbsp;特此提示。</p>";
+			noticeBookContent.innerHTML = noticeBookHtml;
+		}
+		
+		onKey_F99 = function() {
+			top.wins.showNewProcessingTip("正在签署确认书，请稍候...");
+			top.trans.send906104Async();
+		}
+		onTimeout = function()
+		{
+			top.serviceCtrl.navigate2Quit();
+		}
+		top.serviceCtrl.changeNaviStatus('2');
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oReadNoticeBookTip);
+		tenSecs=10;
+		document.getElementById("readButton").disabled = true;
+		timeoutBtn = top.MainFrame.setInterval(updateTenTime,1000);
+		updateTenTime();
+		top.wins.showMain("oLReadNoticeBookTip");
+	}
+
+	//签署确认书成功回调返回
+	function onConfirmBookSuccess(){
+		top.serviceCtrl.stopUserTimeout();
+		if(top.pool.get("status")=="02"){//判断主体交易状态  01-正常  02-重点关注对象  03-关注名单
+			//预关注名单
+			TakePic();
+		}
+		if(top.pool.get("status")=="03"|| top.pool.get("isCheck")=="Y"){
+			onServiceFailed(top.langcur.oFxPurchaseFailed, top.exchxmlasync.strTermRetCode, "请持本人身份证件和真实性证明材料去柜面办理。");
+		}
+	}
+	
+	//拍照
+	function TakePic()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		onTimeout = function()
+		{
+			top.cameras.display("Person","Destroy");//关闭摄像头
+			top.serviceCtrl.navigate2Quit();
+		}
+		top.serviceCtrl.changeNaviStatus('3');
+		window.operateCtrl.enableInput();
+		window.frames["ifreamPhoto"].CamerasLoad();//加载子页面摄像头相关方法
+		top.wins.showMain("oLTakePicTip");
+	}
+
+	function PhotoPrevStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2SecondMenu();//拍照返回后步骤
+		window.operateCtrl.enableInput();
+	}
+
+	function PhotoNextStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+
+	//阅读协议
+	function watchBook() {
+		document.getElementById("nextButton").disabled = true;
+
+		changeCheckBoxFlag = false;
+		checkbox.className = "uncheckBox";
+		oLSelect.style.visibility = "hidden";
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+
+		timeoutBtn = top.MainFrame.setInterval(updateTime,1000);
+		var obj = document.getElementById("bookContent"); //获取阅读协议div的对象
+		var pgindex = 1; //初始化当前页
+		var allpages = Math.ceil(parseInt(obj.scrollHeight) / parseInt(obj.offsetHeight));//获取页面数量
+		obj.scrollTop = 0; //初始化显示第一页
+		if (allpages > 1) {
+			document.getElementById("nextPage").style.visibility = "visible";//初始化显示下一页按钮
+		}
+		//根据value值判断是上一页还是下一页
+		gotopage = function(value) {
+			try {
+				value == "-1" ? showPage(--pgindex) : showPage(++pgindex);
+			} catch (e) {
+			}
+		}
+
+		//跳转到指定页
+		showPage = function(pageINdex) {
+			if (pageINdex == 1){
+				document.getElementById("prevPage").style.visibility = "hidden";
+			    document.getElementById("nextPage").style.visibility = "visible";
+			}
+			if (pageINdex == allpages){
+				readFlag1=true;
+			    document.getElementById("prevPage").style.visibility = "visible";
+				document.getElementById("nextPage").style.visibility = "hidden";
+				if(readFlag==true){					
+				document.getElementById("nextButton").disabled = false;
+				}
+			}
+			if (pageINdex > 1 && pageINdex < allpages) {
+				document.getElementById("prevPage").style.visibility = "visible";
+				document.getElementById("nextPage").style.visibility = "visible";
+			}
+			obj.scrollTop = (pageINdex - 1) * parseInt(obj.offsetHeight);//根据高度，输出指定的页
+			pgindex = pageINdex;
+		}
+
+		onKey_F99 = function() {
+			top.serviceCtrl.stopUserTimeout();
+			document.getElementById("nextPage").style.visibility = "hidden";
+			document.getElementById("prevPage").style.visibility = "hidden";
+			//发起查询余额交易
+			top.pool.set("inqFlag", "FX");
+			top.pool.set("strCurrency", "CNY");
+			top.wins.showNewProcessingTip("");
+			top.trans.send902107Async();
+		}
+		onTimeout = function()
+		{
+			top.serviceCtrl.navigate2Quit();
+		}
+		top.serviceCtrl.changeNaviStatus('4');
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oWatBookTick);
+		// 播放提示音
+		try {top.soundPlayer.playback("/Sound/WatchBook.mp3");} catch (e) {}
+		top.wins.showMain("oLWatchBookTip");
+	}
+	
+	//关闭当前页面的计数器
+	function stopCurPageTick()
+	{
+	   if (timeoutBtn != null)
+	   {
+	      top.MainFrame.clearInterval(timeoutBtn);
+	      timeoutBtn = null;
+	   }
+	}
+	
+	//30秒倒计时方法
+function updateTime() { 
+	if(parseInt(secs) == 0) {
+		stopCurPageTick();
+		readFlag=true;		 
+		document.getElementById("nextButton").innerHTML = top.langcur.oNextPage;
+		if(readFlag1==true){
+			document.getElementById("nextButton").disabled = false;
+		}
+	} 
+	else { 
+            var printnr = parseInt(secs);
+ 		    document.getElementById("nextButton").innerHTML = top.langcur.oNextPage + "(" + printnr +")";
+ 		    secs--;
+	}
+	
+}
+
+	//查询余额成功
+	function onInqBalanceSuccess() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		
+		top.pool.set("strUsageDetail1","");
+		top.pool.set("strUsageDetail2","");
+		top.pool.set("strUsageDetail3","");
+		top.pool.set("strUsageDetail4","");
+		var date = new Date(); // new 一个Date对象
+		var curYear = date.getFullYear(); // 当前年份
+		var yearSel =document.getElementById("year");
+		yearSel.innerHTML="";
+		yearSel.options.add(new Option("--请选择--",""));
+		var flag=0;
+		while(flag<10){
+			var new_opt = new Option(curYear, curYear);      
+			yearSel.options.add(new_opt);
+			curYear=curYear+1;
+			flag=flag+1;
+		}
+		
+		document.getElementById("amountUse").value = "999";
+		document.getElementById("detailMsg").innerHTML = "";
+		document.getElementById("error_TXTUse").innerHTML = "";
+		
+		if(returnFlag==true){
+			yearSel.options[selYear].selected = true;
+			document.getElementById("month").options[selMonth].selected =true;
+			document.getElementById("amountUse").options[selUser].selected =true;
+			//amountUse(); 		
+			var detailHtml = "";
+			
+			if(document.getElementById("amountUse").value == "3222"){
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml +=  "<tr><td width='400px' align='right' class='Tip_Content'><span id='oPredictStayTime'></span>：&nbsp;&nbsp;</td>"
+				+ "<td width='730px' align='left'><input class='input_short2' id='input_date1'style='vertical-align:middle' maxlength='3' onclick='javascript:ShowKeyboard();' onkeypress='javascript:restartTime();'/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+				+ "<select id='select_date1' style='vertical-align:middle' class='input_short2'><option value='1'>日</option><option value='2'>月</option><option value='3'>年</option></select></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oDestCountry'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><select id='select_country1' class='input_long12'>" + strCountry + "</select></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oTravelType'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left' class='Tip_Content'><label for='type1'><input id='type1' name='travel' type='radio' checked='checked' style='zoom:120%;' onclick ='javascript:radioChange();'/><span id='oFollowType'></span></label>"
+				+ "<label for='type2'><input id='type2' name='travel' type='radio' style='zoom:120%;' onclick ='javascript:radioChange();'/><span id='oFreeType'></span></label></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oPredictStayTime.innerHTML = top.langcur.oPredictStayTime;
+				oDestCountry.innerHTML = top.langcur.oDestCountry;
+				oTravelType.innerHTML = top.langcur.oTravelType;
+				oFollowType.innerHTML = top.langcur.oFollowType;
+				oFreeType.innerHTML = top.langcur.oFreeType;
+				document.getElementById("input_date1").value = input_date1;
+				document.getElementById("select_country1").options[selectIndex].selected =true;
+				document.getElementById("select_date1").options[select_date1].selected =true;
+				if(radio=="type2"){
+					document.getElementById("type1").checked =false;
+					document.getElementById("type2").checked =true;
+				}
+								
+			}else if(document.getElementById("amountUse").value == "3221") {
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oSchoolName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_school' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkSchool()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oSchoolCountry'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><select id='select_country2' class='input_long12'>" + strCountry + "</select></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oYearStudyAmt'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_schoolAmt' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oYearLifeAmt'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_lifeAmt' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oSchoolName.innerHTML = top.langcur.oSchoolName;
+				oSchoolCountry.innerHTML = top.langcur.oSchoolCountry;
+				oYearStudyAmt.innerHTML = top.langcur.oYearStudyAmt;
+				oYearLifeAmt.innerHTML = top.langcur.oYearLifeAmt;
+				document.getElementById("input_school").value = input_school;
+				document.getElementById("select_country2").options[selectIndex].selected =true;
+				document.getElementById("input_schoolAmt").value = input_schoolAmt;
+				document.getElementById("input_lifeAmt").value = input_lifeAmt;
+				
+			}else if(document.getElementById("amountUse").value == "3223") {
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oPredictStayTime'></span>：&nbsp;&nbsp;</td>"
+				+ "<td width='730px' align='left'><input class='input_short2' id='input_date2' style='vertical-align:middle' maxlength='3' onclick='javascript:ShowKeyboard();'/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+				+ "<select id='select_date2' style='vertical-align:middle' class='input_short2'><option value='1'>日</option><option value='2'>月</option><option value='3'>年</option></select></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oDestCountry'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><select id='select_country3' class='input_long12'>" + strCountry + "</select></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oPredictStayTime.innerHTML = top.langcur.oPredictStayTime;
+				oDestCountry.innerHTML = top.langcur.oDestCountry;
+				document.getElementById("input_date2").value = input_date2;
+				document.getElementById("select_country3").options[selectIndex].selected =true;
+				document.getElementById("select_date2").options[select_date2].selected =true;
+				
+			}else if(document.getElementById("amountUse").value == "471") {
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oPredictStayTime'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_short2' id='input_date3' style='vertical-align:middle' maxlength='3' onclick='javascript:ShowKeyboard();'/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+				+ "<select id='select_date3' style='vertical-align:middle' class='input_short2'><option value='1'>日</option><option value='2'>月</option><option value='3'>年</option></select></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oDestCountry'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><select id='select_country4' class='input_long12'>" + strCountry + "</select></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oRelativesName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_relativesName' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkUse()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oRelativesRelate'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_relativesRelation' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkRelation()'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oPredictStayTime.innerHTML = top.langcur.oPredictStayTime;
+				oDestCountry.innerHTML = top.langcur.oDestCountry;
+				oRelativesName.innerHTML = top.langcur.oRelativesName;
+				oRelativesRelate.innerHTML = top.langcur.oRelativesRelate;
+				document.getElementById("input_date3").value = input_date3;
+				document.getElementById("select_country4").options[selectIndex].selected =true;
+				document.getElementById("input_relativesName").value = input_relativesName;
+				document.getElementById("input_relativesRelation").value = input_relativesRelation;
+				document.getElementById("select_date3").options[select_date3].selected =true;
+				
+			}else if(document.getElementById("amountUse").value == "3225") {
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oPredictStayTime'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_short2' id='input_date4' style='vertical-align:middle' maxlength='3' onclick='javascript:ShowKeyboard();'/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+				+ "<select id='select_date4' style='vertical-align:middle' class='input_short2'><option value='1'>日</option><option value='2'>月</option><option value='3'>年</option></select></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oDestCountry'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><select id='select_country5' class='input_long12'>" + strCountry + "</select></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oHospitalName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_hospital' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkHospital()'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oPredictStayTime.innerHTML = top.langcur.oPredictStayTime;
+				oDestCountry.innerHTML = top.langcur.oDestCountry;
+				oHospitalName.innerHTML = top.langcur.oHospitalName;
+				document.getElementById("input_date4").value = input_date4;
+				document.getElementById("select_country5").options[selectIndex].selected =true;
+				document.getElementById("input_hospital").value = input_hospital;
+				document.getElementById("select_date4").options[select_date4].selected =true;
+				
+			}else if(document.getElementById("amountUse").value == "310") {
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oTransOppoName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_transName' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOppoCountry'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><select id='select_country6' class='input_long12'>" + strCountry + "</select></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oTransOppoName.innerHTML = top.langcur.oTransOppoName;
+				oOppoCountry.innerHTML = top.langcur.oOppoCountry;
+				document.getElementById("input_transName").value = input_transName;
+				document.getElementById("select_country6").options[selectIndex].selected =true;
+				
+			}else if(document.getElementById("amountUse").value == "323") {
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oSafetyName'></span>：&nbsp;&nbsp;</td>"
+					+ "<td align='left'><input class='input_long5' id='input_safeName' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOppoCountry'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><select id='select_country7' class='input_long12'>" + strCountry + "</select></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oSafetyName.innerHTML = top.langcur.oSafetyName;
+				oOppoCountry.innerHTML = top.langcur.oOppoCountry;
+				document.getElementById("input_safeName").value = input_safeName;
+				document.getElementById("select_country7").options[selectIndex].selected =true;
+				
+			}else if(document.getElementById("amountUse").value == "325") {
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oAdvisoryName'></span>：&nbsp;&nbsp;</td>"
+					+ "<td align='left'><input class='input_long5' id='input_referName' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkReferName()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOppoCountry'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><select id='select_country8' class='input_long12'>" + strCountry + "</select></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oAdvisoryName.innerHTML = top.langcur.oAdvisoryName;
+				oOppoCountry.innerHTML = top.langcur.oOppoCountry;
+				document.getElementById("input_referName").value = input_referName;
+				document.getElementById("select_country8").options[selectIndex].selected =true;
+				
+			}else if(document.getElementById("amountUse").value == "331") {		
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkName()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkProject()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkAntcur()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkDetail()'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oOtherName.innerHTML = "交易对方名称";
+				oOtherProject.innerHTML = "具体购汇项目";
+				oOtheramtcur.innerHTML = "交易所需金额/币种";
+				oOtherDetail.innerHTML = "详细说明";
+				document.getElementById("input_name").value = input_name;
+				document.getElementById("input_project").value = input_project;
+				document.getElementById("input_antcur").value = input_antcur;
+				document.getElementById("input_detail").value = input_detail;
+			}else if(document.getElementById("amountUse").value == "332") {		
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oOtherName.innerHTML = "交易对方名称";
+				oOtherProject.innerHTML = "具体购汇项目";
+				oOtheramtcur.innerHTML = "交易所需金额/币种";
+				oOtherDetail.innerHTML = "详细说明";
+				document.getElementById("input_name").value = input_name;
+				document.getElementById("input_project").value = input_project;
+				document.getElementById("input_antcur").value = input_antcur;
+				document.getElementById("input_detail").value = input_detail;
+				
+			}else if(document.getElementById("amountUse").value == "333") {		
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oOtherName.innerHTML = "交易对方名称";
+				oOtherProject.innerHTML = "具体购汇项目";
+				oOtheramtcur.innerHTML = "交易所需金额/币种";
+				oOtherDetail.innerHTML = "详细说明";
+				document.getElementById("input_name").value = input_name;
+				document.getElementById("input_project").value = input_project;
+				document.getElementById("input_antcur").value = input_antcur;
+				document.getElementById("input_detail").value = input_detail;
+				
+			}else if(document.getElementById("amountUse").value == "321") {		
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oOtherName.innerHTML = "交易对方名称";
+				oOtherProject.innerHTML = "具体购汇项目";
+				oOtheramtcur.innerHTML = "交易所需金额/币种";
+				oOtherDetail.innerHTML = "详细说明";
+				document.getElementById("input_name").value = input_name;
+				document.getElementById("input_project").value = input_project;
+				document.getElementById("input_antcur").value = input_antcur;
+				document.getElementById("input_detail").value = input_detail;
+				
+			}else if(document.getElementById("amountUse").value == "324") {		
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oOtherName.innerHTML = "交易对方名称";
+				oOtherProject.innerHTML = "具体购汇项目";
+				oOtheramtcur.innerHTML = "交易所需金额/币种";
+				oOtherDetail.innerHTML = "详细说明";
+				document.getElementById("input_name").value = input_name;
+				document.getElementById("input_project").value = input_project;
+				document.getElementById("input_antcur").value = input_antcur;
+				document.getElementById("input_detail").value = input_detail;
+				
+			}else if(document.getElementById("amountUse").value == "326") {		
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oOtherName.innerHTML = "交易对方名称";
+				oOtherProject.innerHTML = "具体购汇项目";
+				oOtheramtcur.innerHTML = "交易所需金额/币种";
+				oOtherDetail.innerHTML = "详细说明";
+				document.getElementById("input_name").value = input_name;
+				document.getElementById("input_project").value = input_project;
+				document.getElementById("input_antcur").value = input_antcur;
+				document.getElementById("input_detail").value = input_detail;
+				
+			}else if(document.getElementById("amountUse").value == "431") {		
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oOtherName.innerHTML = "交易对方名称";
+				oOtherProject.innerHTML = "具体购汇项目";
+				oOtheramtcur.innerHTML = "交易所需金额/币种";
+				oOtherDetail.innerHTML = "详细说明";
+				document.getElementById("input_name").value = input_name;
+				document.getElementById("input_project").value = input_project;
+				document.getElementById("input_antcur").value = input_antcur;
+				document.getElementById("input_detail").value = input_detail;
+				
+			}else if(document.getElementById("amountUse").value == "470") {	
+				detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkName()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkProject()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkAntcur()'/></td></tr>";
+				detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkDetail()'/></td></tr>";
+				detailHtml += "</table>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+				oOtherName.innerHTML = "交易对方名称";
+				oOtherProject.innerHTML = "具体购汇项目";
+				oOtheramtcur.innerHTML = "交易所需金额/币种";
+				oOtherDetail.innerHTML = "详细说明";
+				document.getElementById("input_name").value = input_name;
+				document.getElementById("input_project").value = input_project;
+				document.getElementById("input_antcur").value = input_antcur;
+				document.getElementById("input_detail").value = input_detail;
+			}else {
+				detailHtml += "</br>";
+				document.getElementById("detailMsg").innerHTML = detailHtml;
+			}
+			document.getElementById("error_TXTUse").innerHTML = "";
+				
+        }
+		
+		onKey_F99 = onKey_Enter = function() {
+			if(document.getElementById("year").value == "" || document.getElementById("month").value == "") {
+				document.getElementById("error_TXTUse").innerHTML = "请填写预计用汇时间";
+				return;
+			}
+	
+			if(document.getElementById("year").value == curYear1 && document.getElementById("month").value <curMonth){
+				document.getElementById("error_TXTUse").innerHTML = "填写的预计用汇时间已过";
+				return;
+			}
+			if(document.getElementById("amountUse").value == "999") {
+				document.getElementById("error_TXTUse").innerHTML = top.langcur.oPlsChooseAmtUse;
+				return;
+			}
+			if(document.getElementById("amountUse").value == "") {
+				document.getElementById("detailMsg").innerHTML = "";
+				return;
+			}
+			selYear=document.getElementById("year").options.selectedIndex;
+			selMonth=document.getElementById("month").options.selectedIndex;
+			selUser=document.getElementById("amountUse").options.selectedIndex;
+			if(document.getElementById("amountUse").value == "3222"){
+				var sel=document.getElementById("select_country1");
+				if(document.getElementById("input_date1").value == ""){
+					document.getElementById("error_TXTUse").innerHTML = "请填写预计境外停留期限";
+					return;	
+				}else if(!new top.StringCtrl(document.getElementById("input_date1").value).isAllDigit()){
+					document.getElementById("input_date1").value="";
+					document.getElementById("error_TXTUse").innerHTML = "停留期限只能输入正整数。";
+					return;	
+				}else if((document.getElementById("input_date1").value).indexOf("0")==0){
+					document.getElementById("input_date1").value="";
+					document.getElementById("error_TXTUse").innerHTML = "第一位不能输入0。";
+					return;	
+				}
+				if(sel.options[sel.options.selectedIndex].text == "--请选择--"){
+					document.getElementById("error_TXTUse").innerHTML = "请选择目的地国家/地区";
+					return;	
+				}
+				
+				code="3222";
+				selectIndex=sel.options.selectedIndex;
+				selectIndex_text=sel.options[sel.options.selectedIndex].text;
+				input_date1=document.getElementById("input_date1").value;
+				select_date1=document.getElementById("select_date1").options.selectedIndex;
+				//预计境外停留期限
+				top.pool.set("stayDate1",document.getElementById("select_date1").options[select_date1].text);
+				if(document.getElementById("type2").checked==true){
+					radio="type2";
+					top.pool.set("strUsageDetail1",document.getElementById("input_date1").value+document.getElementById("select_date1").options[select_date1].text);
+					top.pool.set("strUsageDetail2",sel.options[sel.options.selectedIndex].text);
+					top.pool.set("strUsageDetail3","自由行");
+				}else{
+					top.pool.set("strUsageDetail1",document.getElementById("input_date1").value+document.getElementById("select_date1").options[select_date1].text);
+					top.pool.set("strUsageDetail2",sel.options[sel.options.selectedIndex].text);
+					top.pool.set("strUsageDetail3","跟团");
+				}
+			}else if(document.getElementById("amountUse").value == "3221"){
+				var sel=document.getElementById("select_country2");
+				if(new top.StringCtrl(document.getElementById("input_school").value).isAllDigit()){
+					error_TXTUse.innerHTML = "您的输入是纯数字，请输入正确的学校名称";  
+					return;
+				}
+				if(document.getElementById("input_school").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写学校名称";
+					return;	
+				}if(sel.options[sel.options.selectedIndex].text == "--请选择--"){
+					document.getElementById("error_TXTUse").innerHTML = "请选择留学国家/地区";
+					return;	
+				}if(document.getElementById("input_schoolAmt").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写年学费币种/金额";
+					return;	
+				}if(document.getElementById("input_lifeAmt").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写年生活费币种/金额";
+					return;	
+				}
+				code="3221";
+				selectIndex=sel.options.selectedIndex;
+				selectIndex_text=sel.options[sel.options.selectedIndex].text;
+				input_school=document.getElementById("input_school").value;
+				input_schoolAmt=document.getElementById("input_schoolAmt").value;
+				input_lifeAmt=document.getElementById("input_lifeAmt").value;
+				top.pool.set("strUsageDetail1",document.getElementById("input_school").value);
+				top.pool.set("strUsageDetail2",sel.options[sel.options.selectedIndex].text);
+				top.pool.set("strUsageDetail3",document.getElementById("input_schoolAmt").value);
+				top.pool.set("strUsageDetail4",document.getElementById("input_lifeAmt").value);
+			}else if(document.getElementById("amountUse").value == "3223"){
+				var sel=document.getElementById("select_country3");
+				if(document.getElementById("input_date2").value == ""){
+					document.getElementById("error_TXTUse").innerHTML = "请填写预计境外停留期限";
+					return;	
+				}else if(!new top.StringCtrl(document.getElementById("input_date2").value).isAllDigit()){
+					document.getElementById("input_date2").value="";
+					document.getElementById("error_TXTUse").innerHTML = "停留期限只能输入正整数。";
+					return;	
+				}else if((document.getElementById("input_date2").value).indexOf("0")==0){
+					document.getElementById("input_date2").value="";
+					document.getElementById("error_TXTUse").innerHTML = "第一位不能输入0。";
+					return;	
+				}
+				if(sel.options[sel.options.selectedIndex].text == "--请选择--"){
+					document.getElementById("error_TXTUse").innerHTML = "请选择目的地国家/地区";
+					return;	
+				}
+				code="3223";
+				selectIndex=sel.options.selectedIndex;
+				selectIndex_text=sel.options[sel.options.selectedIndex].text;
+				input_date2=document.getElementById("input_date2").value;
+				select_date2=document.getElementById("select_date2").options.selectedIndex;
+				//预计境外停留期限
+				top.pool.set("stayDate2",document.getElementById("select_date2").options[select_date2].text);
+				top.pool.set("strUsageDetail1",document.getElementById("input_date2").value+document.getElementById("select_date2").options[select_date2].text);
+				top.pool.set("strUsageDetail2",sel.options[sel.options.selectedIndex].text);
+			}else if(document.getElementById("amountUse").value == "471"){
+				var sel=document.getElementById("select_country4");
+				if(document.getElementById("input_date3").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写预计境外停留期限";
+					return;	
+				}else if(!new top.StringCtrl(document.getElementById("input_date3").value).isAllDigit()){
+					document.getElementById("input_date3").value="";
+					document.getElementById("error_TXTUse").innerHTML = "停留期限只能输入正整数。";
+					return;	
+				}else if((document.getElementById("input_date3").value).indexOf("0")==0){
+					document.getElementById("input_date3").value="";
+					document.getElementById("error_TXTUse").innerHTML = "第一位不能输入0。";
+					return;	
+				}
+				if(sel.options[sel.options.selectedIndex].text == "--请选择--" ){
+					document.getElementById("error_TXTUse").innerHTML = "请选择目的地国家/地区";
+					return;	
+				}if(document.getElementById("input_relativesName").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写境外亲属姓名";
+					return;	
+				}if(document.getElementById("input_relativesRelation").value == ""){
+					document.getElementById("error_TXTUse").innerHTML = "请填写与境外亲属关系";
+					return;	
+				}
+				code="471";
+				selectIndex=sel.options.selectedIndex;
+				selectIndex_text=sel.options[sel.options.selectedIndex].text;
+				input_date3=document.getElementById("input_date3").value;
+				input_relativesName=document.getElementById("input_relativesName").value;
+				input_relativesRelation=document.getElementById("input_relativesRelation").value;
+				select_date3=document.getElementById("select_date3").options.selectedIndex;
+				//预计境外停留期限
+				top.pool.set("stayDate3",document.getElementById("select_date3").options[select_date3].text);
+				top.pool.set("strUsageDetail1",document.getElementById("input_date3").value+document.getElementById("select_date3").options[select_date3].text);
+				top.pool.set("strUsageDetail2",sel.options[sel.options.selectedIndex].text);
+				top.pool.set("strUsageDetail3",document.getElementById("input_relativesName").value);
+				top.pool.set("strUsageDetail4",document.getElementById("input_relativesRelation").value);
+			}else if(document.getElementById("amountUse").value == "3225"){
+				var sel=document.getElementById("select_country5");
+				if(document.getElementById("input_date4").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写预计境外停留期限";
+					return;	
+				}else if(!new top.StringCtrl(document.getElementById("input_date4").value).isAllDigit()){
+					document.getElementById("input_date4").value="";
+					document.getElementById("error_TXTUse").innerHTML = "停留期限只能输入正整数。";
+					return;	
+				}else if((document.getElementById("input_date4").value).indexOf("0")==0){
+					document.getElementById("input_date4").value="";
+					document.getElementById("error_TXTUse").innerHTML = "第一位不能输入0。";
+					return;	
+				}
+				if(sel.options[sel.options.selectedIndex].text == "--请选择--" ){
+					document.getElementById("error_TXTUse").innerHTML = "请选择目的地国家/地区";
+					return;	
+				}if(document.getElementById("input_hospital").value == ""){
+					document.getElementById("error_TXTUse").innerHTML = "请填写境外医院名称";
+					return;	
+				}
+				code="3225";
+				selectIndex=sel.options.selectedIndex;
+				selectIndex_text=sel.options[sel.options.selectedIndex].text;
+				input_date4=document.getElementById("input_date4").value;
+				input_hospital=document.getElementById("input_hospital").value;
+				select_date4=document.getElementById("select_date4").options.selectedIndex;
+				//预计境外停留期限
+				top.pool.set("stayDate4",document.getElementById("select_date4").options[select_date4].text);
+				top.pool.set("strUsageDetail1",document.getElementById("input_date4").value+document.getElementById("select_date4").options[select_date4].text);
+				top.pool.set("strUsageDetail2",sel.options[sel.options.selectedIndex].text);
+				top.pool.set("strUsageDetail3",document.getElementById("input_hospital").value);
+			}else if(document.getElementById("amountUse").value == "310"){
+				var sel=document.getElementById("select_country6");
+				if(document.getElementById("input_transName").value == ""){
+					document.getElementById("error_TXTUse").innerHTML = "请填写交易对方名称";
+					return;	
+				}if(sel.options[sel.options.selectedIndex].text == "--请选择--" ){
+					document.getElementById("error_TXTUse").innerHTML = "请选择对方国家/地区";
+					return;	
+				}
+				code="310";
+				selectIndex=sel.options.selectedIndex;
+				selectIndex_text=sel.options[sel.options.selectedIndex].text;
+				input_transName=document.getElementById("input_transName").value;
+			}else if(document.getElementById("amountUse").value == "323"){
+				var sel=document.getElementById("select_country7");
+				if(document.getElementById("input_safeName").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写保险机构名称";
+					return;	
+				}if(sel.options[sel.options.selectedIndex].text == "--请选择--"){
+					document.getElementById("error_TXTUse").innerHTML = "请选择对方国家/地区";
+					return;	
+				}
+				code="323";
+				selectIndex=sel.options.selectedIndex;
+				selectIndex_text=sel.options[sel.options.selectedIndex].text;
+				input_safeName=document.getElementById("input_safeName").value;
+				top.pool.set("strUsageDetail1",document.getElementById("input_safeName").value);
+				top.pool.set("strUsageDetail2",sel.options[sel.options.selectedIndex].text);
+			}
+			else if(document.getElementById("amountUse").value == "325"){
+				var sel=document.getElementById("select_country8");
+				if(document.getElementById("input_referName").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写提供咨询方名称";
+					return;	
+				}if(sel.options[sel.options.selectedIndex].text == "--请选择--"){
+					document.getElementById("error_TXTUse").innerHTML = "请选择对方国家/地区";
+					return;	
+				}
+				code="325";
+				selectIndex=sel.options.selectedIndex;
+				selectIndex_text=sel.options[sel.options.selectedIndex].text;
+				input_referName=document.getElementById("input_referName").value;
+				top.pool.set("strUsageDetail1",document.getElementById("input_referName").value);
+				top.pool.set("strUsageDetail2",sel.options[sel.options.selectedIndex].text);
+			}
+			else{
+				if(document.getElementById("input_name").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写交易对方名称";
+					return;	
+				}if(document.getElementById("input_project").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写具体购汇项目";
+					return;	
+				}if(document.getElementById("input_antcur").value == "" ){
+					document.getElementById("error_TXTUse").innerHTML = "请填写交易所需金额/币种";
+					return;	
+				}if(document.getElementById("input_detail").value == ""){
+					document.getElementById("error_TXTUse").innerHTML = "请填写详细说明";
+					return;	
+				}
+				code="0";
+				input_name=document.getElementById("input_name").value;
+				input_project=document.getElementById("input_project").value;
+				input_antcur=document.getElementById("input_antcur").value;
+				input_detail=document.getElementById("input_detail").value;
+				top.pool.set("strUsageDetail1",document.getElementById("input_name").value);
+				top.pool.set("strUsageDetail2",document.getElementById("input_project").value);
+				top.pool.set("strUsageDetail3",document.getElementById("input_antcur").value);
+				top.pool.set("strUsageDetail4",document.getElementById("input_detail").value);
+			}
+			top.pool.set("strUseDate",document.getElementById("year").value+document.getElementById("month").value);
+			top.pool.set("strUsage", document.getElementById("amountUse").value);
+			top.pool.set("strUsage_text", document.getElementById("amountUse").options[document.getElementById("amountUse").options.selectedIndex].text);
+			top.inputmethod.Close();
+			FxStatusFlag = false; 
+			inqFxRate();
+		}
+		onKey_F98 = function() {
+			top.inputmethod.Close();
+			FxStatusFlag = false; 
+			watchBook();
+		}
+		onTimeout = function() {
+			top.inputmethod.Close();
+			top.serviceCtrl.navigate2Quit();
+		}
+		FxStatusFlag = true; 
+		top.serviceCtrl.changeNaviStatus('5');
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oAccMsgTick);
+		top.wins.showMain("oLAccMsgTip");
+	}
+	//对输入的天数值进行验证
+	function dayTest(dayNum){
+		if(dayNum>0 &&(dayNum+"").indexOf(".") == -1){
+			return true;
+		}else{
+			return false;
+		}
+	}
+    var countus =0;
+    var money_amt=0;
+	//查询汇率信息
+	function inqFxRate() {
+		countus++;
+		msgCheckbox.className = "uncheckBox";
+		oLSelectAmt.style.visibility = "hidden";
+		top.inputmethod.Close();
+		top.serviceCtrl.stopUserTimeout();
+		var selectCurrency = document.getElementById("selectCurrency").value;
+		top.pool.set("Amount", "100");
+		top.pool.set("strCurrency", selectCurrency);
+		top.pool.set("strTateType", "02");
+		//发起汇率查询
+		top.wins.showNewProcessingTip("正在查询汇率，请稍候...");
+		top.trans.send906201Async();
+	}
+
+	//汇率查询成功
+	function inqFxRateSuccess() {
+		changeMsgCheckBoxFlag = false;
+		//msgCheckbox.className = "uncheckBox";
+		oLSelectAmt.style.visibility = "hidden";
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		var count = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+		count = parseInt(count, 10);
+		if(count == 0){
+			onServiceFailed(top.langcur.oFxPurchaseFailed, top.exchxmlasync.strTermRetCode, "无汇率信息");
+			return;
+		}
+		var remitBidRate = top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F59/item[1]/remitBidRate");
+		if(remitBidRate != null && remitBidRate !=""){
+			var remitBidRate1= parseFloat(remitBidRate)/100;
+		}else{
+			remitBidRate = 0.00;
+			var remitBidRate1= parseFloat(remitBidRate)/100;
+		}
+		
+		var s=remitBidRate1+"";
+		text_exRate.innerHTML = new top.StringCtrl(s.substring(0,s.indexOf(".")+5)).formatNumber(4);
+        if(countus==1){
+        	money_amt= remitBidRate1;
+        	top.pool.set("money_amt",money_amt);
+        }
+		document.getElementById("text_pan").innerHTML = top.pool.get("strPan");
+		document.getElementById("text_accBalance").innerHTML = top.pool.get("F54_KYYE") + " 元";
+		document.getElementById("text_outerUseBalance").innerHTML = "等值" + top.pool.get("usedBalance2") + "美元";
+		document.getElementById("text_outerReBalance").innerHTML = "等值" + top.pool.get("limitBalance2") + "美元";
+
+		onKey_F99 = function() {
+			if(countus==1){
+				if(parseFloat(input_amt.value)>parseFloat(top.pool.get("limitBalance2"))){
+					error_TXTSign.innerHTML = "购汇金额大于今年剩余额度!";
+					top.inputmethod.Close();
+					return;
+				}
+			}else{
+				if(parseFloat(input_amt.value*parseFloat(text_exRate.innerHTML)/top.pool.get("money_amt"))>parseFloat(top.pool.get("limitBalance2"))){
+					error_TXTSign.innerHTML = "购汇金额大于今年剩余额度!"; 
+					top.inputmethod.Close();
+					return;
+				}
+			}
+			if(parseFloat(text_estAmount.innerHTML)>parseFloat(top.pool.get("F54_KYYE"))){
+				error_TXTSign.innerHTML = "购汇金额大于账户余额！";
+				top.inputmethod.Close();
+				return;
+			}
+			if(!new top.StringCtrl(input_amt.value).isValidAmount() || input_amt.value <= 0) {
+				error_TXTSign.innerHTML = "请输入正确的购汇金额!";
+				top.inputmethod.Close();
+				return;
+			}
+			top.pool.set("Amount", input_amt.value);
+			top.inputmethod.Close();
+			FxAmountFlag = false;
+			userSign();
+		}
+
+		onKey_F98 = function() {
+			top.inputmethod.Close();
+			FxAmountFlag = false;
+			returnFlag=true;
+			onInqBalanceSuccess();				
+		}
+
+		input_amt.onkeypress = function()
+		{
+			error_TXTSign.innerHTML = "&nbsp;";
+		    top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTransMsgTick);
+		}
+
+		onTimeout = function()
+		{
+			top.inputmethod.Close();
+			error_TXTSign.innerHTML = "&nbsp;";
+		    top.serviceCtrl.navigate2Quit();
+		}
+		
+		FxAmountFlag = true;
+		top.serviceCtrl.changeNaviStatus('6');
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTransMsgTick);
+		top.wins.showMain("oLTransMsgTip");
+		input_amt.value = "";
+		text_estAmount.innerHTML = "";
+		input_amt.focus();
+	}
+
+	//用户签名
+	function userSign()
+	{    
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+		oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+		oSigFinger.style.visibility = "visible";
+		oESign.style.visibility = "visible";
+		text_pid2.innerHTML = top.pool.get("strIDCardNum");
+		text_name2.innerHTML = top.pool.get("strIDName");
+		text_ethnic2.innerHTML = top.pool.get("strIDNation");
+		text_address2.innerHTML = top.pool.get("strIDAddress");
+		
+		text_strPan.innerHTML = top.pool.get("strPan");
+		text_strUsage.innerHTML = strUsageExchangeChina(document.getElementById("amountUse").value);
+		text_curr.innerHTML = sellCurrencychina1(top.pool.get("strCurrency"));
+		text_amount.innerHTML = new top.StringCtrl(parseFloat(top.pool.get("Amount"))).formatNumber(2);
+		text_chaohui.innerHTML = top.langcur.oPreHui;
+		
+		var foreignHtml ="<table>";
+		if(top.pool.get("strUsage")=="3222"){	
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;预计境外停留期限： "+input_date1+top.pool.get("stayDate1")+"</td>";
+			foreignHtml	+="<td nowrap>&nbsp;&nbsp;目的地国家/地区： "+selectIndex_text+"</td>";
+			if(radio=="type2"){
+				foreignHtml +="<td nowrap>&nbsp;&nbsp;旅行方式： 自由行</td></tr>";
+			}else{	
+				foreignHtml +="<td nowrap>&nbsp;&nbsp;旅行方式： 跟团</td></tr>";
+			}
+		}else if(top.pool.get("strUsage")=="3221"){
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;学校名称： "+input_school+"</td></tr>";
+			foreignHtml	+="<tr><td nowrap>&nbsp;&nbsp;留学国家/地区： "+selectIndex_text+"</td></tr>";
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;年学费币种/金额： "+input_schoolAmt+"</td></tr>";
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;年生活费币种/金额： "+input_lifeAmt+"</td></tr>";
+		}else if(top.pool.get("strUsage")=="3223"){
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;预计境外停留期限： "+input_date2+top.pool.get("stayDate2")+"</td>";
+			foreignHtml +="<td nowrap>&nbsp;&nbsp;目的地国家/地区： "+selectIndex_text+"</td></tr>";
+		}else if(top.pool.get("strUsage")=="471"){
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;预计境外停留期限： "+input_date3+top.pool.get("stayDate3")+"</td>";
+			foreignHtml	+="<td nowrap>&nbsp;&nbsp;目的地国家/地区： "+selectIndex_text+"</td></tr>";
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;境外亲属姓名： "+input_relativesName+"</td></tr>";
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;与境外亲属关系： "+input_relativesRelation+"</td></tr>";
+		}else if(top.pool.get("strUsage")=="3225"){
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;预计境外停留期限： "+input_date4+top.pool.get("stayDate4")+"</td>";
+			foreignHtml	+="<td nowrap>&nbsp;&nbsp;目的地国家/地区： "+selectIndex_text+"</td></tr>";
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;境外医院名称： "+input_hospital+"</td></tr>";
+		}else if(top.pool.get("strUsage")=="310"){
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;交易对方名称： "+input_transName+"</td>";
+			foreignHtml	+="<td nowrap>&nbsp;&nbsp;目的地国家/地区： "+selectIndex_text+"</td></tr>";
+		}else if(top.pool.get("strUsage")=="323"){
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;保险机构名称： "+input_safeName+"</td></tr>";
+			foreignHtml	+="<tr><td nowrap>&nbsp;&nbsp;对方国家/地区： "+selectIndex_text+"</td></tr>";
+		}else if(top.pool.get("strUsage")=="325"){
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;提供咨询方名称： "+input_referName+"</td></tr>";
+			foreignHtml	+="<tr><td nowrap>&nbsp;&nbsp;对方国家/地区： "+selectIndex_text+"</td></tr>";
+		}else if(top.pool.get("strUsage")=="331"||top.pool.get("strUsage")=="332"||top.pool.get("strUsage")=="333"||
+				top.pool.get("strUsage")=="321"||top.pool.get("strUsage")=="324"||top.pool.get("strUsage")=="326"||
+				top.pool.get("strUsage")=="431"||top.pool.get("strUsage")=="470"){
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;交易对方名称： "+input_name+"</td></tr>";
+			foreignHtml	+="<tr><td nowrap>&nbsp;&nbsp;具体购汇项目： "+input_project+"</td></tr>";
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;交易所需金额/币种： "+input_antcur+"</td></tr>";
+			foreignHtml +="<tr><td nowrap>&nbsp;&nbsp;详细说明： "+input_detail+"</td></tr>";
+		}
+		foreignHtml +="</table>";
+		foreignExchange.innerHTML=foreignHtml;
+		text_date.innerHTML = new top.DateTimeCtrl().getYYYYMMDD2();
+		text_time.innerHTML = new top.DateTimeCtrl().getHHmmSSWithSep();
+		text_term.innerHTML = top.terminal.strTerminalNum;
+		window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+		top.serviceCtrl.changeNaviStatus('7');
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(window.frames['ifreamSign'].onTimeout, top.iUserTimeout, oSigFingerTick);
+		Tip_UserSign.innerHTML = top.langcur.oUserSign;
+		top.wins.showMain("oLUserSignTip");
+	}
+
+	 //将结汇资金属性的数字转化为中文。
+	function strUsageExchangeChina(strUsage){
+		if(strUsage=="310"){
+			return "货物贸易";
+		}else if(strUsage=="321"){
+			return "运输";
+		}else if(strUsage=="3221"){
+			return "境外留学";
+			//return "自费出境学习";
+		}else if(strUsage=="3222"){
+			return "因私旅游";
+		}else if(strUsage=="3223"){
+			return "公务及商务出国";
+		}else if(strUsage=="3225"){
+			//return "旅游项下其他";
+			return "境外就医";
+		}else if(strUsage=="323"){
+			return "金融和保险服务";
+		}else if(strUsage=="325"){
+			return "咨询服务";
+		}else if(strUsage=="324"){
+			return "专有权利使用费和特许费";
+		}else if(strUsage=="326"){
+			return "其他服务";
+		}else if(strUsage=="331"){
+			return "职工报酬和赡家款";
+		}else if(strUsage=="332"){
+			return "投资收益";
+		}else if(strUsage=="333"){
+			return "其他经常转移";
+		}else if(strUsage=="410"){
+			return "资本账户";
+		}else if(strUsage=="470"){
+			return "资本项下其他（储蓄存款）";
+		}else if(strUsage=="424"){
+			return "其他直接投资";
+		}else if(strUsage=="431"){
+			return "对境外证券投资";
+		}else if(strUsage=="440"){
+			return "其他投资";
+		}else if(strUsage=="450"){
+			return "国内外汇贷款";
+		}else if(strUsage=="470"){
+			return "经批准的资本其他";
+		}else if(strUsage=="471"){
+			return "探亲";
+		}else{
+			return "";
+		}
+	}
+	function SignPrevStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";
+		oSigAgain.style.visibility = "hidden";
+		oSigFinger.style.visibility = "hidden";
+		oESign.style.visibility = "hidden";
+		returnFlag=true;
+		onInqBalanceSuccess();
+		//onInqFxBalanceSuccess();
+		window.operateCtrl.enableInput();
+	}
+
+	function SignNextStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+	//将币种的英文名称改为英文加中文显示。
+	function sellCurrencychina1(strCurrencymoney){
+		if(strCurrencymoney=="HKD"){
+			return strCurrencymoney+"-港元";
+		}else if(strCurrencymoney=="USD"){
+			return strCurrencymoney+"-美元";
+		}else if(strCurrencymoney=="AUD"){
+			return  strCurrencymoney+"-澳元";
+		}else if(strCurrencymoney=="SGD"){
+			return  strCurrencymoney+"-新加坡元"; 
+		}else if(strCurrencymoney=="GBP"){
+			return strCurrencymoney+"-英镑";
+		}else if(strCurrencymoney=="JPY"){
+			return strCurrencymoney+"-日元";
+		}else if(strCurrencymoney=="CAD"){
+			return strCurrencymoney+"-加拿大元"; 
+		}else if(strCurrencymoney=="EUR"){
+			return  strCurrencymoney+"-欧元";
+		}else{
+			return "";
+		}
+	}
+	//业务办理单上传成功
+	function onSuccessful()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		//身份证图片查询
+		top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+		top.pool.set("strImageType","IDType");
+		top.trans.sendImageFileQueryAsync();
+	}
+
+	//图片查询结果
+	function onImageFileQuerySuccessful()
+	{
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		if(indexImage == 0){
+			top.pool.set("idPhotoBackUrl",top.pool.get("back"));//反
+			top.pool.set("idPhotoUrl",top.pool.get("Front"));//正
+			//进行查询
+			indexImage ++;
+			top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+			top.pool.set("strImageType","ZNGYType");
+			top.trans.sendImageFileQueryAsync();
+		}else if(indexImage == 1){
+			isPadCheck = true;
+			top.pool.set("scenePhotoUrl",top.pool.get("cameras"));//现场
+	        var Msg = new top.JSONCtrl();
+			Msg.setJson("customerName", "账户名称：" + top.pool.get("strIDName"));
+			Msg.setJson("customerNum", "卡号：" + top.pool.get("strPan"));
+			Msg.setJson("sellCurrency", "购汇币种：" + sellCurrencychina1(top.pool.get("strCurrency")));
+			Msg.setJson("sellAmount", "购汇金额：" + new top.StringCtrl(parseFloat(top.pool.get("Amount"))).formatNumber(2));
+			Msg.setJson("strChaoHui", "钞汇标识：现汇"); 
+			Msg.setJson("strUse", "购汇用途："+top.pool.get("strUsage_text"));	
+			if(top.pool.get("strUsage")=="3222"){	
+				Msg.setJson("strUse1", "预计境外停留期限："+input_date1+top.pool.get("stayDate1"));
+				Msg.setJson("strUse2", "目的地国家/地区："+selectIndex_text);
+				if(radio=="type2"){
+					Msg.setJson("strUse3", "旅行方式：自由行");					
+				}else{	
+				    Msg.setJson("strUse3", "旅行方式：跟团");
+				}
+			}else if(top.pool.get("strUsage")=="3221"){
+				Msg.setJson("strUse1", "学校名称："+input_school);
+				Msg.setJson("strUse2", "留学国家/地区："+selectIndex_text);
+				Msg.setJson("strUse3", "年学费币种/金额："+input_schoolAmt);
+				Msg.setJson("strUse4", "年生活费币种/金额："+input_lifeAmt);				
+			}else if(top.pool.get("strUsage")=="3223"){
+				Msg.setJson("strUse1", "预计境外停留期限："+input_date2+top.pool.get("stayDate2"));
+				Msg.setJson("strUse2", "目的地国家/地区："+selectIndex_text);
+			}else if(top.pool.get("strUsage")=="471"){
+				Msg.setJson("strUse1", "预计境外停留期限："+input_date3+top.pool.get("stayDate3"));
+				Msg.setJson("strUse2", "目的地国家/地区："+selectIndex_text);
+				Msg.setJson("strUse3", "境外亲属姓名："+input_relativesName);
+				Msg.setJson("strUse4", "与境外亲属关系："+input_relativesRelation);
+			}else if(top.pool.get("strUsage")=="3225"){
+				Msg.setJson("strUse1", "预计境外停留期限："+ input_date4+top.pool.get("stayDate4")  );
+				Msg.setJson("strUse2", "目的地国家/地区："+selectIndex_text);
+				Msg.setJson("strUse3", "境外医院名称："+input_hospital  );
+			}else if(top.pool.get("strUsage")=="310"){
+				Msg.setJson("strUse1", "交易对方名称："+input_transName);
+				Msg.setJson("strUse2", "目的地国家/地区："+ selectIndex_text   );
+
+			}else if(top.pool.get("strUsage")=="323"){
+				Msg.setJson("strUse1", "保险机构名称："+input_safeName);
+				Msg.setJson("strUse2", "对方国家/地区："+ selectIndex_text  );
+
+			}else if(top.pool.get("strUsage")=="325"){
+				Msg.setJson("strUse1", "提供咨询方名称："+input_referName);
+				Msg.setJson("strUse2", "对方国家/地区："+ selectIndex_text );
+
+			}else if(top.pool.get("strUsage")=="331"||top.pool.get("strUsage")=="332"||top.pool.get("strUsage")=="333"||
+					top.pool.get("strUsage")=="321"||top.pool.get("strUsage")=="324"||top.pool.get("strUsage")=="326"||
+					top.pool.get("strUsage")=="431"||top.pool.get("strUsage")=="470"){
+				Msg.setJson("strUse1", "交易对方名称："+input_name);
+				Msg.setJson("strUse2", "具体购汇项目："+input_project);
+				Msg.setJson("strUse3", "交易所需金额/币种："+input_antcur);
+				Msg.setJson("strUse4", "详细说明："+input_detail);
+			}
+						
+			top.pool.set("strCheckContent", Msg.jsonStr);
+			top.pool.set("strbusinessCode", "906301");
+			top.pool.set("strbusinessName", "外汇购汇");
+			//进行审核
+			top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+			top.trans.send910301Async();
+		}
+	}
+
+	//审核超时处理
+	function onProcessingTimeout() {
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	function radioChange() {
+		top.inputmethod.Close();
+	}
+	
+	//审核成功
+	function onCheckLoadingSuccessful()
+	{
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		//发起购汇
+ 		top.wins.showNewProcessingTip("正在发起购汇交易，请稍候...");
+		top.trans.send906301Async();
+	}
+
+	// 显示成功信息
+	function onServiceSuccess() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+	    if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	    {
+			oPrintReceipt.style.visibility = "hidden";
+		}else
+		{
+			onKey_F99 = onKey_Enter = function() {
+				//打印凭条
+				top.pool.set("Amount", top.pool.get("Amount") * 100);
+				var downExchRate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/takeDownExchRate");
+				if( downExchRate !="" && downExchRate !=null){
+					downExchRate = parseFloat(downExchRate)/100;
+				}else{
+					downExchRate = 0.00;
+					downExchRate = parseFloat(downExchRate)/100;
+				}
+				downExchRate = downExchRate+"";
+				top.pool.set("takeDownExchRate",new top.StringCtrl(downExchRate.substring(0,downExchRate.indexOf(".")+5)).formatNumber(4));
+				top.pool.set("printType", "19");
+				top.serviceCtrl.navigate2PrintReceipt();
+			}
+		} 
+	    onKey_F98 = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		//交易成功后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		Tip_Title.innerHTML = top.langcur.oFxPurchaseSucc;
+		window.operateCtrl.enableInput();
+		top.wins.showMain("oLServiceSuccessTip");
+		top.serviceCtrl.changeNaviStatus('8');
+	}
+
+	function onServiceFailed(title, retcode, retdesc) {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onTimeout = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		oTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+
+		//交易失败后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+		top.wins.showMain("oLServiceFailedTip");
+	}
+    function restartTime(){
+    	error_TXTUse.innerHTML = "&nbsp;";
+    	//top.serviceCtrl.stopUserTimeout();
+    	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oAccMsgTick);
+    }
+	function amountUse() {
+		//检验select选中的option是否有value值
+		if(document.getElementById("amountUse").value == "") {
+			document.getElementById("detailMsg").innerHTML = "";
+			//document.getElementById("amountUse").options[0].selected = true;
+			top.inputmethod.Close();
+			error_TXTUse.innerHTML = "请持本人身份证件和真实性证明材料去柜面办理";
+			return;
+		}
+		document.getElementById("detailMsg").innerHTML = "";
+		var detailHtml = "";
+		if(document.getElementById("amountUse").value == "3222"){
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml +=  "<tr><td width='400px' align='right' class='Tip_Content'><span id='oPredictStayTime'></span>：&nbsp;&nbsp;</td>"
+			+ "<td width='730px' align='left'><input class='input_short2' id='input_date1' style='vertical-align:middle' maxlength='3' onclick='javascript:ShowKeyboard();' onkeypress='javascript:restartTime();'/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+			+ "<select id='select_date1' style='vertical-align:middle' class='input_short2'><option value='1'>日</option><option value='2'>月</option><option value='3'>年</option></select></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oDestCountry'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><select id='select_country1' class='input_long12'>" + strCountry + "</select></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oTravelType'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left' class='Tip_Content'><label for='type1'><input id='type1' name='travel' type='radio' checked='checked' style='zoom:120%;' onclick ='javascript:radioChange();'/><span id='oFollowType'></span></label>"
+			+ "<label for='type2'><input id='type2' name='travel' type='radio' style='zoom:120%;' onclick ='javascript:radioChange();'/><span id='oFreeType'></span></label></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oPredictStayTime.innerHTML = top.langcur.oPredictStayTime;
+			oDestCountry.innerHTML = top.langcur.oDestCountry;
+			oTravelType.innerHTML = top.langcur.oTravelType;
+			oFollowType.innerHTML = top.langcur.oFollowType;
+			oFreeType.innerHTML = top.langcur.oFreeType;
+		}else if(document.getElementById("amountUse").value == "3221") {
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oSchoolName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_school' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkSchool()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oSchoolCountry'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><select id='select_country2' class='input_long12'>" + strCountry + "</select></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oYearStudyAmt'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_schoolAmt' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oYearLifeAmt'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_lifeAmt' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oSchoolName.innerHTML = top.langcur.oSchoolName;
+			oSchoolCountry.innerHTML = top.langcur.oSchoolCountry;
+			oYearStudyAmt.innerHTML = top.langcur.oYearStudyAmt;
+			oYearLifeAmt.innerHTML = top.langcur.oYearLifeAmt;
+		}else if(document.getElementById("amountUse").value == "3223") {
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oPredictStayTime'></span>：&nbsp;&nbsp;</td>"
+			+ "<td width='730px' align='left'><input class='input_short2' id='input_date2' style='vertical-align:middle' maxlength='3' onclick='javascript:ShowKeyboard();'/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+			+ "<select id='select_date2' style='vertical-align:middle' class='input_short2'><option value='1'>日</option><option value='2'>月</option><option value='3'>年</option></select></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oDestCountry'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><select id='select_country3' class='input_long12'>" + strCountry + "</select></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oPredictStayTime.innerHTML = top.langcur.oPredictStayTime;
+			oDestCountry.innerHTML = top.langcur.oDestCountry;
+		}else if(document.getElementById("amountUse").value == "471") {
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oPredictStayTime'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_short2' id='input_date3' maxlength='3' style='vertical-align:middle' onclick='javascript:ShowKeyboard();'/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+			+ "<select id='select_date3' style='vertical-align:middle' class='input_short2'><option value='1'>日</option><option value='2'>月</option><option value='3'>年</option></select></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oDestCountry'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><select id='select_country4' class='input_long12'>" + strCountry + "</select></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oRelativesName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_relativesName' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkUse()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oRelativesRelate'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_relativesRelation' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkRelation()'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oPredictStayTime.innerHTML = top.langcur.oPredictStayTime;
+			oDestCountry.innerHTML = top.langcur.oDestCountry;
+			oRelativesName.innerHTML = top.langcur.oRelativesName;
+			oRelativesRelate.innerHTML = top.langcur.oRelativesRelate;
+		}else if(document.getElementById("amountUse").value == "3225") {
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oPredictStayTime'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_short2' id='input_date4' maxlength='3' style='vertical-align:middle' onclick='javascript:ShowKeyboard();'/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+			+ "<select id='select_date4' style='vertical-align:middle' class='input_short2'><option value='1'>日</option><option value='2'>月</option><option value='3'>年</option></select></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oDestCountry'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><select id='select_country5' class='input_long12'>" + strCountry + "</select></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oHospitalName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_hospital' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkHospital()'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oPredictStayTime.innerHTML = top.langcur.oPredictStayTime;
+			oDestCountry.innerHTML = top.langcur.oDestCountry;
+			oHospitalName.innerHTML = top.langcur.oHospitalName;
+		}else if(document.getElementById("amountUse").value == "310") {
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oTransOppoName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_transName' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOppoCountry'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><select id='select_country6' class='input_long12'>" + strCountry + "</select></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oTransOppoName.innerHTML = top.langcur.oTransOppoName;
+			oOppoCountry.innerHTML = top.langcur.oOppoCountry;
+		}else if(document.getElementById("amountUse").value == "323") {
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oSafetyName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long5' id='input_safeName' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOppoCountry'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><select id='select_country7' class='input_long12'>" + strCountry + "</select></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oSafetyName.innerHTML = top.langcur.oSafetyName;
+			oOppoCountry.innerHTML = top.langcur.oOppoCountry;
+		}else if(document.getElementById("amountUse").value == "325") {
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oAdvisoryName'></span>：&nbsp;&nbsp;</td>"
+				+ "<td align='left'><input class='input_long6' id='input_referName' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'  onkeyup='return input_checkReferName()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOppoCountry'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><select id='select_country8' class='input_long12'>" + strCountry + "</select></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oAdvisoryName.innerHTML = top.langcur.oAdvisoryName;
+			oOppoCountry.innerHTML = top.langcur.oOppoCountry;
+		}else if(document.getElementById("amountUse").value == "331") {		
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'  onkeyup='return input_checkName()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'  onkeyup='return input_checkProject()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'  onkeyup='return input_checkAntcur()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'  onkeyup='return input_checkDetail()'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oOtherName.innerHTML = "交易对方名称";
+			oOtherProject.innerHTML = "具体购汇项目";
+			oOtheramtcur.innerHTML = "交易所需金额/币种";
+			oOtherDetail.innerHTML = "详细说明";
+		}else if(document.getElementById("amountUse").value == "332") {		
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oOtherName.innerHTML = "交易对方名称";
+			oOtherProject.innerHTML = "具体购汇项目";
+			oOtheramtcur.innerHTML = "交易所需金额/币种";
+			oOtherDetail.innerHTML = "详细说明";
+		}else if(document.getElementById("amountUse").value == "333") {		
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oOtherName.innerHTML = "交易对方名称";
+			oOtherProject.innerHTML = "具体购汇项目";
+			oOtheramtcur.innerHTML = "交易所需金额/币种";
+			oOtherDetail.innerHTML = "详细说明";
+		}else if(document.getElementById("amountUse").value == "321") {		
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oOtherName.innerHTML = "交易对方名称";
+			oOtherProject.innerHTML = "具体购汇项目";
+			oOtheramtcur.innerHTML = "交易所需金额/币种";
+			oOtherDetail.innerHTML = "详细说明";
+		}else if(document.getElementById("amountUse").value == "324") {		
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oOtherName.innerHTML = "交易对方名称";
+			oOtherProject.innerHTML = "具体购汇项目";
+			oOtheramtcur.innerHTML = "交易所需金额/币种";
+			oOtherDetail.innerHTML = "详细说明";
+		}else if(document.getElementById("amountUse").value == "326") {		
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oOtherName.innerHTML = "交易对方名称";
+			oOtherProject.innerHTML = "具体购汇项目";
+			oOtheramtcur.innerHTML = "交易所需金额/币种";
+			oOtherDetail.innerHTML = "详细说明";
+		}else if(document.getElementById("amountUse").value == "431") {		
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long5' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oOtherName.innerHTML = "交易对方名称";
+			oOtherProject.innerHTML = "具体购汇项目";
+			oOtheramtcur.innerHTML = "交易所需金额/币种";
+			oOtherDetail.innerHTML = "详细说明";
+		}else if(document.getElementById("amountUse").value == "470") {		
+			detailHtml += "<table width='70%' border='0' cellpadding='0' cellspacing='5' align='center'>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherName'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_name' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkName()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherProject'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_project' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkProject()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtheramtcur'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_antcur' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkAntcur()'/></td></tr>";
+			detailHtml += "<tr><td width='400px' align='right' class='Tip_Content'><span id='oOtherDetail'></span>：&nbsp;&nbsp;</td>"
+			+ "<td align='left'><input class='input_long6' id='input_detail' maxlength='32' onclick='javascript:ShowKeyboardPin();' onkeypress='javascript:restartTime();' onkeyup='return input_checkDetail()'/></td></tr>";
+			detailHtml += "</table>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+			oOtherName.innerHTML = "交易对方名称";
+			oOtherProject.innerHTML = "具体购汇项目";
+			oOtheramtcur.innerHTML = "交易所需金额/币种";
+			oOtherDetail.innerHTML = "详细说明";
+		}else {
+			detailHtml += "</br>";
+			document.getElementById("detailMsg").innerHTML = detailHtml;
+		}
+		document.getElementById("error_TXTUse").innerHTML = "";
+	}
+
+	//用密码键盘输入时输入框校验
+	function CheckValue() {
+		if(FxStatusFlag) {
+			restartTime();
+		}
+		if(FxAmountFlag) {
+			if(input_amt.value.length > 0){
+				countAmt();
+			}
+		}
+	}
+
+	//校验亲属非法字符  
+	function input_checkUse()
+	{
+		var strUseData = document.getElementById("input_relativesName").value;
+		var Uselen = strUseData.length;
+		strUseData = strUseData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_relativesName").value = document.getElementById("input_relativesName").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+	}
+	
+	//校验学校非法字符    
+	function input_checkSchool()
+	{
+		var strUseData = document.getElementById("input_school").value;
+		var Uselen = strUseData.length;
+		strUseData = strUseData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_school").value = document.getElementById("input_school").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+	}
+	
+	//校验亲属关系非法字符   
+	function input_checkRelation()
+	{
+		var strUseData = document.getElementById("input_relativesRelation").value;
+		var Uselen = strUseData.length;
+		strUseData = strUseData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_relativesRelation").value = document.getElementById("input_relativesRelation").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+	}
+	
+	//校验医院名称非法字符 
+	 function input_checkHospital()
+	{
+		var strUseData = document.getElementById("input_hospital").value;
+		var Uselen = strUseData.length;
+		strUseData = strUseData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_hospital").value = document.getElementById("input_hospital").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+	}
+	
+	//校验咨询方名称非法字符    
+	function input_checkReferName()
+	{
+		var strUseData = document.getElementById("input_referName").value;
+		var Uselen = strUseData.length;
+		strUseData = strUseData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_referName").value = document.getElementById("input_referName").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+	}
+	
+	//校验交易对方名称非法字符     
+	function input_checkName()
+	{
+		var strUseData = document.getElementById("input_name").value;
+		var Uselen = strUseData.length;
+		strUseData = strUseData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_name").value = document.getElementById("input_name").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+	}
+	
+	//校验具体购汇项目非法字符     
+	function input_checkProject()
+	{
+		var strUseData = document.getElementById("input_project").value;
+		var Uselen = strUseData.length;
+		strUseData = strUseData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_project").value = document.getElementById("input_project").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+	}
+	
+	//校验交易所需金额/币种非法字符      
+	function input_checkAntcur()
+	{
+		var strUseData = document.getElementById("input_antcur").value;
+		var Uselen = strUseData.length;
+		strUseData = strUseData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_antcur").value = document.getElementById("input_antcur").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+	}
+	
+	//校验详细说明非法字符 以及字段控制       
+	function input_checkDetail()
+	{
+		var strDetailData = document.getElementById("input_detail").value;
+		var Uselen = strDetailData.length;
+		strUseData = strDetailData.substring(Uselen-1, Uselen);
+		if(!new top.StringCtrl(strUseData).isDigitOrLetter()){
+			if(!new top.StringCtrl(strUseData).trimChinese()){
+				document.getElementById("input_detail").value = document.getElementById("input_detail").value.substring(0, Uselen-1);
+				error_TXTUse.innerHTML = "您的输入包含非法字符，请重新输入"; 
+			}
+		}
+		if(strDetailData.indexOf("人寿险") !=-1 || strDetailData.indexOf("分红险") !=-1 ){
+				document.getElementById("input_detail").value = document.getElementById("input_detail").value.substring(0, Uselen-3);
+				error_TXTUse.innerHTML = "“购汇说明”中包含房产、分红类保险和证券等尚未开放的资本项目";
+		}
+		if(strDetailData.indexOf("房产") !=-1 || strDetailData.indexOf("证券") !=-1 || strDetailData.indexOf("保险") !=-1 || 
+				strDetailData.indexOf("投资") !=-1 || strDetailData.indexOf("外汇") !=-1 || strDetailData.indexOf("股票") !=-1 || 
+				strDetailData.indexOf("物业") !=-1 || strDetailData.indexOf("有价") !=-1 || strDetailData.indexOf("地产") !=-1){
+				document.getElementById("input_detail").value = document.getElementById("input_detail").value.substring(0, Uselen-2);
+				error_TXTUse.innerHTML = "“购汇说明”中包含房产、分红类保险和证券等尚未开放的资本项目";
+		}
+		if(strDetailData.indexOf("房") !=-1 || strDetailData.indexOf("屋") !=-1 || strDetailData.indexOf("券") !=-1 ||
+			strDetailData.indexOf("股") !=-1 || strDetailData.indexOf("险") !=-1 ){
+			document.getElementById("input_detail").value = document.getElementById("input_detail").value.substring(0, Uselen-1);
+			error_TXTUse.innerHTML = "“购汇说明”中包含房产、分红类保险和证券等尚未开放的资本项目";
+		}
+		
+	}
+	
+	//试算买入/卖出金额
+	function countAmt() {
+		if ((input_amt.value).indexOf(".") > 0) {
+			if(document.getElementById("selectCurrency").value == "JPY") {
+				error_TXTSign.innerHTML = top.langcur.oPlsInputRightAmt;
+				input_amt.value = "";
+				input_amt.focus();
+			}else {
+				var str = (input_amt.value).substr(find_str((input_amt.value), ".", 1) + 1, (input_amt.value).length);
+				if (str.indexOf(".") > 0) {
+					error_TXTSign.innerHTML = top.langcur.oPlsInputRightAmt;
+					input_amt.value = "";
+					input_amt.focus();
+				} else {
+					if (str.length == 0) {
+					}else if (str.length >2)
+	 					{
+						error_TXTSign.innerHTML = "金额只支持两位小数";
+						input_amt.value = input_amt.value.substr(0,input_amt.value.length-1);
+						input_amt.focus();
+	 					}
+					
+					else if(!new top.StringCtrl(input_amt.value).isValidAmount()) {
+						error_TXTSign.innerHTML = top.langcur.oPlsInputRightAmt;
+						input_amt.value = "";
+						input_amt.focus();
+					}
+				}
+			}
+		}else if((input_amt.value).indexOf("00") ==0){
+			error_TXTSign.innerHTML = top.langcur.oPlsInputRightAmt;
+				input_amt.value = "";
+				input_amt.focus();
+			}else {
+			if (!new top.StringCtrl(input_amt.value).isValidAmount()) {
+				error_TXTSign.innerHTML = top.langcur.oPlsInputRightAmt;
+				input_amt.value = "";
+				input_amt.focus();
+			}
+		}
+ 		var fxRate = parseFloat(text_exRate.innerHTML);
+ 		if(input_amt.value == "" || input_amt.value == null || fxRate == "" || fxRate == null) {
+ 			text_estAmount.innerHTML = "";
+		}else {
+			text_estAmount.innerHTML =  new top.StringCtrl(input_amt.value * fxRate).formatNumber(2);
+		}
+	}
+
+	//根据特定字符查找所在位置
+	function find_str(str,f_str,n){
+		var arr_str;
+	    var tmp_str=0;
+	    var arr_str=str.split(f_str);
+	    if(arr_str.length<n){n=arr_str.length}
+	    for(i=0;i<n;i++){
+	       tmp_str=arr_str[i].length+tmp_str;
+	    }
+	    return tmp_str+i-1;
+	}
+
+	//告知书选择 
+	function selectNoticeCheck() {
+		if (!changeCheckNoticeBoxFlag) {
+			changeCheckNoticeBoxFlag = true;
+			checkNoticeBox.className = "checkBox";
+			oSelect.style.visibility = "";
+		} else {
+			changeCheckNoticeBoxFlag = false;
+			checkNoticeBox.className = "uncheckBox";
+			oSelect.style.visibility = "hidden";
+		}
+	}
+	
+	//协议选择
+	function selectCheck() {
+		if (!changeCheckBoxFlag) {
+			changeCheckBoxFlag = true;
+			checkbox.className = "checkBox";
+			oLSelect.style.visibility = "";
+		} else {
+			changeCheckBoxFlag = false;
+			checkbox.className = "uncheckBox";
+			oLSelect.style.visibility = "hidden";
+		}
+	}
+
+	//外汇购汇协议选择
+	function selectMsgCheck() {
+		if (!changeMsgCheckBoxFlag) {
+			changeMsgCheckBoxFlag = true;
+			msgCheckbox.className = "checkBox";
+			oLSelectAmt.style.visibility = "";
+		} else {
+			changeMsgCheckBoxFlag = false;
+			msgCheckbox.className = "uncheckBox";
+			oLSelectAmt.style.visibility = "hidden";
+		}
+	}
+	
+	function ShowKeyboard() {	
+			top.inputmethod.ShowDigit(870, 650);
+	}
+
+	function ShowKeyboardPin() {
+		top.inputmethod.ShowFullEnglish(870, 650);
+	}
+	
+// 	function resetMsg() {
+// 		document.getElementById("error_TXTUse").innerHTML = "";
+// 	}
+
+	//阅读协议遮罩层方法
+	function dialog(){
+		top.inputmethod.Close();
+	    //获取页面的高度和宽度
+	    var sWidth = document.documentElement.scrollWidth;
+	    var sHeight = document.documentElement.scrollHeight;
+	    
+	    //遮罩层
+	    var oMask = document.createElement("div");
+		oMask.id = "mask";
+		oMask.style.height = sHeight + "px";
+		oMask.style.width = sWidth + "px";
+		oMask.style.background = "url('../Terminal/Style/Default/Img/Mask.png') center center no-repeat";
+		document.body.appendChild(oMask);
+	      
+	    //协议框
+	    var oDeal = document.createElement("div");
+	    oDeal.id = "deal";
+	    
+	    	oDeal.innerHTML = "<div id='bookContent' class='dealCon'><br>"
+	    		+ "<h2 align='center'>个人购汇申请书（网页版）填报说明</h2>"
+	    		+ "<h4>一、境内个人办理购汇业务时须填写《个人购汇申请书》（以下简称申请书）。</h4>"
+	    		+ "<h4>二、购汇须本人亲自填写《申请书》。个人拒绝填写的，银行或个人本外币兑换特许业务经营机构有权拒绝为其办理购汇手续，严禁代为填写或省略该流程。对无民事行为能力的个人，可由其法定监护人填写。</h4>"
+	    		+ "<h4>三、境内个人通过柜台、电子银行及个人本外币兑换特许业务经营机构互联网渠道办理购汇业务，均须真实、准确、完整填写《申请书》，并承担相关法律责任。纸质版和电子版《申请书》具有同等法律效力。</h4>"
+	    		+ "<h4>四、个人应认真阅读《申请书》，确保购汇资金用途符合外汇管理规定，不涉及《申请书》列明的各类违规事项，知晓违法违规行为应承担的法律后果。</h4>"
+	    		+ "<h4>五、“购汇用途”填写注意事项：</h4>"
+	    		+ "<p>（一）、“预计用汇时间”填报项为必填项，填写预计使用购汇资金的日期。</p>"
+	    		+ "<p>（二）、购汇用途只能单选，个人应根据实际用途勾选购汇用途项目，并完整填写所勾选项目涉及的全部细项。个人一次购汇存在多种用途的，应按金额从大原则填报。</p>"
+	    		+ "<p>（三）、个人实际用途不在《申请书》明确列明的八项购汇用途项目之内的，应勾选“其他”项，并详细说明交易对方名称、具体购汇项目、交易所需金额/币种等事项。</p>"
+	    		+ "<p>（四）、“预计境外停留期限”应填写境外停留期限（如3天、1个月、半年等）。</p>"
+	    		+ "<h4>六、个人对《申请书》填写信息确认完整无误后点击“提交”按钮完成购汇申请。若点击“放弃”按钮，可退出本次业务流程，终止购汇。</h4>"
+	    		+ "<h4>七、个人购汇后可暂不用汇。如用汇时，实际用途与原填写《申请书》不一致的，个人须重新填写并向用汇业务办理银行重新提交《申请书》，以确保《申请书》填写的用途与实际用途一致。</h4>"
+	    		+ "</div>";	    		
+	    document.body.appendChild(oDeal);
+	    
+	    //获取关闭按钮
+// 	    var oClose = document.getElementById("close");
+	    //点击关闭按钮和点击登陆框以外的区域都可以关闭登陆框
+// 	    oClose.onclick = oMask.onclick = function()
+	    oMask.onclick = function()
+	    {
+	        document.body.removeChild(oDeal);
+	        document.body.removeChild(oMask);
+	    };
+	}
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+	<div class="divFlowPage" id="divFlowPage">
+	   <table border="0" cellpadding="0" cellspacing="0">
+		 <tr>
+		   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+		   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+		   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+		   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td><div class="stepLine" id="nodeline41"></div></td>
+		   <td><div class="stepLine" id="nodeline42"></div></td><td width="34" class="stepStatusIcon" id="node5"></td><td><div class="stepLine" id="nodeline51"></div></td>
+		   <td><div class="stepLine" id="nodeline52"></div></td><td width="34" class="stepStatusIcon" id="node6"></td><td><div class="stepLine" id="nodeline61"></div></td>
+		   <td><div class="stepLine" id="nodeline62"></div></td><td width="34" class="stepStatusIcon" id="node7"></td><td><div class="stepLine" id="nodeline71"></div></td>
+		   <td><div class="stepLine" id="nodeline72"></div></td><td width="34" class="stepStatusIcon" id="node8"></td><td width="38"></td>
+		 </tr>
+		 <tr height="70">
+		   <td class="font25" align="center" colspan="3">读取身份证</td>
+		   <td class="font25" align="center" colspan="3">取身份证</td>
+		   <td class="font25" align="center" colspan="3">拍照认证</td>
+		   <td class="font25" align="center" colspan="3">阅读协议</td>
+		   <td class="font25" align="center" colspan="3">用途录入</td>
+		   <td class="font25" align="center" colspan="3">金额录入</td>
+		   <td class="font25" align="center" colspan="3">签名确认</td>
+		   <td class="font25" align="center" colspan="3">完成</td>
+		 </tr>
+	  </table>
+    </div>
+
+	<div id="oLIDCardTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oIdCardTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br /> <br /> <span id="oInsertID" class="Tip_Title"></span>
+						<br /> <img src="../Image/ID_in.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	</div>
+
+	<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oIdCardTakeTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br /> <br /> <span id="oIDCardTake" class="Tip_Title"></span>
+						<br /> <img src="../Image/id_out.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="oLTakePicTip" class="oLTakePicTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="100%">
+				<td align="center"><iframe id="ifreamPhoto" src="../Service/TakePhoto.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			</tr>
+		</table>
+	</div>
+
+	<div id="oLWatchBookTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oWatBookTick"></span>
+			<table width="40%" height="50%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td align="center" colspan="2"><span id="oPersonApply" class="Tip_Title"></span></td>
+				</tr>
+				<tr height="25">
+					<td align="center" colspan="2"></td>
+				</tr>
+				<tr>
+					<td colspan="2" align="left">
+						<div id="bookContent" class="scrollText1">
+							</br>
+							<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;根据《中华人民共和国外汇管理条例》（国务院令2008年第532号）、《国际收支统计申报办法》（国务院令2013年第642号）、《个人外汇管理办法》（中国人民银行令[2006]第3号）、《个人外汇管理办法实施细则》（汇发[2007]1号）等规定，个人购汇实行便利化额度（年度总额）管理，应当具有真实、合法的交易基础，如实申报购汇信息。</p>
+
+							<h3 align="left">一、依据法律法规，境内个人办理购汇业务时：</h3>
+							<p>1.不得虚假申报个人购汇信息；</p>
+							<p>2.不得提供不实的证明材料；</p>
+							<p>3.不得出借本人便利化额度协助他人购汇；</p>
+							<p>4.不得借用他人便利化额度实施分拆购汇；</p>
+							<p>5.不得用于境外买房、证券投资、购买人寿保险和投资性返还分红类保险等尚未开放的资本项目；</p>
+							<p>6.不得参与洗钱、逃税、地下钱庄交易等违法违规活动。</p>
+
+							<h3 align="left">二、外汇管理机关依法对个人外汇业务进行监督检查。</h3>
+							</br></br></br></br></br>
+							<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;对于存在违规行为的个人，外汇管理机关依法列入“关注名单”管理。“关注名单”个人列入名单当年及之后两年不享有个人便利化额度，同时依法移送反洗钱调查。对于违反规定办理个人购汇业务的，外汇管理机关将依据《中华人民共和国外汇管理条例》第三十九条、四十条、第四十四条、第四十八条等予以行政处罚，相关信息依法纳入个人征信纪录。</p>
+
+							<h3 align="left">三、个人购汇基本信息：</h3>
+							<p>购汇人姓名____________     购汇人身份证件号码____________</p>
+							<p>购汇币种/金额_________     人民币账号____________________</p>
+							<p>外汇账号______________</p>
+
+							<h3 align="left">四、购汇用途（用汇时实际用途与原填写的《个人购汇申请书》不一致的，应重新填写）：</h3>
+							<p>&nbsp;&nbsp;&nbsp;&nbsp;预计用汇时间_______年_______月</p>
+
+							<h4>□ 因私旅游 </h4>
+							<p>预计境外停留期限__________   目的地国家/地区____________</p>
+							<p>旅行方式(○跟团  ○自由行)</p>
+							</br></br>
+							<h4>□ 境外留学</h4>
+							<p>学校名称__________________   留学国家/地区______________</p>
+							<p>年学费币种/金额___________   年生活费币种/金额___________</p>
+
+							<h4>□ 公务及商务出国</h4>
+							<p>预计境外停留期限__________   目的地国家/地区_____________</p>
+
+							<h4>□ 探亲</h4>
+							<p>预计境外停留期限__________   目的地国家/地区_____________</p>
+							<p>境外亲属姓名 _____________   与境外亲属关系_______________</p>
+
+							<h4>□ 境外就医</h4>
+							<p>预计境外停留期限__________   目的地国家/地区_____________</p>
+							<p>境外医院名称____________________________________________</p>
+							</br></br>
+							<h4>□ 货物贸易(网络购物等)</h4>
+							<p>交易对方名称______________   对方国家/地区_______________</p>
+
+							<h4>□ 非投资类保险 </h4>
+							<p>保险机构名称______________   对方国家/地区_______________</p>
+
+							<h4>□ 咨询服务</h4>
+							<p>提供咨询方名称____________   对方国家/地区_______________</p>
+
+							<h4>□ 其他</h4>
+							<p>详细说明购汇事项(包括但不限于交易对方名称、具体购汇项目、交易所需金额/币种等)</p>
+							<p>________________________________________________________________________</p>
+							<p>________________________________________________________________________</p>
+							</br></br></br></br>
+						</div>
+					</td>
+					<td>&nbsp;</td>
+					<td><a><img src="../Terminal/Style/Default/Img/prevPage.png" onclick="javascript:gotopage('-1');" id="prevPage" style="visibility: hidden;" /></a></br>
+					</br>
+					</br>
+					</br>
+					</br>
+					</br> <a><img src="../Terminal/Style/Default/Img/nextPage.png" onclick="javascript:gotopage('1');" id="nextPage" /></a></td>
+				</tr>
+				<tr><td height="5px"></td></tr>
+				<tr>
+					<td width="5%" align="right"><div id="checkbox" class="uncheckBox" onclick="selectCheck()"></div></td>
+					<td width="95%" align="left"><div class="Tip_Content">&nbsp;&nbsp;<span id="oFxApplyReaded"></span></div></td>
+				    
+				</tr>
+			</table>
+		</div>	
+		<span class="MENU99" id="oLSelect"><button id="nextButton" class="Menu_Right" onclick="javascript:onKey_F99()" ></button></span>
+	</div>
+
+<div id="oLReadNoticeBookTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oReadNoticeBookTip"></span> 
+			<table width="40%" height="50%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td colspan="2" align="left">
+						<div id="noticeBookContent" class="scrollText1"></div>
+					</td>
+				</tr>
+				<tr><td height="5px"></td></tr>
+				<tr>
+					<td width="5%" align="right"><div id="checkNoticeBox" class="uncheckBox" onclick="selectNoticeCheck()"></div></td>
+					<td width="95%" align="left"><div class="Tip_Content">&nbsp;&nbsp;<span id="">本人已知晓</span></div></td>
+				    
+				</tr>
+			</table>
+		</div>	
+		<span class="MENU99" id="oSelect"><button id="readButton" class="Menu_Right" onclick="javascript:onKey_F99()" ></button></span>
+	</div>
+
+	<div id="oLAccMsgTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oAccMsgTick"></span>
+			<table width="70%" height="10%" border="0" cellpadding="0" cellspacing="5" align="center">
+				<tr>
+					<td colspan="2" align="center" class="Tip_Title"><span id="oFxUseMsg"></span></td>
+				</tr>
+				<tr><td height="20px"></td></tr>
+				<tr>
+					<td width="31%" align="right" class="Tip_Content"><span id="oPredictUseTime"></span>：&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Content">
+						<select id="year" class="input_short2">	
+						    <!-- <option value="">--请选择--</option> -->
+						</select><span style="vertical-align:middle;" id="oYear"></span><select id="month" class="input_short2">
+						<option value="">--请选择--</option>
+							<option value="01">01</option>
+							<option value="02">02</option>
+							<option value="03">03</option>
+							<option value="04">04</option>
+							<option value="05">05</option>
+							<option value="06">06</option>
+							<option value="07">07</option>
+							<option value="08">08</option>
+							<option value="09">09</option>
+							<option value="10">10</option>
+							<option value="11">11</option>
+							<option value="12">12</option>
+						</select><span style="vertical-align:middle;" id="oMonth"></span>
+					</td>
+				</tr>
+				<tr>
+					<td width="31%" align="right" class="Tip_Content"><span id="oAmtUsed"></span>：&nbsp;&nbsp;</td>
+					<td align="left">
+						<select id="amountUse" class="input_long12" onchange="amountUse();">
+							<option id="oPlsChoose" value="999"></option>
+							<option id="oTravel1" value="3222"></option>
+							<option id="oFeStudy" value="3221"></option>
+							<option id="oWorkAbroad" value="3223"></option>
+							<option id="oSeeFamily" value="471"></option>
+							<option id="oFeCure" value="3225"></option>
+							<option id="oCargoTrade" value=""></option>  
+							<option id="oNoInvestSafe" value=""></option>
+							<option id="oReferService" value="325"></option>
+							<option id="other1" value="331"></option>
+							<option id="other2" value=""></option>
+							<option id="other3" value=""></option>
+							<option id="other4" value=""></option>
+							<option id="other5" value=""></option>
+							<option id="other7" value=""></option>
+							<option id="other8" value="470"></option>
+							<option id="other6" value=""></option>
+							
+							<!--
+							<option id="oCargoTrade" value="" style="color:gray"></option>   
+							<option id="oNoInvestSafe" value="" style="color:gray"></option>
+							<option id="other2" value="" style="color:gray"></option>
+							<option id="other3" value="" style="color:gray"></option>
+							<option id="other4" value="" style="color:gray"></option>
+							<option id="other5" value="" style="color:gray"></option>
+							<option id="other6" value="" style="color:gray"></option>
+							<option id="other7" value="" style="color:gray"></option>
+							 <option id="other7" value="" style="color:gray"></option>
+							<option id="other8" value="" style="color:gray"></option> -->
+							<!-- 
+								货物贸易  oCargoTrade 310
+								非投资类保险   oNoInvestSafe 323
+								其他-投资收益  other2  332
+								其他-其他经常转移  other3 333
+								其他-运输    other4  321
+								其他-专有权利使用费和特许费  other5 324
+								其他-其他服务  other6  326
+								其他-对境外证券投资(QDII或B股) other7  431
+								 其他-资本项下其他(储蓄存款)  other8  421 470
+							 
+							<option id="oCargoTrade" value="310"></option>   
+							<option id="oNoInvestSafe" value="323"></option>
+							<option id="other2" value="332"></option>
+							<option id="other3" value="333"></option>
+							<option id="other4" value="321"></option>
+							<option id="other5" value="324"></option>
+							<option id="other6" value="326"></option>
+							<option id="other7" value="431"></option>
+							<option id="other8" value="421"></option>
+							-->
+						</select>
+					</td>
+				</tr>
+			</table>
+			<div id="detailMsg"></div>
+			<table width="70%" height="10%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td align="center"><pre class="Error_Title" id="error_TXTUse"></pre></td>
+				</tr>
+			</table>
+
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+		<span class="MMENUMiddle"><button id="WatchBookSchBtn" class="Menu_Right" onclick="dialog()">填报说明</button></span>
+		<span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+	</div>
+
+	<div id="oLTransMsgTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oTransMsgTick"></span>
+			<table width="80%" height="40%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td colspan="3" align="center" class="Tip_Title"><span id="oFxAmtMsg"></span></td>
+				</tr>
+				<tr><td height="20px"></td></tr>
+				<tr>
+					<td colspan="3" align="center" class="Tip_Content"><span id="panNo">卡号</span>：&nbsp;&nbsp;<span id="text_pan" class="Tip_Alarm"></span></td>
+				</tr>
+				<tr>
+					<td width="50%">
+						<fieldset style="border: 2px double #3e80ca" align="center">
+							<legend id="oAccountMsg" class="Tip_Content"></legend>
+							</br>
+							<table>
+								<tr>
+									<td width="45%" align="center" class="Tip_Content"><span id="oACAM1"></span>:<br>(人民币)</td>
+									<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="text_accBalance"></span></td>
+								</tr>
+								<tr>
+									<td align="center" class="Tip_Content">今年已用额度（美元）</td>
+									<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="text_outerUseBalance"></span></td>
+								</tr>
+								<tr>
+									<td align="center" class="Tip_Content">今年剩余额度（美元）</td>
+									<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="text_outerReBalance"></span></td>
+								</tr>
+								<tr>
+									<td align="center" class="Tip_Content"><span id="oBuyCurrency"></span>:</td>
+									<td align="left">&nbsp;&nbsp;
+										<select id="selectCurrency" class="input_short22" onchange="inqFxRate()">
+											<option id="oUSD" value="USD"></option>
+											<option id="oEUR" value="EUR"></option>
+											<option id="oJPY" value="JPY"></option>
+											<option id="oAUD" value="AUD"></option>
+											<option id="oHKD" value="HKD"></option>
+											<option id="oGBP" value="GBP"></option>
+											<option id="oSGD" value="SGD"></option>
+											<option id="oCAD" value="CAD"></option>
+										</select>
+									</td>
+								</tr>
+								<tr>
+									<td align="center" class="Tip_Content"><span id="oInChaoOrHui"></span>:</td>
+									<td align="left" class="Tip_Alarm">&nbsp;&nbsp;<span id="oPreHui"></span></td>
+								</tr>
+							</table>
+							</br></br>
+						</fieldset>
+					</td>
+					<td width="2%"></td>
+					<td width="48%">
+						<fieldset style="border: 2px double #3e80ca" align="center">
+							<legend id="oAmountMsg" class="Tip_Content"></legend>
+							</br></br>
+							<table>
+							    
+								<tr>
+									<td width="48%" align="center" class="Tip_Content"><span id="oPreRate"></span>:</td>
+									<td align="left">&nbsp;&nbsp;<span id="text_exRate" class="Tip_Alarm"></span></td>
+								</tr>
+								<tr>
+								    <td colspan = "2" class="Tip_Content"><span style="color:red">该汇率仅供参考，以最终成交汇率为准</span></td>
+								</tr>
+								<tr>
+									<td align="center" class="Tip_Content"><span id="oPurchaseAmt"></span>:</td>
+									<td align="left">&nbsp;&nbsp;<input type="text" class="input_amount" name="input_amt" id="input_amt" maxlength="12" onclick="javascript:ShowKeyboard();" onkeyup="countAmt()"/></td>
+								</tr>
+								<tr>
+									<td align="center" class="Tip_Content"><span id="oEstAmount"></span>:</td>
+<!-- 									<td align="left">&nbsp;&nbsp;<input id="text_estAmount" type="text" class="input_short2" name="text_estAmount" maxlength="8" disabled/></td> -->
+									<td align="left" class="Tip_Alarm" >&nbsp;&nbsp;<span id="text_estAmount" style="color:gray"></span></td>
+								</tr>
+							</table>
+							</br></br></br></br>
+						</fieldset>
+					</td>
+				</tr>
+			</table>
+			<table width="80%" height="10%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td width="5%" align="center" class="Tip_Content"><div id="msgCheckbox" class="uncheckBox" onclick="selectMsgCheck()"></div></td>
+					<td width="95%" align="left"><span id="oFxDealAgree" class="Tip_Content"></span></td>
+				</tr>
+				<tr>
+					<td colspan="2" align="center"><span class="Error_Title" id="error_TXTSign"></span></td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+		<span id="oLSelectAmt" class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+	</div>
+
+<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+   <span class="Tip_Tick" id="oSigFingerTick"></span>
+	   <br><br><br><br><br><br><br><br>
+		   <table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+					<tr>
+						<td height="20px" align="center" class="Error_Title" id="Tip_UserSign"></td>
+					</tr>
+		   </table>
+		   <div id="infoToPic">
+			<table width="75%" height="20%" border="0" bgcolor="#FFFFFF" cellpadding="0" cellspacing="0" align="center">
+			<tr><td height="20px"></td></tr>
+
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%">
+				<fieldset>
+				<legend><span id="oUserTip1"></span></legend>
+				<table>
+				<tr>
+					<td>&nbsp;&nbsp;<span id="oTextName"></span>&nbsp;&nbsp;<span id="text_name2"></span></td>
+					<td>&nbsp;&nbsp;<span id="oTextEth"></span>&nbsp;&nbsp;<span id="text_ethnic2"></span></td>
+
+				</tr>
+				<tr>
+					<td colspan="4">&nbsp;&nbsp;<span id="oTextPid"></span>&nbsp;&nbsp;<span id="text_pid2"></span></td>
+				</tr>
+				<tr>
+					<td nowrap; colspan="4">&nbsp;&nbsp;<span id="oTextAddr"></span>&nbsp;&nbsp;<span id="text_address2"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+
+			<tr><td height="20px"></td></tr>
+
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%">
+			  <fieldset>
+			  <legend><span id="oUserTip2"></span></legend>
+			  <table>
+			  	<tr>
+				    <td nowrap; colspan="2">&nbsp;&nbsp;<span id="oTextStrPan"></span>&nbsp;&nbsp;<span id="text_strPan"></span></td>
+				    <td nowrap;>&nbsp;&nbsp;购汇用途:&nbsp;&nbsp;<span id="text_strUsage"></span></td>
+				</tr>
+                <tr>
+				    <td nowrap>&nbsp;&nbsp;<span id="oCurrency"></span>:&nbsp;&nbsp;<span id="text_curr"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oPurchaseAmt"></span>:&nbsp;&nbsp;<span id="text_amount"></span></td>
+					<td nowrap>&nbsp;&nbsp;钞汇标识:&nbsp;&nbsp;<span id="text_chaohui"></span></td>
+				</tr>
+				</table>
+					<div id="foreignExchange"></div>
+				<table>
+				<tr>
+				    <td nowrap>&nbsp;&nbsp;<span id="oTextDate"></span>&nbsp;&nbsp;<span id="text_date"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTime"></span>&nbsp;&nbsp;<span id="text_time"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTerm"></span>&nbsp;&nbsp;<span id="text_term"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			<tr><td height="20px"></td></tr>
+			</table>
+			</div>
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+			<tr>
+		        <td colspan="2" ><iframe id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		    </tr>
+		</table>
+
+		</div>
+	    <span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>
+		<span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+	    <span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+	    <span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span>
+	    <span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+	</div>
+
+	<div id="oLServiceSuccessTip" class="FULLSCR"
+		style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<br/><br/><br/><br/><br/><br/><br/><br/>
+				<tr class="FirstLine">
+					<td align="center" colspan="2">
+						<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+						<span class="Tip_Title" id="Tip_Title"></span>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	    <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" id="oPrintReceipt" name="oPrintReceipt"></button></span>
+	</div>
+
+	<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span><br/>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr>
+					<td align="center">
+						<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+							<tr class="Table_Head">
+								<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+							</tr>
+							<tr class="Table_Record">
+								<td id="oDescription"></td>
+								<td><span id="oFailedRetDesc"></span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="oLTakeInvalCardTip" class="FULLSCR" style="visibility: hidden;">
+		<span class="Tip_Tick" id="oTakeInvalCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center"><span id="oReInsertDebCard" class="Tip_Title"></span><br />
+				<br /> <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+				</td>
+			</tr>
+		</table>
+	</div>
+
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+</body>
+</html>

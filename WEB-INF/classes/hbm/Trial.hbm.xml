@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.yihuacomputer.cols.entity.Trial" table="Trial" lazy="false">
+		<id name="id" type="int" column="id">
+			<generator class="identity" />
+		</id>
+		<property name="strTerminalNum" column="strTerminalNum" type="string" not-null="true" />
+	</class>
+</hibernate-mapping>

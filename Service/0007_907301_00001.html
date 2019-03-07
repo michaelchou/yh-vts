@@ -1,0 +1,294 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>公积金余额查询</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+	if(new top.CheckCard().cardTransStatus() !="true"){
+		onServiceFailed(top.langcur.oFundBlFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, new top.CheckCard().cardTransStatus());
+	}else{
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		if (top.cardreader.isCardPresent()){
+			if(top.pool.get("strCardType") != "1"){
+				InsertCard();//提示插入借记卡
+			}else{
+				top.pool.set("strNavigate2Url", "");
+				showMenu();
+			}
+		}else{
+			top.serviceCtrl.navigate2InsertCard();
+		}
+	}
+}
+
+//插入借记卡
+function InsertCard()
+{
+	onCardEjected = function()
+	{
+		top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeInvalCardTick);
+		// 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}
+		top.wins.showMain("oLTakeInvalCardTip");
+	}
+	onCardTaken = function()
+	{
+		top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+	}
+	onDeviceError_Idc = function()
+	{
+		if (top.cardreader.isCardPresent()){
+			top.YHAXCardReader.Capture();
+		} 
+		onServiceFailed(top.langcur.oUnlockPassWordFail, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderErro); 
+	}
+	onCardCapturedTipEnd = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	onCardCaptured = function()
+	{
+		top.pool.set("printType","3");//选择打印的凭条类型
+		top.receiptprinter.printAndEject();
+		top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+		top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+	}
+	//退卡前屏蔽安全退出及返回Home的功能 
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	top.cardreader.eject();
+}
+
+//选择查询类型:住房公积金OR补充公积金
+/*
+  根据当前位置，显示菜单
+ */
+var menus;
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array(top.langcur.oHouseAccFund, 'HomeGjj()');
+  menus[menus.length] = new Array(top.langcur.oAddAccFund, 'AddGjj()');
+  var btn = document.all("oLMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		 top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    top.serviceCtrl.navigate2SecondMenu();
+  }
+  onTimeout = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oMenuTick);
+  top.wins.showMain("oLMenu");
+}
+ //住房公积金
+function HomeGjj(){
+  top.pool.set("strGjjType", "1");
+  top.wins.showNewProcessingTip("正在进行公积金查询，请稍候...");
+  top.trans.send907301Async();	
+}
+ //补充公积金
+function AddGjj(){
+  top.pool.set("strGjjType", "2");
+  top.wins.showNewProcessingTip("正在进行公积金查询，请稍候...");
+  top.trans.send907301Async();	
+}
+
+//查询余额成功返回
+function onServiceSuccessful()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+
+  if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	{
+		oPrintReceipt.style.visibility = "hidden";	
+	}else
+	{
+		onKey_F99 = onKey_Enter = function()
+		{
+			//开始打印凭条
+			top.pool.set("printType", "53");//选择打印的凭条类型	
+			top.serviceCtrl.navigate2PrintReceipt();
+		}
+	}
+  
+  onKey_Cancel = onKey_F98 = function()
+  {
+	  showMenu();
+  }
+  if(top.pool.get("strGjjType")=="1"){
+    oInqGjjSucc.innerHTML = top.langcur.oHouseAccFundBalance;
+    top.pool.set("strDepType","住房公积金");
+  }else{
+    oInqGjjSucc.innerHTML = top.langcur.oAddAccFundBalance;
+    top.pool.set("strDepType","补充公积金");
+  }
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  
+  text_Account.innerHTML = top.pool.get("strAccount");
+  text_oACAM.innerHTML = new top.StringCtrl(top.pool.get("strAmount")).formatNumber(2) +" " + top.langcur.oYuanAlone;
+  text_oMonthDep.innerHTML = new top.StringCtrl(top.pool.get("strMonAmount")).formatNumber(2) + " " + top.langcur.oYuanAlone;
+  text_ConName.innerHTML = top.pool.get("strOrgName");   //工作单位
+  text_Name.innerHTML = top.pool.get("strCustName");    // 职工姓名
+  var endDate = top.pool.get("strEndDate");
+  if(endDate != "" && endDate != null) {
+	  text_oEndDate.innerHTML = new top.StringCtrl("").formatStrToDataNew(endDate);
+  }
+  
+  //凭条数据 
+  top.pool.set("amount",new top.StringCtrl(top.pool.get("strAmount")).formatNumber(2) +" " + top.langcur.oYuanAlone);//实际余额
+  top.pool.set("monAmount",new top.StringCtrl(top.pool.get("strMonAmount")).formatNumber(2) + " " + top.langcur.oYuanAlone);//月缴存额
+  top.pool.set("endDate",new top.StringCtrl("").formatStrToDataNew(endDate));//数据截止日期
+  top.pool.set("strDepOrgTsns",top.exchxmlasync.msgxmldomResp.getElementValue("strOrigstrTxSerialNo"));//交易流水 
+  
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+  top.wins.showMain("oLServiceSuccessTip");
+}
+
+//失败处理
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+	
+  oInqBlFailed.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oServiceFailedTick);
+  top.wins.showMain("oLServiceFailedTip");
+}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLTakeInvalCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeInvalCardTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+	<br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title" id="oReInsertDebCard"></span><br/><br/>
+	  <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+	</td></tr>
+  </table>
+</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+    <table width="100%" height="90%" border="0" cellpadding="0" cellspacing="0">
+      <br/>
+      <tr>
+	      <td align="center" >
+	        <table width="70%">
+	        <tr class="Table_Head"><td colspan="2" align="center" id="oInqGjjSucc"></td></tr>
+	        <tr class="Table_Record"><td  align="center" width="50%" id="oConName"></td><td  width="50%"  align="left" id="text_ConName"></td></tr>
+          	<tr class="Table_Record"><td  align="center"  id="oGjjAccount"></td><td  class="Digit_Normal" align="left" id="text_Account"></td></tr>
+     	    <tr class="Table_Record"><td  align="center"  id="oName"></td><td align="left" id="text_Name"></td></tr>
+	        <tr class="Table_Record"><td  align="center"  id="oACAM1"></td><td align="left" id="text_oACAM"></td></tr>
+	        <tr class="Table_Record"><td  align="center"  id="oGjjMonthDep"></td><td align="left" id="text_oMonthDep"></td></tr>
+	        <tr class="Table_Record"><td  align="center"  id="oGjjEndDate"></td><td align="left" id="text_oEndDate"></td></tr>
+	        </table>
+	      </td>
+      </tr>
+    </table>
+  </div>
+  <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+  <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" name="oPrintReceipt" id="oPrintReceipt"></button></span>
+</div>
+
+<div id="oLMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseType"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="HomePubFund" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="AddPubFund" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oServiceFailedTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oInqBlFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oFailedRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+</body>
+</html>

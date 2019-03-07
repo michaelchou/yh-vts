@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.HostRetCode" table="HostRetCode" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strHostRetCode" column="strHostRetCode" type="string"/>
+	<property name="strHostRetDesc" column="strHostRetDesc" type="string"/>
+  </class>
+</hibernate-mapping>

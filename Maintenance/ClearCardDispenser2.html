@@ -1,0 +1,390 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>设备清卡</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+function doMouseDown() {
+	//top.wins.clickDEvent(top.MainFrame.document, event.srcElement.name, "Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function() {
+	serverEntrance();
+});
+
+// 服务流程处理入口
+function serverEntrance() {
+    loadCardBoxInfo();
+	showCardBoxInfo();
+}
+
+
+var CUCurrentCount=new Array();//各卡箱剩余数量
+var CUInitialCount=new Array();//各卡箱初始数量
+var CURetainCount=new Array();//各卡箱回收数量
+var selectedCardBox;//选中的卡箱编号
+var cardBoxInfoStr="";//卡箱信息(字符串格式)
+var cardSurplusCount=0; //卡箱总剩余数量
+var cardRefillCount=0;//卡箱总初始数量
+//配置标题和数据
+
+var strHeadingArr = new Array(
+	"卡箱编号",
+	"卡类型",
+  	"加卡数",
+  	"发卡数",
+	"剩余卡数",
+	"废卡数"
+  //,  "阀值"
+ 
+);
+
+
+
+
+
+
+//卡箱信息
+var strRecordArr = new Array();
+//卡段信息
+var strSegmentArr = new Array();
+//卡箱加卡张数
+var iCountArr = new Array();
+//卡箱加卡类型
+var strCardTypeArr = new Array();
+//选择卡箱序号
+var index;
+
+//生产
+//var cardBoxInfoArr= top.carddispenser.getCardUnitInfo();//获取卡箱信息
+//测试
+
+
+//从数据库获取本终端的卡段信息串
+//每个字段以','分割，每条记录以'|'分割
+var cardBoxInfoStr="2,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+    cardBoxInfoStr+="2,SUPPLYBIN,150,10,HEALTHY,061,101,200,80,5,1,2,2|";
+    cardBoxInfoStr+="3,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+    cardBoxInfoStr+="3,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+    cardBoxInfoStr+="4,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+    cardBoxInfoStr+="4,SUPPLYBIN,150,10,HEALTHY,061,1,100,80,5,1,2,2|";
+
+//卡段详细信息
+ var cardBoxInfoArr1= new Array();
+   
+//初始化一次性读取卡箱信息
+ function loadCardBoxInfo()
+ {
+	//生产
+	 var cardBoxInfoArr= new Array();
+   
+     cardBoxInfoArr=cardBoxInfoStr.split('|');
+     
+     for (int i=0;i<cardBoxInfoArr.length-1;i++){
+        cardBoxInfoArr1[i]=new Array();
+     	cardBoxInfoArr1[i]=cardBoxInfoArr[i].split(',');
+     }
+     
+	var successCount=0;
+	var curCount=0;
+	var destroyedCount=0;
+	var j=0;
+	
+	for(i=0;i<cardBoxInfoArr1.length;i++){
+		if(i==0){
+			strRecordArr[j] = new Array();
+			
+			strRecordArr[j][0] = cardBoxInfoArr1[i][0];  //boxNumber
+			strRecordArr[j][1] = cardBoxInfoArr1[i][5];  //cardType
+			strRecordArr[j][2] = cardBoxInfoArr1[i][2];  //init
+			//alert(strRecordArr[j][0]);
+		}
+		else if(strRecordArr[j][0]!=cardBoxInfoArr1[i][0] ){
+		
+		//alert(successCount);
+		//alert(curCount);
+		//alert(destroyedCount);
+		
+			strRecordArr[j][3] = successCount;  //successCount
+			strRecordArr[j][4] = curCount;  //successCount
+			strRecordArr[j][5] = destroyedCount;  //successCount
+			j+=1;
+			successCount=0;
+			curCount=0;
+			destroyedCount=0;
+			
+			strRecordArr[j] = new Array();
+			
+			strRecordArr[j][0] = cardBoxInfoArr1[i][0];  //boxNumber
+			strRecordArr[j][1] = cardBoxInfoArr1[i][5];  //cardType
+			strRecordArr[j][2] = cardBoxInfoArr1[i][2];  //init
+		}
+		
+			successCount+=parseInt(cardBoxInfoArr1[i][8])+parseInt(cardBoxInfoArr1[i][9])+parseInt(cardBoxInfoArr1[i][11])+parseInt(cardBoxInfoArr1[i][12]);  
+			    curCount+=parseInt(cardBoxInfoArr1[i][3]); 
+	      destroyedCount+=parseInt(cardBoxInfoArr1[i][10]);  
+		 // alert(successCount);
+		//alert(curCount);
+		//alert(destroyedCount);
+	  
+	}
+		    strRecordArr[j][3] = successCount;  //successCount
+			strRecordArr[j][4] = curCount;  //successCount
+			strRecordArr[j][5] = destroyedCount;  //successCount
+			
+//alert(strRecordArr.length);
+// 			 str="";
+// 			 for(var i=0;i<strRecordArr.length;i++){
+// 				for(var j=0;j<strRecordArr[i].length;j++){
+// 				str+=strRecordArr[i][j]+",";
+// 			}
+// 			alert(str);
+		
+// 			}
+  
+}
+
+//显示卡箱信息
+function showCardBoxInfo() {
+	window.operateCtrl.disableInput(true);
+	onKey_Cancel = onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Enter = onKey_F6 = function() {
+		showSegmentInfo();
+	}
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	// 清空当前显示的内容
+	var oTHead=document.getElementById('oTHead');
+	var oTBody=document.getElementById('oTBody');
+    while (oTHead.rows.length > 0)
+     oTHead.deleteRow(0);
+    while (oTBody.rows.length > 0)
+     oTBody.deleteRow(0);
+	// 	thead
+	  var oRow = oTHead.insertRow();
+	 for (var j=0; j<strHeadingArr.length; j++)
+    {
+       var oCell = oRow.insertCell();
+      oCell.innerHTML =strHeadingArr[j];
+      oCell.align = "center";
+    }
+  //       tbody 
+        for (var i=0; i<strRecordArr.length; i++){
+      		var oRow =oTBody.insertRow(); 
+	      for (var j=0; j<strRecordArr[i].length; j++){
+		          var oCell = oRow.insertCell();
+		            oCell.innerHTML =strRecordArr[i][j];
+	 		          oCell.align="right";
+		     }
+	} 
+	
+	top.wins.showMain("oLShowCardBoxInfo");
+	window.operateCtrl.enableInput();
+}
+
+
+    //卡段详细信息
+function showSegmentInfo() {
+
+onKey_Enter = onKey_F6 = function() {
+		 	config();
+	}
+	 onKey_F7 = function() {
+		 	showCardBoxInfo();
+	}
+
+	  onKey_Cancel = onKey_F8 = function()
+     {
+        	top.serviceCtrl.navigate2Quit();
+     }
+ 	
+	window.operateCtrl.enableInput();
+	
+var mrv = new top.MultiRecordView();
+var strHeadingArr = new Array
+(
+  "1",
+   "1",
+    "1",
+     "1",
+      "1",
+       "1",
+        "1",
+         "1",
+          "1",
+           "1",
+            "1",
+             "1",
+              "1",
+               "1"
+);  
+ 
+   			  mrv.oTHead = oTHeadListSegment;
+              mrv.oTBody = oTBodyListSegment;
+              mrv.oTablePageTip = oTablePageTip;
+              mrv.oMFirstPage  = oMFirstPage;
+              mrv.oMPrevPage = oMPrevPage;
+              mrv.oMNextPage = oMNextPage;
+              mrv.oMEndPage = oMEndPage;
+              mrv.strRecordArr = strRecordArr;
+              mrv.strHeadingArr = strHeadingArr;
+              mrv.iRowsPerPage = 8;
+              onKey_F1 = function(){mrv.onFirstPage();}
+              onKey_F2 = function(){mrv.onPrevPage();}
+              onKey_F3 = function(){mrv.onNextPage();}
+              onKey_F4 = function(){mrv.onEndPage();}
+				mrv.show();
+	
+	top.wins.showMain("oLListCard");
+}
+    
+    //清卡设置
+function config() {
+	    window.operateCtrl.disableInput(true);
+	 
+	   //测试
+	   onServiceSuccessful(); 
+}
+    //加卡成功
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+	onKey_Cancel = onKey_F8 = function() {
+		top.serviceCtrl.navigate2Quit();
+	}
+	window.operateCtrl.enableInput();
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+//交易失败
+function onServiceFailed(title, retcode, retdesc)
+{
+  window.operateCtrl.disableInput(true);
+ 	top.serviceCtrl.stopUserTimeout();
+  onKey_F7 = function() {
+		top.serviceCtrl.navigate2Maintenance();
+	}
+  onKey_Enter = onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Quit();
+  }
+  oFailedTitle.innerHTML = title;
+  oFailedRetDesc.innerHTML = retdesc;
+  window.operateCtrl.enableInput();
+  top.wins.showMain("oLServiceFailedTip");
+}
+    
+
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLShowCardBoxInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">设备清卡</span>
+                    <br/>
+                    <br/>
+                    <table cellpadding="3" cellspacing="1" class="Table_Ob" id="oTable" width="60%" height="60%">
+                        <thead class="Table_Head" id="oTHead"></thead>
+                        <tbody id="oTBody"  class="Table_Record"></tbody>
+                    </table>
+                   
+                </td>
+            </tr>
+        </table>
+   <pre class="Error_Title" id="error_Input_1">&nbsp;</pre>
+    </div>
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="Menu_Right" name="oConfirm" id="oConfirm"></button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>	
+        
+</div>
+
+<div id="oLListCard" class="FULLSCR">
+    <div class="FULLSCR">
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr class="FirstLine">
+                <td align="center">
+                    <span class="Tip_Title" id="">卡段信息</span>
+                    <br/> <br/>
+                                       
+                       <table cellpadding="3" cellspacing="1" class="Table_Ob" id="oTableListSegment" width="60%" height="15%">
+                        <thead class="Table_Head" id="oTHeadListSegment">
+                         </thead>
+                        <tbody id="oTBodyListSegment"  class="Table_Record"></tbody>
+                    </table>
+                           <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+            </tr>
+        </table>
+    </div>
+      <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+     <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+     <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+     <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+    
+    <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="Menu_Right" name="oConfirm" id="oConfirm"></button></span>
+    <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLInfoTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   </div>
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <span class="Tip_Content">清卡成功</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>
+</div>
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+                        <tr class="Table_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oFailedTitle"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="Menu_Right" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="Menu_Right" name="oQuitM" id="oQuitM"></button></span>
+</div>
+</body>
+</html>

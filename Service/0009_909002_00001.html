@@ -1,0 +1,2182 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>取款</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var isReturn = false;
+var indexID = 0;
+var indexImage =0;
+var isPadCheck = false;
+var strInputFlag = 1;
+var isFingerTime = "";
+var isAmount = false;
+var IDCardAcceptFlag = 0;//身份证插入次数标志
+var last = "";//光标最后停留的标签id名称
+var inputPinFlag = 0;//二次输入密码校验次数标志位
+var inputPinFlagDraw = 0;//取款前密码校验次数标志位
+var isdrawAgent =0;
+
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick",checkEvent);
+document.attachEvent("ondblclick",checkEvent);
+document.attachEvent("onfocusin",checkEvent);
+document.attachEvent("onkeypress",checkEvent);
+
+function checkEvent() {
+	//如果光标停留在输入框上,更新last
+	try{
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text"){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	}catch(e){}
+}
+
+// 服务流程处理入口
+function serverEntrance()
+{
+    if(new top.CheckCard().cardTransStatus() != "true") {
+		onServiceFailed("卡(折)活期取款失败", "", new top.CheckCard().cardTransStatus());
+	}else if(typeof(top.YHAXCashDispenser) == "undefined") {
+		top.journalPrinter.addJournalWithTime("909002-取款入口未配置存取款模块");
+		onServiceFailed("卡(折)活期取款失败", "", top.langcur.oNoCashDispenser);
+	}else if(top.withdraw.checkAvai() != "true"){
+		top.journalPrinter.addJournalWithTime("909002-取款入口硬件异常");
+		onServiceFailed("卡(折)活期取款失败","", "存取款模块故障(" + top.withdraw.checkAvai() + ")");//2018-1-12 增加硬件故障细化提示
+	}else if(top.YHAXCashAcceptor.LastAcceptStatus != "ACCEPTED" && top.YHAXCashAcceptor.LastAcceptStatus != "UNKNOWN") {
+		top.journalPrinter.addJournalWithTime("909002-取款入口存款周期异常");
+		onServiceFailed("卡(折)活期取款失败", "", "存款周期异常，请执行复位存取款模块");
+	}else{
+		try{top.cashguidelights.setENVDepositoryLight("CONTINUOUS");}catch(e){} //迎宾灯 2018-1-16 开启迎宾灯
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		//初始化数据池
+		top.pool.set("strBatchId","");
+		top.pool.set("strBusiness","取款");//取款页面标志
+		top.pool.set("strWithDrawSuccAmount","0");//已出钞金额
+		top.pool.set("MultiWithDrawAmount","0");//剩余未出钞金额
+		top.pool.set("DrawDispenseAmount","0");//出钞金额
+		top.pool.set("AmountCheck","0");//取款金额
+		top.pool.set("DrawFlowFlag","");//大额、小额标志
+		top.pool.set("IDCardAcceptFlag","");//身份证插入次数累
+		top.pool.set("strbusinessName","");
+		top.pool.set("MedFlag","");//介质标志
+		top.pool.set("DrawPan","");
+		top.pool.set("strFSNFlag", "CWD");//2018-1-9 取款标志-FSN冠字号组装报文使用
+		top.pool.set("DrawTransResult","");//2018-1-11 取款结果标志清空
+		top.pool.set("Y100Num","0");  //100元金额数量
+		top.pool.set("Y50Num","0");  //50元金额数量
+		top.pool.set("Y20Num","0");  //20元金额数量
+		top.pool.set("Y10Num","0");  //10元金额数量
+		top.pool.set("Y5Num","0");  //5元金额数量
+		top.pool.set("Y1Num","0");  //1元金额数量
+		top.pool.set("C50Num","0");  //5角金额数量
+		top.pool.set("C10Num","0");  //1角金额数量
+		top.pool.set("C5Num","0");  //5分金额数量
+		top.pool.set("C1Num","0");  //1分金额数量
+		isdrawAgent =0;
+		if (top.cardreader.isCardPresent()){
+			if(top.pool.get("strCardType") != "1"){
+				InsertCreditCard();
+			}else{
+				top.pool.set("strNavigate2Url", "");
+				top.pool.set("MedFlag","isCard");//介质标志
+				top.pool.set("DrawPan",top.pool.get("strPan"));
+				top.pool.set("strSubAcctType","CNY0");
+				//查询帐户类型
+				top.wins.showNewProcessingTip("正在发起账户类型查询交易，请稍候...");
+				top.trans.send902105Async(); //成功回调 onService902105Successful()
+				//setTimeout(onService902105Successful,4000);//test
+			}
+		}else{
+			if(top.pool.get("strPrintReceip") == 1){//如果是打印凭条后返回本页面
+				//选择是否进行存折补登
+				onIsPassbook();
+			}else{
+				MedTypeSelect();//介质类型选择
+			}	
+		}
+	}
+}
+
+//提示插入借记卡
+function InsertCreditCard()
+{
+	onCardEjected = function()
+	{
+		top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+		// 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("oLTakeCardTip");
+		top.serviceCtrl.changeNaviStatus('2');
+	}
+	onCardTaken = function()
+	{
+		top.serviceCtrl.navigate2(window.location.pathname);
+	}
+	onDeviceError_Idc = function()
+	{
+		if (top.cardreader.isCardPresent()){
+			top.YHAXCardReader.Capture();
+		}
+		onServiceFailed("交易失败", "", top.langcur.oCardReaderError);
+	}
+	onCardCapturedTipEnd = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	onCardCaptured = function()
+	{
+		top.pool.set("printType","3");//选择打印的凭条类型
+		top.receiptprinter.printAndEject();
+		top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+		top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+	}
+	top.cardreader.eject();
+
+}
+
+//介质选择：卡、存折
+  function MedTypeSelect()
+  {
+    //alert("介质类型选择");
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	top.journalPrinter.addJournalWithTime("909002-选择取款介质");
+	onKey_F7 = function()//存折
+	{
+	    top.journalPrinter.addJournalWithTime("909002-选择存折");
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("MedFlag","isPassbook");//介质标志
+		top.pool.set("strNavigate2Url", "");
+		if(top.YHAXPassbook.StDeviceStatus != "HEALTHY" || top.YHAXPassbook.StMediaStatus != "NOTPRESENT"){
+		    top.journalPrinter.addJournalWithTime("909002-存折模块故障");
+			onServiceFailed("交易失败", "", "存折模块故障");
+			return;
+		}else{
+			top.pool.set("isBookPrintFlag","isPassbook");//是否需要联动存折补登标志
+			insertPass();//插入存折
+		}
+	}
+	
+	onKey_F8 = function()//卡
+	{
+	    top.journalPrinter.addJournalWithTime("909002-选择卡");
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("MedFlag","isCard");//介质标志
+		if(top.YHAXCardReader.StDeviceStatus != "HEALTHY"){
+		    top.journalPrinter.addJournalWithTime("909002-读卡器模块故障");
+			onServiceFailed("交易失败", "", "读卡器模块故障");
+		}else{
+			top.serviceCtrl.navigate2InsertCard();
+		}
+	}
+	
+	//刷折
+	onKey_F9 = function() {
+	    top.journalPrinter.addJournalWithTime("909002-选择刷折");
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("MedFlag","isPassbook");//介质标志
+		top.pool.set("strNavigate2Url", "");
+	    if(typeof(top.YHAXPassbookReader) == "undefined"){
+	    	onServiceFailed("交易失败",top.TERMRETCODE_CARD_FAILED, top.langcur.oNoPassbookReader);
+	    }else{
+			if (top.YHAXPassbookReader.StDeviceStatus != "HEALTHY") {
+				//无存折模块
+				onServiceFailed("交易失败", "", "刷折模块故障");
+			}else {
+				top.pool.set("isBookPrintFlag","isPassbook");//是否需要联动存折补登标志
+				passbookReader();
+			}	
+	    }
+	}
+	
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.journalPrinter.addJournalWithTime("909002-介质选择客户点返回");
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	onTimeoutMedTypeSelect = function()
+	{
+	    top.journalPrinter.addJournalWithTime("909002-介质选择超时");
+		top.serviceCtrl.navigate2Quit();
+	}
+	isPassBook = false;
+	try{top.soundPlayer.playback("/Sound/SelectMediaType.mp3");}catch(e){}
+	window.operateCtrl.enableInput();
+    top.serviceCtrl.startUserTimeout(onTimeoutMedTypeSelect, top.iUserTimeout,oSelectTypeTick);
+	top.wins.showMain("oLCashSelect");
+	top.serviceCtrl.changeNaviStatus('1');
+  }
+
+//插入存折
+  function insertPass()
+  {
+    //alert("插入存折");
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	onMediaInserted = function()
+	{
+		top.wins.showProcessingTip(top.langcur.oReadPassbookInfo);
+	}
+	
+	onMediaInvalid = function(){
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed("交易失败", "", top.langcur.oPassbookErro2);
+	}
+	
+	notSupportPassbook = function(){
+		top.serviceCtrl.stopUserTimeout();
+		top.journalPrinter.addJournalWithTime("909002-存折读取-notSupportPassbook");
+		onServiceFailed("交易失败", "", top.langcur.oReadPassbookNotSupport);
+	}
+	
+	onDeviceError_Pbp=function(){
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed("交易失败", "", top.langcur.oPassbookErro1);
+	}
+	
+    onMediaAccepted = function(track2Val)
+	{
+		top.serviceCtrl.stopUserTimeout();
+		if(track2Val != null && track2Val != "")
+		{
+			if(track2Val.split("=").length<4){
+				notSupportPassbook();
+				return;
+			}
+			//二磁道
+			top.pool.set("strTrack3", track2Val);
+			top.pool.set("strTrack3Passbook", track2Val);
+			top.pool.set("strVoucherNo",track2Val.split("=")[3].substr(16,8));
+			top.pool.set("strVoucherType",track2Val.split("=")[3].substr(0,4));
+			//截取折号
+			track2Val = track2Val.split("=")[2].substr(0,17);
+			top.pool.set("strPassBookNum", track2Val);
+			top.pool.set("DestPan", track2Val);
+			top.pool.set("DrawPan", track2Val);
+			//alert("读取完成");
+			ejectPassbook("存折号：" + top.pool.get("DestPan"));
+		}else{
+			notSupportPassbook();
+		}
+    }
+	
+ 	onTimeoutinsertPass = function()
+	{
+	    top.journalPrinter.addJournalWithTime("909002-读折超时");
+	    top.passbookprinter.cancelAccept();
+        if(top.YHAXPassbook.StMediaStatus == "PRESENT" ){
+            top.passbookprinter.eject();
+			top.passbookprinter.PassbookEvents.clearAll();
+        }
+	    top.serviceCtrl.navigate2Quit();
+		
+    }
+	
+    onKey_Cancel = onKey_F98 = function()
+	{
+	    top.serviceCtrl.stopUserTimeout();
+		top.passbookprinter.cancelAccept();
+		top.journalPrinter.addJournalWithTime("909002-插折客户点返回");
+		top.serviceCtrl.navigate2Quit();
+	}
+     top.passbookprinter.accept();
+	  // 播放提示音
+	 try {top.soundPlayer.playback("/Sound/InPutbankbook.mp3");} catch (e) {}
+	 top.serviceCtrl.startUserTimeout(onTimeoutinsertPass, top.iUserTimeout,oInPassTick);
+	 top.wins.showMain("oLPassTip");
+	 //屏蔽安全退出及返回Home的功能
+	 oLSafeQuit.style.visibility = "hidden";
+	 oLGoHome.style.visibility = "hidden";
+	 top.serviceCtrl.changeNaviStatus('2');
+  }
+	//刷折功能
+	function passbookReader(){
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onMediaInserted = function() {
+			top.serviceCtrl.stopUserTimeout();
+			top.wins.showProcessingTip(top.langcur.oReadPassbookInfo);
+		}
+		onMediaInvalid = function() {
+			top.serviceCtrl.stopUserTimeout();
+			onServiceFailed("刷折失败","",top.langcur.oPassbookErro2);
+		}
+		notSupportPassbook = function() {
+			top.serviceCtrl.stopUserTimeout();
+			onServiceFailed("刷折失败","",top.langcur.oReadPassbookNotSupport);
+		}
+		onDeviceError_Pbp = function() {
+			top.serviceCtrl.stopUserTimeout();
+			onServiceFailed("刷折失败","",top.langcur.oPassbookErro1);
+		}
+		onMediaAccepted = function(track2Val) {
+			if (track2Val != null && track2Val != "") {
+				if (track2Val.split("=").length < 4) {
+					notSupportPassbook();
+					return;
+				}
+				//二磁道
+				top.pool.set("strTrack3", track2Val);
+				top.pool.set("strTrack3Passbook", track2Val);
+				top.pool.set("strVoucherNo",track2Val.split("=")[3].substr(16,8));
+				top.pool.set("strVoucherType",track2Val.split("=")[3].substr(0,4));
+				//截取折号
+				track2Val = track2Val.split("=")[2].substr(0,17);
+				top.pool.set("strPassBookNum", track2Val);
+				top.pool.set("DestPan", track2Val);
+				top.pool.set("DrawPan", track2Val);
+				//存折验密
+				inputPinPassbook();
+			}
+		}
+		onKey_F98 = onKey_Cancel = onTimeout = function() {
+			top.passbookreader.cancelAccept();
+			top.serviceCtrl.navigate2Quit();
+		}
+		
+		//屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.passbookreader.accept();
+		// 播放提示音
+		try{top.soundPlayer.playback("/Sound/PlsReadPass.mp3");}catch(e){}
+		top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout, oReadPassTick);
+		// 在广告加载完成前显示默认空闲提示
+		top.wins.showMain("oLPassReaderTip");
+	}
+//先退折
+function ejectPassbook(){
+	top.serviceCtrl.stopUserTimeout();
+	onPrintTaken = function() {
+		top.serviceCtrl.stopUserTimeout();
+		//进行存折验密
+		inputPinPassbook();
+	}
+	
+	onTimeoutejectPassbook = function()
+	{
+        if(top.YHAXPassbook.StMediaStatus == "PRESENT" ){
+            top.passbookprinter.eject();
+			top.passbookprinter.PassbookEvents.clearAll();
+        }
+		top.journalPrinter.addJournalWithTime("909002-退折超时");
+	    onServiceFailed("交易失败", "", top.langcur.oTakePassbook);
+		
+    }
+	
+	onPrintEjected = function() {
+		top.wins.showMain("cLInfoTip2");
+		try{document.all.item("cLInfoContent2").innerHTML = top.langcur.oTakePassbook;}catch(e){}
+		top.serviceCtrl.startUserTimeout(onTimeoutejectPassbook, top.iUserTimeout, oInfoTip2Tick);
+	}
+	top.passbookprinter.eject();
+}
+
+// 输入密码
+var bReturnSelected = false;
+function inputPinPassbook()
+{
+	top.serviceCtrl.stopUserTimeout();
+	window.operateCtrl.disableInput(true);
+	//alert("输入存折密码");
+	onPlainCancelled = function()
+	{
+		top.pinpad.bufferPINPassBookEx();
+		//请输入密码提示音
+		top.soundPlayer.playback("/Sound/InputPassword.mp3");
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oInpPwdTick);
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("InputPassword");
+		input_Password.value = "";
+		input_Password.focus();
+	}
+	onKey_F98 =onKey_Cancel= function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		// 用户选择了返回
+		bReturnSelected = true;
+		top.journalPrinter.addJournalWithTime("909002-存折输密客户点返回");
+		if (input_Password.value.length < top.pinpad.iMaxPinLen)
+		top.pinpad.cancelPINEntry();
+	}
+	onGetPinBlockOK = function (pinblock)
+	{
+	    top.pool.set("strPinBlock",pinblock);
+	    top.pool.set("strPinBlockPassbook",pinblock);
+		if (bReturnSelected)
+		{
+			top.serviceCtrl.stopUserTimeout();
+			// 用户选择了返回
+			top.serviceCtrl.navigate2SecondMenu();
+			return;
+		}
+		if (input_Password.value.length < top.pinpad.iMinPinLen)
+		{
+			// 密码位数不足，则重新输入
+			error_InputPassword.innerHTML = top.langcur.oPlsReInputPwd;
+			top.serviceCtrl.startFlowCtrlTimeout(inputPinPassbook, 200);
+			return;
+		}
+		 window.operateCtrl.disableInput(true);
+         top.serviceCtrl.stopUserTimeout();
+		 //发送验密交易
+		 top.wins.showNewProcessingTip("正在发起验密交易，请稍候...");
+		 top.trans.send901606SecondAsync();
+		 //setTimeout(onVerifyServiceSuccessful,4000);//test
+		 
+	}
+	onDeviceError_Pinpad = onPinCancelled = onPinInputTimeout = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2Quit();
+	}
+	input_Password.onkeypress = function()
+	{
+		error_InputPassword.innerHTML = "&nbsp;";
+	}
+	top.pinpad.cancelUserEntry();//关闭明文输入
+	bReturnSelected = false;
+}
+
+//验密成功
+function onVerifyServiceSuccessful()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.wins.stopProcessingTimeout();
+	top.journalPrinter.addJournalWithTime("909002-验密成功");
+	error_InputPassword.innerHTML = "&nbsp;";
+	top.pool.set("strTrack3", "");
+	top.pool.set("strPan", "");
+	top.pool.set("strTrack2", "");
+	top.pool.set("strSubAcctType","CNY0");
+	top.pool.set("strPinBlock","");
+	//查询帐户类型
+	top.wins.showNewProcessingTip("正在发起账户类型查询交易，请稍候...");
+    top.trans.send902105Async();//查询成功回调 onService902105Successful
+	//setTimeout(onService902105Successful,4000);//test
+}
+
+//验密失败
+function onServiceSecondFailed()
+{
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	top.wins.stopProcessingTimeout();
+	top.journalPrinter.addJournalWithTime("909002-验密失败");
+	if(inputPinFlag < 2){
+		inputPinFlag++;
+		error_InputPassword.innerHTML = "密码输入错误，请重新输入密码！";
+	    inputPinPassbook();
+	}
+	else
+	{
+	   inputPinFlag = 0;
+	   window.operateCtrl.disableInput(true);
+       top.serviceCtrl.stopUserTimeout();
+	   top.serviceCtrl.navigate2Quit();
+	}
+}
+
+//账户类型查询成功
+function onService902105Successful()
+{
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	top.wins.stopProcessingTimeout();
+	top.journalPrinter.addJournalWithTime("909002-账户类型查询成功");
+	if(top.pool.get("MedFlag") == "isPassbook"){
+		top.pool.set("strPinBlock",top.pool.get("strPinBlockPassbook"));
+		top.pool.set("strTrack3", top.pool.get("strTrack3Passbook"));
+	}
+	//alert("账户类型查询成功:" + top.pool.get("acctKind"));
+	//alert("开户人证件号:" + top.pool.get("F60_1"));
+	//alert("账户余额：" + top.pool.get("F54_ZHYE"));
+	var MaxDayYearAndTotal = "正在发起累计交易额查询交易，请稍候...";
+	if(top.pool.get("acctKind") != "" && top.pool.get("acctKind") != "1"){
+		MaxDayYearAndTotal = "正在发起当日与本年剩余取款金额查询交易，请稍候...";
+	}
+    //查询当日、本年剩余取款金额、累计交易额
+    top.wins.showNewProcessingTip(MaxDayYearAndTotal);
+	top.trans.send909001MaxDrawAsync();//二类户剩余额度查询成功回调 QuerryMaxDrawSuc
+	//setTimeout(QuerryMaxDrawSuc,10000);//test
+	
+}
+
+//二类户剩余额度查询成功
+function QuerryMaxDrawSuc()
+{
+	top.journalPrinter.addJournalWithTime("909002-当日剩余" + top.pool.get("MaxDrawDay") + "  当年剩余:" +top.pool.get("MaxDrawYear") + "  累计交易额:" +top.pool.get("totalAmountDay"));
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	top.wins.stopProcessingTimeout();
+	top.journalPrinter.addJournalWithTime("909002-二类户剩余额度查询成功");
+	//top.pool.set("totalAmountDay","49000");//test
+	InputDrawAmount();//输入取款金额
+}
+
+//输入取款金额
+function InputDrawAmount()
+{
+    //alert("输入取款金额");
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+    top.wins.stopProcessingTimeout();
+	top.journalPrinter.addJournalWithTime("909002-进入输入金额页面");
+	onKey_Enter = onKey_F99 = function()
+	{
+		top.inputmethod.Close();
+		if(input_Amount.value == "" || input_Amount.value == null || input_Amount.value.length < 3){
+			error_Content.innerHTML = "取款金额输入非法,请输入取款金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+			return;
+		}
+		else if(parseInt(input_Amount.value)%100 != 0){
+			error_Content.innerHTML = "仅支持100元票面取款,请重新输入金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+			return;
+		}
+		else if(parseInt(input_Amount.value) > parseInt(top.pool.get("Cash"))){
+			error_Content.innerHTML = "单笔取款金额最高为" + top.pool.get("Cash") +"元,请重新输入金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+			return;
+		}else if(top.pool.get("acctKind") != "" && top.pool.get("acctKind") != "1" && parseInt(new top.StringCtrl("").YuanToFen(input_Amount.value)) > parseInt(new top.StringCtrl("").YuanToFen(top.pool.get("MaxDrawDay")))){
+			error_Content.innerHTML = "取款金额超过当日剩余取款额度,请重新输入金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+			return;
+		}else if(top.pool.get("acctKind") != "" && top.pool.get("acctKind") != "1" && parseInt(new top.StringCtrl("").YuanToFen(input_Amount.value)) > parseInt(new top.StringCtrl("").YuanToFen(top.pool.get("MaxDrawYear")))){
+			error_Content.innerHTML = "取款金额超过当年剩余取款额度,请重新输入金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+			return;
+		}else{
+		    top.serviceCtrl.stopUserTimeout();
+			top.pool.set("AmountCheck", input_Amount.value);
+			//alert(top.pool.get("AmountCheck"));
+			top.pool.set("Amount", new top.StringCtrl("").YuanToFen(input_Amount.value));
+			var DrawAmount = new top.StringCtrl(input_Amount.value).formatNumber(2);
+			top.pool.set("DrawAmount", DrawAmount);//格式化转账金额-圆-页面显示用
+			top.pool.set("AmountCheckFen", new top.StringCtrl("").YuanToFen(input_Amount.value));//取款金额-分-发交易用
+			top.pool.set("Y100Num", parseInt((input_Amount.value)/100));//取款金额-100元数量
+			top.inputmethod.Close();
+			top.journalPrinter.addJournalWithTime("909002-输入金额页面用户点击确定");
+			if(top.pool.get("AmountCheck") >= top.DrawAmountLimit){
+			    //alert("走大额流程");
+				top.journalPrinter.addJournalWithTime("909002-输入金额页面走大额（输入金额大于5万）");
+				drawAmountConfirm();//大额确认
+			}else{
+				//alert("当日累计交易额成功:" + top.pool.get("totalAmountDay"));
+				var AmountAll = parseInt(top.pool.get("AmountCheck")) + parseInt(top.pool.get("totalAmountDay"));
+				//alert("总交易额:" + AmountAll);
+				top.pool.set("DrawFlowFlag","");//大额、小额标志
+				if(parseInt(AmountAll) >= top.DrawAmountLimit){
+				    top.journalPrinter.addJournalWithTime("909002-输入金额页面走大额（累计金额大于5万）");
+					drawAmountConfirm();//大额确认
+				}else{
+					//预配钞
+					top.journalPrinter.addJournalWithTime("909002-输入金额页面走小额-进入配钞");
+					DrawMix();
+				}
+			}
+		}
+	}
+	
+	
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.inputmethod.Close();
+		top.serviceCtrl.stopUserTimeout();
+		top.journalPrinter.addJournalWithTime("909002-输入金额页面客户点返回");
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	onTimeoutInputDrawAmount = function()
+	{
+		top.inputmethod.Close();
+		top.journalPrinter.addJournalWithTime("909002-输入金额页面超时");
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	input_Amount.onkeypress = function()
+	{
+
+		error_Content.innerHTML = "&nbsp;";
+		top.serviceCtrl.startUserTimeout(onTimeoutInputDrawAmount, top.iUserTimeout,oInputDrawAmountTick);
+	}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeoutInputDrawAmount, top.iUserTimeout,oInputDrawAmountTick);
+	
+	if(top.pool.get("acctKind") != "" && top.pool.get("acctKind") != "1"){
+		accDraw_type.innerHTML = "您的账户：" + top.pool.get("DrawPan") + " 为Ⅱ类户";
+		maxDraw_day.innerHTML = "当日剩余转出/取款额度：" + top.pool.get("MaxDrawDay") + "元";
+		maxDraw_year.innerHTML = "当年剩余转出/取款额度：" + top.pool.get("MaxDrawYear") + "元";
+	}
+	drawTip1.innerHTML = "单笔取款金额最高为:" + parseInt(top.pool.get("Cash")) + "元 仅支持100元票面取款";
+	 // 播放提示音
+	 try {top.soundPlayer.playback("/Sound/PlsInputWithDrawAmount.wav");} catch (e) {}
+	top.inputmethod.ShowDigit(970,640);  //数字等输入 1
+	InqBalance.innerHTML ="您当前卡片可取现额度为：" + top.pool.get("strAccKYYE") + "元";
+	
+
+	//显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLInputDrawAmount");
+	top.serviceCtrl.changeNaviStatus('2');
+	top.serviceCtrl.changeNaviStatus('3');
+	error_Content.innerHTML = "";
+	input_Amount.value = "";
+	input_Amount.focus();
+	//初始化取款金额各面值数量
+	top.pool.set("Y100Num","0");  //100元金额数量
+	top.pool.set("Y50Num","0");  //50元金额数量
+	top.pool.set("Y20Num","0");  //20元金额数量
+	top.pool.set("Y10Num","0");  //10元金额数量
+	top.pool.set("Y5Num","0");  //5元金额数量
+	top.pool.set("Y1Num","0");  //1元金额数量
+	top.pool.set("C50Num","0");  //5角金额数量
+	top.pool.set("C10Num","0");  //1角金额数量
+	top.pool.set("C5Num","0");  //5分金额数量
+	top.pool.set("C1Num","0");  //1分金额数量
+}
+
+//大额确认
+function drawAmountConfirm()
+{
+    //alert("大额确认");
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("DrawFlowFlag","l");//大额
+	top.journalPrinter.addJournalWithTime("909002-进入大额确认页面");
+	onKey_Cancel = onKey_F98 = function()
+	{
+	    top.journalPrinter.addJournalWithTime("909002-大额确认页面客户点击返回");
+		top.serviceCtrl.stopUserTimeout();
+		InputDrawAmount();
+	}
+	
+	onTimeoutdrawAmountConfirm = function()
+	{
+	    top.journalPrinter.addJournalWithTime("909002-大额确认页面超时");
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	onKey_Enter = onKey_F99 = function()
+	{
+	    top.journalPrinter.addJournalWithTime("909002-大额确认页面客户点击确定-进入配钞");
+		top.serviceCtrl.stopUserTimeout();
+		DrawMix();//预配钞
+	}
+	cLdrawAmountConfirmContent.innerHTML = "提示：" 
+	                                       +"<br/>卡/折号:" + top.pool.get("DrawPan") + "的账户。" 
+										   +"<br/>当日已在我行智能柜员机" +"累计交易:" + top.pool.get("totalAmountDay") + "元。" 
+										   +"<br/>本次取款金额:" + top.pool.get("AmountCheck") + "元，总金额超过50000元。"
+                                           +"<br/>如您持本人的卡折取款，需要提供您的身份证。"
+										   +"<br/>如您持他人的卡折取款，需要提供您及户主的身份证。";
+                                       
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeoutdrawAmountConfirm, top.iUserTimeout,odrawAmountConfirmTick);
+	 // 播放提示音
+	 try {top.soundPlayer.playback("/Sound/PlsConfirmWithDrawInfo.wav");} catch (e) {}
+	//显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLdrawAmountConfirm");
+}
+
+//预配钞
+function DrawMix()
+{
+    //alert("预配钞");
+	
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.journalPrinter.addJournalWithTime("909002-进入配钞逻辑判断");
+	//alert("流程Flag：" + top.pool.get("DrawFlowFlag"));
+	//配钞成功 
+	onMixComplete = function(){
+	    //alert("配钞成功-页面");
+		if(top.pool.get("DrawFlowFlag")!= null && top.pool.get("DrawFlowFlag")!= "" && top.pool.get("DrawFlowFlag")=="l"){
+			//大额流程-插入身份证
+			//alert("大额流程-插入身份证");
+			top.journalPrinter.addJournalWithTime("909002-配钞成功-走大额-插身份证");
+			acceptIDCard();
+		}else{
+			//小额流程-拍照
+			top.journalPrinter.addJournalWithTime("909002-配钞成功-走小额-签名");
+			userSign();
+			
+		}
+	}
+	//配钞失败 
+	onMixFailed = function(){
+	   // alert("配钞失败-页面");
+		onServiceFailed("取款交易失败", "", "配钞失败，机具余额不足！");
+	}
+	onFatalError_Mix = function(){
+		onServiceFailed("取款交易失败", "", "配钞失败，硬件故障！");
+	}
+	DrawTitleDesc.innerHTML = "正在配钞，请稍候...";
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	top.wins.showMain("oLDrawTitleTip");
+	//alert("配钞-页面" + top.pool.get("AmountCheck") + top.withdraw.strCurrency_Conf );
+	top.withdraw.Mix(top.pool.get("AmountCheck"),top.withdraw.strCurrency_Conf);//预配钞
+}
+
+// 允许读取身份证
+function acceptIDCard() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	IDCardAcceptFlag++;//身份证插入次数累加
+	top.pool.set("IDCardAcceptFlag",IDCardAcceptFlag);//身份证插入次数累加入数据池 
+	onDeviceError_ID = onTimeout_ID = onCardInvalid_ID = function() {	
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed(top.langcur.oTransferFailed, top.TERMRETCODE_CARD_FAILED, top.langcur.oGetIDInfoFailed); 
+	}
+	onCardReaded = function() {
+		top.serviceCtrl.stopUserTimeout();
+		idCardEject();
+	}
+	onCardInserted_ID = function() {
+		top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+	}
+	//退出身份证读取流程
+	onKey_F98 = function()
+	{
+	    top.journalPrinter.addJournalWithTime("909002-读身份证客户选择返回");
+		top.serviceCtrl.stopUserTimeout();
+		top.idCardReader.cancelAccept();
+		top.serviceCtrl.navigate2SecondMenu();
+		
+	}
+	//退出身份证读取流程
+	onTimeoutacceptIDCard = function()
+	{
+	    top.journalPrinter.addJournalWithTime("909002-读身份证超时");
+		top.idCardReader.cancelAccept();
+		if (top.idCardReader.isCardPresent()){
+			isReturn = true;
+			idCardEject();
+		}else{
+			top.serviceCtrl.navigate2Quit();
+		}
+	}
+	if(IDCardAcceptFlag == 1){
+		oDrawInsertID.innerHTML = "请插入您的身份证";
+	}
+	else if(IDCardAcceptFlag == 2)
+	{
+		oDrawInsertID.innerHTML = "请插入户主的身份证";
+	}else{
+		oDrawInsertID.innerHTML = "请插入您的身份证";
+	}
+	//插入身份证页面屏蔽安全退出及返回Home的功能
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeoutacceptIDCard, top.iUserTimeout, oIdCardTick);
+	top.idCardReader.accept();
+	if(IDCardAcceptFlag == 1){
+		// 播放提示音
+		try {top.soundPlayer.playback("/Sound/PutIDCard.mp3");}catch(e){}
+	}else{
+		// 播放提示音
+		try {top.soundPlayer.playback("/Sound/PlsInsertIDCard.wav");}catch(e){}
+	}
+	top.wins.showMain("oLIDCardTip");
+	top.serviceCtrl.changeNaviStatus('2');
+	top.serviceCtrl.changeNaviStatus('3');
+	top.serviceCtrl.changeNaviStatus('4');
+}
+
+//取回身份证
+function idCardEject()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("isPersonal","1");//人证合一
+	onDeviceError_ID  = onTimeout_ID  = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed(top.langcur.oLimitManageFailed, top.TERMRETCODE_ID_EJECTFAILED, top.langcur.oEjectIDFailed); 
+	}
+	onCardTaken_ID = function()
+	{ 
+		top.serviceCtrl.stopUserTimeout();
+	}
+	//超时
+	onTimeoutidCardEject = function()
+	{
+		if(isReturn){
+			top.journalPrinter.addJournalWithTime("909002-读身份证超时后取身份证超时");
+			top.serviceCtrl.navigate2Quit();
+		}else{
+			top.idCardReader.IDCardEvents.clearAll();
+			top.journalPrinter.addJournalWithTime("909002-读身份证后取身份证超时默认走联网核查");
+			//进行联网核查流程
+			top.idCardReader.idCardTakenComplete();
+		}
+	}
+	top.serviceCtrl.startUserTimeout(onTimeoutidCardEject, 10, oIdCardTakeTick);
+	window.operateCtrl.enableInput();
+	top.idCardReader.eject();
+	isReturn = false;
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/TakeIDCard.mp3");}catch(e){}
+	top.wins.showMain("oLIDCardTakeTip");
+}
+
+//联网核查
+function onNetworkVirificationSuccessful(){
+	top.serviceCtrl.stopUserTimeout();
+	//开始影像文件上传交易
+	top.pool.set("strImageType", "IDType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+	top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+	if(IDCardAcceptFlag == 2){
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageAgentFileAsync();
+	}else{
+		//第一次影像上传非本人
+		if(IDCardAcceptFlag == 1 && top.pool.get("strIDCardNum") != top.pool.get("strRespIDNo")){
+			isdrawAgent = 1;
+		}
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+	}
+}
+
+function onImageAgentFileSuccessful(){
+	TakePic();
+}
+
+//第一次联网核查非本人-代理人电话录入 
+function drawAgentTelInput(){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//alert("第一次联网核查非本人-代理人电话录入");
+	top.journalPrinter.addJournalWithTime("909002-首次联网核查人证不一进入代理人电话录入");
+	onTimeoutdrawAgentTelInput = function()
+	{
+	    top.journalPrinter.addJournalWithTime("909002-代理人电话录入超时");
+		top.serviceCtrl.navigate2Quit();
+	}
+	onKey_Enter = onKey_F99 = function()
+	{
+		
+		if(input_AgentTel.value.length < 5 || input_AgentTel.value.length > 12 || !new top.StringCtrl(input_AgentTel.value).isAllDigit2()){
+			error_AgentTel.innerHTML = top.langcur.oInputRightPhone;
+			input_AgentTel.value = "";
+			input_AgentTel.focus();
+		}else{
+			top.journalPrinter.addJournalWithTime("909002-代理人电话录入客户点击确定-进入户主身份证认证");
+			top.serviceCtrl.stopUserTimeout();
+			top.pool.set("drawAgentTel",input_AgentTel.value);//代理人电话
+			top.inputmethod.Close();
+			acceptIDCard();
+		}
+	}
+	drawAgentIDCardNum.innerHTML = top.pool.get("strIDCardNum");
+	top.pool.set("DrawAgentIDNum",top.pool.get("strIDCardNum"));
+	drawAgentName.innerHTML = top.pool.get("strIDName");
+	top.pool.set("DrawAgentName",top.pool.get("strIDName"));
+	top.pool.set("strdrawAgentIDEnd",top.pool.get("strIDEnd"));//证件到期日
+    top.pool.set("strdrawAgentIDGrantDept",top.pool.get("strIDGrantDept"));//证件颁发地
+	error_AgentTelContent.innerHTML = "提示：持他人办理的卡折办理存款、取款或转账超过"
+									  +"<br/>50000元，需要留存代理人信息及联系电话。";
+	
+	try{top.soundPlayer.playback("/Sound/InputPhoneNum.mp3");}catch(e){}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeoutdrawAgentTelInput, top.iUserTimeout,oDrawAgentTelInputTick);
+	//显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLDrawAgentTelInput");
+	input_AgentTel.value = "";
+	input_AgentTel.focus();
+	//top.inputmethod.ShowDigit(970,640);
+}
+
+//拍照
+function TakePic()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	window.operateCtrl.enableInput();
+	window.frames["ifreamPhoto"].CamerasLoad();//加载子页面摄像头相关方法
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLTakePicTip");
+	top.serviceCtrl.changeNaviStatus('3');
+	top.serviceCtrl.changeNaviStatus('4');
+	top.serviceCtrl.changeNaviStatus('5');
+}
+function PhotoPrevStep()//TakePhoto页面过度方法
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.navigate2SecondMenu();//拍照返回后步骤
+	window.operateCtrl.enableInput();
+}
+function PhotoNextStep()//TakePhoto页面过度方法
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	indexID++;
+	top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+	top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+	top.journalPrinter.addJournalWithTime("909002-拍照页面客户点击下一步");
+	top.wins.showNewProcessingTip(top.langcur.oSendImage);
+	top.trans.sendImageFileAsync();
+	window.operateCtrl.enableInput();
+}
+
+//用户签名
+function userSign()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+    top.journalPrinter.addJournalWithTime("909002-电子签名页面");
+	oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+	oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+	oSigFinger.style.visibility = "visible";
+	oESign.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	oLSafeQuit.style.visibility = "visible";
+	
+	text_DestPan1.innerHTML = top.pool.get("DrawPan");//卡号-存折号 
+	text_strTransName.innerHTML = "取款交易";//交易名称
+	text_DrawIDNum.innerHTML = top.pool.get("strRespIDNo");//取款人身份证
+	text_DrawName.innerHTML = top.pool.get("strRespIDName");//取款人姓名
+	text_DrawAmount.innerHTML = top.pool.get("AmountCheck");//取款金额
+	if(top.pool.get("IDCardAcceptFlag") == "2"){
+		text_DrawAgentNameTitle.innerHTML = "代理人姓名:";
+		text_DrawAgentIDNumTitle.innerHTML = "代理人身份证:";
+		text_DrawAgentTelTitle.innerHTML = "代理人电话:";
+		text_DrawAgentIDNum.innerHTML = top.pool.get("DrawAgentIDNum");//代理人身份证
+		text_DrawAgentName.innerHTML = top.pool.get("DrawAgentName");//代理人姓名
+		text_DrawAgentTel.innerHTML = top.pool.get("drawAgentTel");//代理人电话
+	}
+	text_date.innerHTML = new top.DateTimeCtrl().getYYYYMMDD2();
+	text_time.innerHTML = new top.DateTimeCtrl().getHHmmSSWithSep();
+	text_term.innerHTML = top.terminal.strTerminalNum;
+	//top.pool.set("strFeeYuan","0.00");
+	top.wins.showMain("oLUserSignTip");
+	window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(window.frames['ifreamSign'].onTimeout, top.iUserTimeout,oSigFingerTick);
+	top.serviceCtrl.changeNaviStatus('2');
+	top.serviceCtrl.changeNaviStatus('3');
+	top.serviceCtrl.changeNaviStatus('4');
+}
+
+function SignPrevStep()//ESign页面过度方法
+{
+
+}
+
+function SignNextStep()//ESign页面过度方法
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+	top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+	top.wins.showNewProcessingTip(top.langcur.oSendImage);
+	indexID = 2;
+	top.journalPrinter.addJournalWithTime("909002-电子签名客户选择下一步");
+	top.trans.sendImageFileAsync();
+	window.operateCtrl.enableInput();
+}
+
+//影像文件上传成功
+function onImageFileSuccessful(){
+	top.serviceCtrl.stopUserTimeout();
+	var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+	top.pool.set("strBatchId",strBatchId);
+	//如果是代理人，先进行电话录入
+	if(IDCardAcceptFlag == 1 && isdrawAgent == 1)
+	{
+		drawAgentTelInput();
+		return;
+	}
+	if(indexID == 0)
+	{
+		//拍照
+		TakePic();
+	}
+	else if(indexID == 1)
+	{
+		userSign();
+	}
+	else if(indexID == 2)
+	{
+		var htmlstr = infoToPic.innerHTML;
+		top.pool.set("htmlstr",htmlstr);
+		oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+		infoToPic.style.visibility = "hidden";
+		top.wins.showNewProcessingTip("正在上传业务办理单，请稍候...");
+		top.trans.sendBusinessApplicationAsync();
+	}
+}
+
+
+
+//图片查询结果
+function onImageFileQuerySuccessful()
+{
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	if(indexImage == 0){
+		top.pool.set("idPhotoBackUrl",top.pool.get("back"));//反
+		top.pool.set("idPhotoUrl",top.pool.get("Front"));//正
+		//进行查询
+		indexImage ++;
+		top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+		top.pool.set("strImageType","ZNGYType");
+		top.trans.sendImageFileQueryAsync();
+	}else if(indexImage == 1){
+		isPadCheck = true;
+		top.pool.set("scenePhotoUrl",top.pool.get("cameras"));//现场
+		var Msg = new top.JSONCtrl();
+		
+		Msg.setJson("strPan","取款卡/折号：" + top.pool.get("DrawPan"));
+		Msg.setJson("strName","取款人姓名：" + top.pool.get("strRespIDName"));
+		Msg.setJson("strRespIDNo","取款人身份证：" + top.pool.get("strRespIDNo"));
+		Msg.setJson("strAmount","取款金额：" + top.pool.get("AmountCheck"));
+		Msg.setJson("strAgentIDNum","代理人身份证：" + top.pool.get("DrawAgentIDNum"));
+		Msg.setJson("strAgentName","代理人姓名：" + top.pool.get("DrawAgentName"));
+		Msg.setJson("strAgentTel","代理人电话：" + top.pool.get("drawAgentTel"));
+		top.pool.set("strbusinessCode","909002");
+		top.pool.set("strbusinessName","现金取款");
+		//进行审核
+		top.pool.set("strCheckContent",Msg.jsonStr);
+		top.journalPrinter.addJournalWithTime("909002-发送pad审核");
+		top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+		top.trans.send910301Async();
+	}
+}
+
+//审核超时处理
+function onProcessingTimeout(){
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	top.journalPrinter.addJournalWithTime("909002-onProcessingTimeout超时退卡");
+	top.serviceCtrl.navigate2Quit();  
+}
+
+//上传业务办理单成功
+function onSuccessful()
+{
+    top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	if(top.pool.get("DrawFlowFlag")!= null && top.pool.get("DrawFlowFlag")!= "" && top.pool.get("DrawFlowFlag")=="l"){
+		//alert("大额PAD审核");
+		//身份证图片查询
+		top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+		top.pool.set("strImageType","IDType");
+		top.trans.sendImageFileQueryAsync();
+	}else{
+		onCheckLoadingSuccessful();//不经过pad审核，直接发起取款交易
+	}
+}
+
+//审核成功
+function onCheckLoadingSuccessful()
+{
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("MultiWithDrawAmount",top.pool.get("AmountCheck"));
+	if(top.withdraw.checkAvai() != "true"){
+		top.journalPrinter.addJournalWithTime("909002-发取款交易前硬件检测异常");
+		top.pool.set("strbusinessName","取款交易异常-取款前模块状态检测异常");
+		drawOutOfService("取款失败","取款模块硬件异常！");  
+	}else{
+		top.journalPrinter.addJournalWithTime("909002-pad审核成功-发取款交易");
+		//top.wins.showNewProcessingTip(top.langcur.oDrawTransLoading);
+	    //top.trans.send909002Async();//成功回调 onDrawTransSucc 失败js回调页面onServiceFailed
+		inputPinSecondWithDrawVerify();
+	}
+}
+
+//取款前二次验密
+var bQuitSelectedDraw = false;
+var bReturnSelectedDraw = false;
+function inputPinSecondWithDrawVerify()
+{
+	top.serviceCtrl.stopUserTimeout();
+	window.operateCtrl.disableInput(true);
+	top.journalPrinter.addJournalWithTime("909002-发取款交易前二次验密");
+	onPlainCancelled = function()
+	{
+		
+		if(top.pool.get("MedFlag") == "isCard" || top.cardreader.isCardPresent()){
+			top.journalPrinter.addJournalWithTime("909002-卡二次验密-bufferPIN");
+			top.pinpad.bufferPIN();
+		}
+		else if(top.pool.get("MedFlag") == "isPassbook"){
+		    top.journalPrinter.addJournalWithTime("909002-折二次验密-bufferPINPassBookEx");
+			top.pinpad.bufferPINPassBookEx();
+		}else{
+			onServiceFailed("取款交易异常", "", "取款前未验密");
+		}
+		//请输入密码提示音
+		top.soundPlayer.playback("/Sound/InputPassword.mp3");
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oInpPwdTick);
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("InputPassword");
+		input_Password.value = "";
+		input_Password.focus();
+	}
+	onKey_F98 =onKey_Cancel= function()
+	{
+		// 用户选择了返回
+		bQuitSelectedDraw = true;
+		top.journalPrinter.addJournalWithTime("909002-二次验密-返回/超时");
+		if (input_Password.value.length < top.pinpad.iMaxPinLen)
+		top.pinpad.cancelPINEntry();
+	}
+	onGetPinBlockOK = function (pinblock)
+	{
+	    top.pool.set("strPinBlock",pinblock);
+	    
+		if (bQuitSelectedDraw)
+		{
+			// 用户选择了退卡
+			top.serviceCtrl.navigate2Quit();
+			return;
+		}
+		if (bReturnSelectedDraw)
+		{
+			// 用户选择了返回
+			top.serviceCtrl.navigate2SecondMenu();
+			return;
+		}
+		if (input_Password.value.length < top.pinpad.iMinPinLen)
+		{
+			// 密码位数不足，则重新输入
+			error_InputPassword.innerHTML = top.langcur.oPlsReInputPwd;
+			top.serviceCtrl.startFlowCtrlTimeout(inputPinSecondWithDrawVerify, 200);
+			return;
+		}
+		 window.operateCtrl.disableInput(true);
+         top.serviceCtrl.stopUserTimeout();
+		 //发送验密交易
+		 top.wins.showNewProcessingTip("正在发起验密交易，请稍候...");
+		 top.journalPrinter.addJournalWithTime("909002-二次验密-send901612WithDrawVerifyAsync");
+		 top.trans.send901606WithDrawVerifyAsync();//2018-1-19 取款前增加二次验密
+		 
+	}
+	onDeviceError_Pinpad = onPinCancelled = onPinInputTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	input_Password.onkeypress = function()
+	{
+		error_InputPassword.innerHTML = "&nbsp;";
+	}
+	top.pinpad.cancelUserEntry();//关闭明文输入
+	bQuitSelectedDraw = false;
+	bReturnSelectedDraw = false;
+}
+
+//二次验密成功
+function onWithDrawVerifyServiceSuccessfulCard()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.journalPrinter.addJournalWithTime("909002-二次验密-成功");
+	error_InputPassword.innerHTML = "&nbsp;";
+	//alert("取款前验密Succ");
+	top.wins.stopProcessingTimeout();
+	//发起取款交易
+	top.wins.showNewProcessingTip(top.langcur.oDrawTransLoading);
+	top.trans.send909002Async();//成功回调 onDrawTransSucc 失败js回调页面onServiceFailed
+}
+
+//二次验密失败
+function onWithDrawVerifyFailedCard()
+{
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	top.journalPrinter.addJournalWithTime("909002-二次验密-失败");
+	top.wins.stopProcessingTimeout();
+	if(inputPinFlagDraw < 2){
+		inputPinFlagDraw++;
+		error_InputPassword.innerHTML = "密码输入错误，请重新输入密码！";
+	    inputPinSecondWithDrawVerify();
+	}
+	else
+	{
+	   inputPinFlagDraw = 0;
+	   window.operateCtrl.disableInput(true);
+       top.serviceCtrl.stopUserTimeout();
+	   top.serviceCtrl.navigate2Quit();
+	}
+}
+
+//取款交易超时
+function onProcessingTimeoutDraw()
+{
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	//alert("取款交易超时 ");
+	top.journalPrinter.addJournalWithTime("909002-取款交易超时-发冲正");
+	InsertWithDrawDB("3","3");//2018-1-8 终端状态-不确定 冲正状态-不确定
+	rollBackTrans();//发冲正 
+}
+
+//取款交易成功
+function onDrawTransSucc()
+{
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	InsertWithDrawDB("3","3");//2018-1-8 终端状态-不确定 冲正状态-不确定
+	top.journalPrinter.addJournalWithTime("909002-取款交易成功");
+	//代理人登记
+	if(top.pool.get("IDCardAcceptFlag") == "2"){
+		var strTransRandom = new top.StringCtrl(top.terminal.strTerminalNum).prefixStr('0',8)+""+new top.StringCtrl("").getRandom();
+	    top.pool.set("strTransRandom",strTransRandom);
+	    top.pool.set("strOption","C");
+		top.pool.set("strAgentTransCode","909002");
+		top.journalPrinter.addJournalWithTime("909002-代理人登记");
+		top.trans.send901112CashAsync();
+	}
+	//alert("取款交易成功，开始检测硬件");
+	//先检测现金模块状态
+	if(top.withdraw.checkAvai() != "true"){
+	    InsertWithDrawDB("2","3");
+		//冲正交易 
+		//alert("取款成功，模块异常，发冲正");
+		top.journalPrinter.addJournalWithTime("909002-取款交易成功-模块异常-发冲正");
+		rollBackTrans();
+	}else{
+	    top.journalPrinter.addJournalWithTime("909002-取款交易成功-开始出钞");
+		//开始出钞
+		MultiWithDraw();
+	}
+}
+
+//冲正交易--无硬件动作时调用
+function rollBackTrans()
+{
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	//alert("机具端发冲正交易 ");
+	//机具端发冲正交易
+	top.journalPrinter.addJournalWithTime("909002-发送冲正交易");
+	top.wins.showNewProcessingTip("正在发送冲正交易，请稍候...");
+	top.trans.send900002WithDrawAsync();//成功回调 rollBackSucc 失败回调 rollBackFail
+}
+
+//冲正交易成功
+function rollBackSucc()
+{
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	top.journalPrinter.addJournalWithTime("909002-冲正交易成功");
+	InsertWithDrawDB("2","1");
+	//alert("机具冲正交易成功");
+	onServiceFailed("取款失败","", "活期取款出钞失败，取款交易冲正成功！");  
+}
+
+//冲正交易失败- 发送冲正任务到S端
+function rollBackFail()
+{
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	InsertWithDrawDB("2","3");//2018-1-9 冲正失败 发s端冲正 冲正结果记为不确定
+	//alert("机具冲正交易失败- 发送冲正任务到S端");
+	//发冲正到S端
+	top.journalPrinter.addJournalWithTime("909002-冲正交易失败-发冲正到S端");
+	top.trans.send900002WithDrawReverseAsync();
+	top.pool.set("strbusinessName","取款交易异常-取款交易冲正失败");
+	drawOutOfService("暂停服务","取款交易冲正失败，请等待银行工作人员处理！");//打印凭条 pad帮助 暂停服务
+}
+
+//多次出钞控制方法
+function MultiWithDraw()
+{
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	top.journalPrinter.addJournalWithTime("909002-多次出钞控制逻辑");
+	//alert("剩余取款金额：" + top.pool.get("MultiWithDrawAmount"));
+	
+	if(parseInt(top.pool.get("MultiWithDrawAmount")) >= 10000){
+		top.pool.set("DrawDispenseAmount",10000);//出钞金额
+		top.pool.set("MultiWithDrawAmount",parseInt(top.pool.get("MultiWithDrawAmount"))-10000);
+		top.journalPrinter.addJournalWithTime("909002-MultiWithDraw-Dispense("+ top.pool.get("DrawDispenseAmount") + ")");
+		DrawDispense();
+	}
+	else if( parseInt(top.pool.get("MultiWithDrawAmount")) > 0 && parseInt(top.pool.get("MultiWithDrawAmount")) < 10000)
+	{
+		top.pool.set("DrawDispenseAmount",parseInt(top.pool.get("MultiWithDrawAmount")));//出钞金额
+		top.pool.set("MultiWithDrawAmount",0);
+		top.journalPrinter.addJournalWithTime("909002-MultiWithDraw-Dispense("+ top.pool.get("DrawDispenseAmount") + ")");
+		DrawDispense();
+	}else{
+		onServiceSuccessful();
+	}
+}
+
+//开始出钞
+function DrawDispense()
+{
+    //alert("开始出钞");
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onCashDispensed = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.trans.send909014Async();//上送钞箱信息
+		DrawPresent();//送钞
+	}
+	
+	onMixDispFailed = function()
+	{
+	    InsertWithDrawDB("2","0");
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strbusinessName","取款交易异常-取款模块异常(出钞失败)");
+		drawOutOfService("暂停服务","取款模块异常(出钞失败)，请等待银行工作人员处理");//打印凭条 pad帮助 暂停服务 2018-1-20 pad信息精简
+	}
+	
+	onTimeoutDrawDispense = function()
+	{
+	    InsertWithDrawDB("2","0");
+		top.pool.set("strbusinessName","取款交易异常-出钞失败(超时)");
+		drawOutOfService("暂停服务","出钞失败(超时)，请等待银行工作人员处理");//打印凭条 pad帮助 暂停服务
+	}
+	top.pool.set("strWithDrawSuccAmount",parseInt(top.pool.get("AmountCheck")) - parseInt(top.pool.get("MultiWithDrawAmount")));//已出钞金额
+	top.serviceCtrl.startUserTimeout(onTimeoutDrawDispense, top.iUserTimeout,oDrawTitleTick);
+	DrawTitleDesc.innerHTML = "正在出钞，请稍候...";
+	try{top.soundPlayer.playback("/Sound/DispenseAndPresentLoading.wav");}catch(e){}
+	top.withdraw.MixAndDispense(top.pool.get("DrawDispenseAmount"));//开始出钞
+	
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	top.wins.showMain("oLDrawTitleTip");
+	top.serviceCtrl.changeNaviStatus('5');
+	top.serviceCtrl.changeNaviStatus('6');
+	
+}
+
+//送钞
+function DrawPresent()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//alert("开始送钞");
+	onCashPresented = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.stopFlowCtrlTimeout();
+	    TakeCashTip();
+	}
+
+	onTimeoutDrawPresent = function()
+	{
+		top.withdraw.CdmEnr.clearAll();
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.stopFlowCtrlTimeout();
+		InsertWithDrawDB("9","0");//2018-1-18 细化送钞终端状态
+		top.pool.set("strbusinessName","取款交易异常-送钞失败(超时)");
+		drawOutOfService("暂停服务","送钞失败(超时)，请等待银行工作人员处理！");//打印凭条 pad帮助 暂停服务
+	}
+	onDeviceError_Present = function()
+	{
+	    InsertWithDrawDB("9","0");
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strbusinessName","取款交易异常-送钞失败(硬件故障)");
+		drawOutOfService("暂停服务","送钞失败(硬件故障)，请等待银行工作人员处理！");//打印凭条 pad帮助 暂停服务
+	}
+	//2018-1-12 增加取钞后关门故障回调
+	onDeviceError_closeShutter = function()
+	{
+	    InsertWithDrawDB("10","0");
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strbusinessName","取款交易异常-取钞成功(钞口关门故障)");
+		drawOutOfService("暂停服务","取钞成功(钞口关门故障)，请等待银行工作人员处理！");//打印凭条 pad帮助 暂停服务
+	}
+	top.serviceCtrl.startUserTimeout(onTimeoutDrawPresent, top.iUserTimeout,oDrawTitleTick);
+	
+	DrawTitleDesc.innerHTML = "正在送钞，请稍候...";
+	top.withdraw.Present();//开始送钞
+	new top.FileControl().createFSNFile();//FSN冠字号上传
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	top.wins.showMain("oLDrawTitleTip");
+}
+//提示取钞
+function TakeCashTip(){
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.stopFlowCtrlTimeout();
+	
+	onCashTaken = function()
+	{
+		//alert("取走钞票-页面");
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.stopFlowCtrlTimeout();
+		MultiWithDraw();//多次出钞判断
+	}
+	
+	onTimeoutTakeCashTip = function()
+	{
+		top.withdraw.CdmEnr.clearAll();
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.stopFlowCtrlTimeout();
+		InsertWithDrawDB("11","0");
+		top.pool.set("strbusinessName","取款交易异常-客户取钞失败(超时)");
+		drawOutOfService("暂停服务","取钞失败(超时)，请等待银行工作人员处理！");//打印凭条 pad帮助 暂停服务
+	}
+	TakeCashAmt.innerHTML = "&nbsp;&nbsp;&nbsp;取款交易金额:" + top.pool.get("AmountCheck") + "元" + "<br>"
+						   +"已完成出钞金额:" + top.pool.get("strWithDrawSuccAmount") + "元" + "<br>"
+						   +"剩余未出钞金额:"+ top.pool.get("MultiWithDrawAmount") + "元" + "<br>"+"<br>"+"<br>"+"<br>"+"<br>";//2018-1-10 调整取款信息提示样式 2018-1-18 调整取款信息提示样式
+	try{top.soundPlayer.playback("/Sound/PlsCashTaken.wav");}catch(e){}
+	top.serviceCtrl.startUserTimeout(onTimeoutTakeCashTip, top.iUserTimeout,oCashTakeTick);
+	top.wins.showMain("oLTakeCashTip");
+}
+//交易成功提示，转账交易直接回调成功方法
+function onServiceSuccessful()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("DrawTransResult","交易成功");
+	InsertWithDrawDB("1","0");
+	top.journalPrinter.addJournalWithTime("909002-取款最终成功");
+	top.pool.set("TransCode","909002");
+	//发更新取款箱表交易
+	top.journalPrinter.addJournalWithTime("909002-发更新取款箱表交易");
+	top.trans.sendUpdateSettleCycleLogDB();
+	//alert("交易成功");
+	if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	{
+		oPrintReceipt.style.visibility = "hidden";
+	}else
+	{
+		onKey_Enter = onKey_F99 = function()
+		{
+			top.journalPrinter.addJournalWithTime("909002-取款最终成功-客户点击打印凭条");
+			top.pool.set("printType","WithDrawSucc");//选择打印的凭条类型
+			top.serviceCtrl.navigate2PrintReceipt();
+		}
+	}
+
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.journalPrinter.addJournalWithTime("909002-取款最终成功-客户选择返回");
+		top.serviceCtrl.stopUserTimeout();
+		
+		if(top.pool.get("isBookPrintFlag") == "isPassbook"){
+			//选择是否进行存折补登
+			onIsPassbook();
+		}else{
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+	}
+
+	onTimeoutonServiceSuccessful = function()
+	{
+		top.journalPrinter.addJournalWithTime("909002-取款最终成功-超时");
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	top.serviceCtrl.startUserTimeout(onTimeoutonServiceSuccessful, top.iUserTimeout,oServiceSuccessTick);
+	//交易成功后，显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLServiceSuccessTip");
+	top.serviceCtrl.changeNaviStatus('7');
+}
+
+//是否需要进行存折补登
+function onIsPassbook()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.journalPrinter.addJournalWithTime("909002-客户选择是否存折补登-客户点击不补登");
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+	
+	onKey_Enter = onKey_F99 = function()
+	{
+		top.journalPrinter.addJournalWithTime("909002-客户选择是否存折补登-客户点击补登");
+		top.serviceCtrl.navigate2("/Service/0002_902301_00001.html");
+	}
+	
+	onTimeout = function()
+	{
+		top.journalPrinter.addJournalWithTime("909002-取款最终成功-超时");
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	top.serviceCtrl.startUserTimeout(onTimeout,top.iUserTimeout,oSuccessTick);
+	//交易成功后，显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLIsPassbookTip");
+}
+
+function onServiceFailed(title, retcode, retdesc)
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.journalPrinter.addJournalWithTime("909002-失败提示页-onServiceFailed");
+	//alert("交易失败 10秒退卡 回空闲");
+    top.inputmethod.Close();
+	onTimeoutonServiceFailed = function()
+	{
+		top.journalPrinter.addJournalWithTime("909002-失败提示页-onServiceFailed-10秒超时");
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	oTransferFailed.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeoutonServiceFailed, top.iFailedTimeout,oServiceFailedTick);
+	//交易失败后，显示安全退出功能
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLServiceFailedTip");
+
+}
+
+//打印凭条 pad帮助 暂停服务
+function drawOutOfService(drawtitle,drawretdesc)
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.stopFlowCtrlTimeout();
+	top.pool.set("DrawTransResult","交易异常");
+	top.journalPrinter.addJournalWithTime("909002-失败暂停页-drawOutOfService");
+	//alert("交易失败 发pad 暂停服务 无超时");
+	oDrawOutOfServiceTitle.innerHTML = drawtitle;
+	oDrawOutOfServiceRetDesc.innerHTML = drawretdesc;
+	//1、发pad帮助
+	top.trans.sendExchange910304Async();
+	//2、打印凭条
+	onDeviceError_rpt_Print = onDeviceError_rpt_Eject = function()
+	{
+		oDrawOutOfServiceTitle.innerHTML = drawtitle + "(凭条打印失败-凭条打印机故障)";
+	}
+	if(top.receiptprinter.ReceiptPrinterStatus()!="true"){
+		top.journalPrinter.addJournalWithTime("909002-失败暂停页-drawOutOfService-凭条打印失败-凭条打印机故障");
+		oDrawOutOfServiceTitle.innerHTML = drawtitle + "(凭条打印失败-凭条打印机故障)";
+	}else{
+		top.journalPrinter.addJournalWithTime("909002-失败暂停页-drawOutOfService-凭条打印");
+		top.pool.set("printType","WithDrawSucc");
+		top.receiptprinter.printAndEject();
+		top.journalPrinter.addJournalWithTime("909002-失败暂停页-drawOutOfService-凭条打印");
+	}
+	
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	try{top.soundPlayer.playback("/Sound/WithDrawFailed.wav");}catch(e){}
+	top.wins.showMain("oLdrawOutOfServiceTip");
+}
+
+/*
+  取款交易 流水记录
+  TermTransStatus    终端交易状态 0未动作 1已送钞 2出钞失败 3结果不确定 9送钞失败 10关门故障 11超时未取
+  ReverseentryStatus 冲正状态 0无需冲正 1冲正成功 2冲正失败 3结果不确定
+*/
+function InsertWithDrawDB(TermTransStatus,ReverseentryStatus)
+{
+	top.journalPrinter.addJournalWithTime("909002-取款流水表更新 原终端流水号:" + top.pool.get("strWithDrawTransJun") + " 终端交易状态:" + TermTransStatus + " 冲正状态:" + ReverseentryStatus);
+    top.pool.set("TermTransResult",TermTransStatus);
+	top.pool.set("ReverseentryResult",ReverseentryStatus);
+	top.trans.sendUpdateWithDrawTransLog();
+}
+
+//校验金额
+function input_checkAmount()
+{
+	error_Content.innerHTML ="";
+	var Amountlen = (input_Amount.value).length;
+	//判断金额是否是数字
+	if(Amountlen == 1){
+		var regex = /^(0)/;
+		if (regex.test(input_Amount.value)) {
+			error_Content.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+		}
+	}
+	if (!new top.StringCtrl(input_Amount.value).isValidAmount()) {
+			error_Content.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+	}
+	//判断取款金额是否是100整数倍，是否超过10万单笔取款限额
+	if(Amountlen > 4){
+		if(parseInt(input_Amount.value)%100 != 0){
+			error_Content.innerHTML = "仅支持100元票面取款,请重新输入金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+		}
+		if(parseInt(input_Amount.value) > parseInt(top.pool.get("Cash"))){
+			error_Content.innerHTML = "单笔取款金额最高为" + top.pool.get("Cash") +"元,请重新输入金额！";
+			input_Amount.value = "";
+			input_Amount.focus();
+		}
+	}
+	//判断账户余额是否足够支付
+	if(parseInt(input_Amount.value) > parseInt(top.pool.get("strAccKYYE"))){
+		error_Content.innerHTML = "账户余额不足,请重新输入金额！";
+		input_Amount.value = "";
+		input_Amount.focus();
+	}
+}
+
+//校验电话号码
+function input_CheckAgentTel(){
+  if (!new top.StringCtrl(input_AgentTel.value).isAllDigit2())
+	{
+		error_AgentTel.innerHTML = top.langcur.oInputRightPhone;
+		input_AgentTel.value = "";
+		input_AgentTel.focus();
+	}
+}
+
+//用密码键盘输入时输入框校验
+function CheckValue()
+{
+  if(input_Amount.value.length > 0){
+	input_checkAmount();
+  }
+  if(input_AgentTel.value.length > 0){
+		input_CheckAgentTel();
+  }
+}
+
+function ShowKeyboard(){
+	top.inputmethod.ShowDigit(970,640);  //数字等输入 1
+  }
+  
+
+
+//根据特定字符查找所在位置
+function find_str(str,f_str,n){
+	var arr_str;
+	var tmp_str=0;
+	var arr_str=str.split(f_str);
+	if(arr_str.length<n){n=arr_str.length}
+	for(i=0;i<n;i++){
+	   tmp_str=arr_str[i].length+tmp_str;
+	}
+	return tmp_str+i-1;
+}
+
+
+var goMagNum=0;
+function goManager(num){
+    if(goMagNum == 0 && num == 3){
+		++goMagNum;
+	}else if(goMagNum == 2 && num == 3){
+		++goMagNum;
+	}else if(goMagNum == 1 && num == 4){
+		++goMagNum;
+	}else if(goMagNum == 3 && num == 4){
+		++goMagNum;
+	}else{
+		goMagNum=0;
+	}
+	if(goMagNum==2){
+		top.journalPrinter.addJournalWithTime(" 切换维护页面（现金模块故障）  goManage");
+        top.serviceCtrl.stopUserTimeout();
+	    top.pool.set("customStatus","1");
+		// 设置进入维护状态
+	    top.serviceCtrl.setSvcStatus(top.TTSTATUS_INMAINTENANCE);
+		top.serviceCtrl.navigate2("/Maintenance/Login_Maintenance.html");
+	}
+}
+
+</script>
+</head>
+
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div class="divFlowPage" id="divFlowPage">
+	   <table border="0" cellpadding="0" cellspacing="0">
+		 <tr>
+		   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+		   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+		   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+		   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td><div class="stepLine" id="nodeline41"></div></td>
+		   <td><div class="stepLine" id="nodeline42"></div></td><td width="34" class="stepStatusIcon" id="node5"></td><td><div class="stepLine" id="nodeline51"></div></td>
+		   <td><div class="stepLine" id="nodeline52"></div></td><td width="34" class="stepStatusIcon" id="node6"></td><td><div class="stepLine" id="nodeline61"></div></td>
+		   <td><div class="stepLine" id="nodeline62"></div></td><td width="34" class="stepStatusIcon" id="node7"></td><td width="38"></td>
+		 </tr>
+		 <tr height="70">
+		   <td class="font25" align="center" colspan="3" id="">介质选择</td>
+		   <td class="font25" align="center" colspan="3" id="">读卡/折</td>
+		   <td class="font25" align="center" colspan="3" id="">输入金额</td>
+		   <td class="font25" align="center" colspan="3" id="">信息留存</td>
+		   <td class="font25" align="center" colspan="3" id="">拍照签名</td>
+		   <td class="font25" align="center" colspan="3" id="">取款出钞</td>
+		   <td class="font25" align="center" colspan="3" id="">取款结果</td>
+		 </tr>
+	  </table>
+    </div>
+
+
+<div id="oLCashSelect" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oSelectTypeTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center">
+		<br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+          <pre class="Tip_Title" id="oSelectType"></pre>
+		  <span class="MENU6_1"><button onclick="javascript:onKey_F7()"  class="Menu_Passbook"></button></span>
+	      <span class="MENU7_1"><button onclick="javascript:onKey_F8()"  class="Menu_Card"></button></span>
+	  	  <span class="MENU8_1"><button onclick="javascript:onKey_F9()" class="Menu_Passreader" name="oPassbook"></button></span>
+	   </td>
+      </tr>
+    </table>
+  </div>
+  <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPassReaderTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oReadPassTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center"><br/><br/><br/><br/><br/>
+					<pre class="Tip_Title" id="oReaderPass"></pre><br/>
+					<img src="../Image/ReadPassBookTip.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPassTip" class="FULLSCR" style="visibility:hidden;">
+ <div class="FULLSCR">
+  <span class="Tip_Tick" id="oInPassTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr><td align="center">
+      <br/><br/><br/><br/><pre class="Tip_Title" id="oInsertPass"></pre><br/>
+      <img src="../Image/InputPassBookTip.gif" width="870px" height="520px"/>
+    </td></tr>
+  </table>
+  </div>
+<span class="MENU98"><button onmousedown="setTimeout(onKey_F98,1000);" class="return" name="return"></button></span>
+</div>
+
+<div id="cLInfoTip2" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oInfoTip2Tick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <br/><br/>
+        <span class="Tip_Title" ID="cLInfoContent2">&nbsp;<br/><br/><br/></span>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="oLInputDrawAmount" class="FULLSCR" >
+   <div class="FULLSCR">
+	   <br><br><br><br><br><br><br><br><br>
+	   <span class="Tip_Tick" id="oInputDrawAmountTick"></span>
+	   <table width="70%" height="50%" border="0" cellpadding="0" cellspacing="0" align="center">
+		           <tr>
+						<td align="center" colspan="4"><pre class="Tip_Title" id="oPlsInputAmountInfo">请输入取款金额</pre></td>
+	               </tr>
+				   <tr>
+						<td align="center"><input name="input_Amount" id="input_Amount" class="input_transfer30" size="6" maxlength="6" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkAmount()"/></td>
+				   </tr>
+				   <tr>
+						<td align="center" height ="40" colspan="4" class="Error_Title" id="InqBalance"></td>
+	               </tr>
+				   <tr>
+						<td align="center" height ="40" class="Tip_Title" id="drawTip1"></td>
+				   </tr>
+				    <tr>
+						<td align="center" height ="40" colspan="4"></td>
+	               </tr>
+				   <tr>
+						<td align="left" height ="40" class="Tip_Title">提示：</td>
+				   </tr>
+				   <tr>
+						<td align="left" height ="40" class="Tip_Title" id="drawTip2">如您持本人卡折取款超过5万元，需要提供您的身份证。</td>
+				   </tr>
+				   <tr>
+						<td align="left" height ="40" class="Tip_Title" id="drawTip3">如您持他人卡折取款超过5万元，需要提供您及户主的身份证。</td>
+				   </tr>
+				   <tr>
+						<td align="left" height ="40" class="Tip_Title"></td>
+				   </tr>
+				   <tr>
+						<td align="left" height ="40" class="Tip_Title" id="accDraw_type"></td>
+				   </tr>
+				   <tr>
+						<td align="left" height ="40" class="Tip_Title" id="maxDraw_day"></td>
+				   </tr>
+				   <tr>
+						<td align="left" height ="40" class="Tip_Title" id="maxDraw_year"></td>
+				   </tr>
+				   <tr>
+						<td align="center" height ="40" class="Error_Title" id="error_Content"></td>
+				   </tr>
+	  </table>
+  </div>
+  <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+  <span class="MENU99"><button id="AmountQueryButton" onclick="javascript:onKey_F99();" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLdrawAmountConfirm" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="odrawAmountConfirmTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+	    <td align="left" height ="40" width="200"></td>
+		<td align="left"><span class="Tip_Title" id="cLdrawAmountConfirmContent">&nbsp;<br/><br/><br/></span></td>
+		<td align="left" height ="40" width="200"></td>
+	  </tr>
+    </table>
+  </div>
+  <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+  <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="InputPassword" class="FULLSCR">
+  <div class="FULLSCR">
+    <span class="Tip_Tick" id="oInpPwdTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <pre class="Tip_Title" id="oPlsInputPwd"></pre>
+        <input type="password" id="input_Password" name="input_Password" size=10 maxlength=6 class="input_short" />
+    <br/><br/>
+    <img width="600px" height="430px" src="../Image/InputPin.gif" />
+    <table><tr height="52"><td class="Error_Title" id="error_InputPassword"></td></tr></table>
+      </td></tr><br/><br/>
+    </table>
+  </div>
+ <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+</div>
+
+
+<div id="oLIDCardTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br> <span class="Tip_Tick" id="oIdCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr class="FirstLine" height="100">
+				<td align="center"><br/> <br/> <span class="Tip_Title" id="oDrawInsertID"></span>
+					<br /> <img src="../Image/ID_in.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>			
+</div>
+
+<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br>
+		<br>
+		<br>
+		<br>
+		<br>
+		<br> <span class="Tip_Tick" id="oIdCardTakeTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr class="FirstLine" height="100">
+				<td align="center"><br /> <br /> <span class="Tip_Title" id="oIDCardTake"></span>
+					<br /> <img src="../Image/id_out.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+		</table>
+	</div>
+</div>
+
+<div id="oLTakeCashTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oCashTakeTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center"><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+					<pre class="Tip_Title">请取走您的钞票！</pre><br/>
+					<img src="../Image/TakenCash.gif" width="790px" height="490px" /><br/>
+					<table width="80%" height="30%" border="0" cellpadding="0" cellspacing="0">
+						<tr>
+							<td align="left" height ="40" width="300"></td>
+							<td align="left"><span id="TakeCashAmt" class="Tip_Title"></span></td>
+							<td align="left" height ="40" width="300"></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+</div>
+
+<div id="oLDrawAgentTelInput" class="FULLSCR" >
+   <div class="FULLSCR">
+	   <br><br><br><br><br><br><br>
+	   <span class="Tip_Tick" id="oDrawAgentTelInputTick"></span>
+	   <table width="70%" height="50%" border="0" cellpadding="0" cellspacing="0" align="center">
+		           <tr>
+						<td align="center" colspan="4"><pre class="Tip_Title" id="oPlsInputTransInfo">代理人信息补录</pre></td>
+	               </tr>
+				   <tr>
+						<td height ="60" align="right"  width="30%"><pre class="Tip_Title">代理人身份证：</pre></td>
+						<td colspan="3" align="left"><pre class="Tip_Title" id="drawAgentIDCardNum"></pre></td>
+				   </tr>
+				   <tr>
+						<td height ="60" align="right"  width="30%"><pre class="Tip_Title">代理人姓名：</pre></td>
+						<td colspan="3" align="left"><pre class="Tip_Title" id="drawAgentName"></pre></td>
+				   </tr>
+				   <tr>
+						<td height ="60" align="right" class="Tip_Content"><pre class="Tip_Title">代理人电话：</pre></td>
+						<td colspan="3" align="left" ><input name="input_AgentTel" id="input_AgentTel" class="input_transfer30" size="12" maxlength="12" onclick="javascript:ShowKeyboard();" onkeyup="return input_CheckAgentTel()"/><td>
+				   </tr>
+				   <tr>
+						<td height ="40" align="right"  width="30%"></td>
+						<td  colspan="3" align="left" height ="40" class="Error_Title" id="error_AgentTel"></td>
+				   </tr>
+				  <tr>
+						<td  colspan="4" align="left" height ="40" class="Tip_Content" id="error_AgentTelContent"></td>
+				   </tr>
+	  </table>
+  </div>
+  <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLTakePicTip" class="oLTakePicTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+	<tr height="100%">
+		<td align="center"><iframe id="ifreamPhoto" src="../Service/TakePhoto.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+	</tr>
+	</table>
+</div>
+
+<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+   <span class="Tip_Tick" id="oSigFingerTick"></span>
+	   <br><br><br><br><br><br><br><br>
+		   <table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+					<tr>
+						<td height="20px" align="center" class="Error_Title" id="oUserSign"></td>
+					</tr>
+		   </table>
+
+		<div id="infoToPic">
+			<table style="font-size:25px;" width="75%" height="20%" border="0" bgcolor="#FFFFFF" cellpadding="0" cellspacing="0" align="center">
+			<tr><td height="20px" colspan="4"></td></tr>
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%" colspan="2">
+			  <fieldset>
+			  <legend><span id="oUserTip2"></span></legend>
+			  <table>
+			    <tr>
+				    <td nowrap>&nbsp;&nbsp;<span id="oTextDate"></span>&nbsp;&nbsp;<span id="text_date"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTime"></span>&nbsp;&nbsp;<span id="text_time"></span></td>
+					<!-- <td nowrap>&nbsp;&nbsp;<span id="oTextJour"></span>&nbsp;&nbsp;<span id="text_jour"></span></td> -->
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTerm"></span>&nbsp;&nbsp;<span id="text_term"></span></td>
+				</tr>
+                <tr>
+					
+				    <td colspan="1">&nbsp;&nbsp;<span id="">交易名称:</span>&nbsp;&nbsp;<span id="text_strTransName"></span></td>
+					<td colspan="1">&nbsp;&nbsp;<span id="">取款金额:</span>&nbsp;&nbsp;<span id="text_DrawAmount"></span></td>
+				</tr>
+				<tr>
+					<td colspan="1" nowrap>&nbsp;&nbsp;<span id="">取款人姓名:</span>&nbsp;&nbsp;<span id="text_DrawName"></span></td>
+					<td colspan="2">&nbsp;&nbsp;<span id="">卡号/折号:</span>&nbsp;&nbsp;<span id="text_DestPan1"></span></td>
+					
+				</tr>
+				<tr>
+					<td colspan="2" nowrap>&nbsp;&nbsp;<span id="">取款人身份证:</span>&nbsp;&nbsp;<span id="text_DrawIDNum"></span></td>
+				</tr>
+				<tr>
+				    <td colspan="1">&nbsp;&nbsp;<span id="text_DrawAgentNameTitle"></span>&nbsp;&nbsp;<span id="text_DrawAgentName"></span></td>
+					<td colspan="1">&nbsp;&nbsp;<span id="text_DrawAgentIDNumTitle"></span>&nbsp;&nbsp;<span id="text_DrawAgentIDNum"></span></td>
+					<td colspan="1">&nbsp;&nbsp;<span id="text_DrawAgentTelTitle"></span>&nbsp;&nbsp;<span id="text_DrawAgentTel"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			<tr><td height="20px" colspan="4"></td></tr>
+			</table>
+		</div>
+
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+			<tr>
+		        <td colspan="2" ><iframe id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		    </tr>
+			</table>
+
+</div>
+     <span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>
+	 <span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+     <span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+     <!-- <span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span> -->
+   <span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+	<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<br /><br /><br /><br /><br /><br /><br /><br />
+			<tr class="FirstLine">
+				<td align="center" colspan="2">
+				<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+				<span class="Tip_Title" id="Tip_TitleSucc">取款交易成功</span></td>
+			</tr>
+		</table>
+  </div>
+  <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+  <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" id="oPrintReceipt" name="oPrintReceipt"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+  <span class="Tip_Tick" id="oServiceFailedTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oTransferFailed"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oFailedRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="oLIsPassbookTip" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oSuccessTick"></span>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br /><br /><br /><br /><br /><br /><br /><br />
+			<tr class="FirstLine">
+				<td align="center" colspan="2">
+				<span class="Tip_Title" id="Tip_TitleSucc">是否需要进行存折补登？</span></td>
+			</tr>
+	</table>
+  </div>
+  <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="Menu_Cash" name="oReturn">不补登</button></span>
+  <span class="MENU99"><button onclick="javascript:onKey_F99();" class="Menu_Cash" name="confirm">补登</button></span>
+</div>
+
+<div id="oLdrawOutOfServiceTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+  <span class="Tip_Tick" id="odrawOutOfServiceTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oDrawOutOfServiceTitle"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oDrawOutOfServiceRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+  <span class="MENUM3" onclick="goManager(3);"></span>
+  <span class="MENUM4" onclick="goManager(4);"></span>
+</div>
+
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title">请取走您的卡,并重新插入借记卡！</span><br/><br/>
+      <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>
+
+<div id="oLDrawTitleTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br><br><br>
+	<br/><br/><br/><br/><br/><br/><br/><br/>
+	  <br/><br/><br/><br/><br/><br/>
+	<span class="Tip_Tick" id="oDrawTitleTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+	  <tr>
+		<td></td>
+	  </tr>
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <br/>
+		   <img src="../Terminal/Style/Default/Img/LOGO.gif" width="130" height="130" /></br></br>
+		   <span class="Tip_Title" id="DrawTitleDesc"></span>
+		   </br></br></br></br></br></br></br>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+  </div>
+</div>
+
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+</body>
+</html>

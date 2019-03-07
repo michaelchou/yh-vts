@@ -1,0 +1,1246 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>外汇买卖</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+	var indexID = 0;
+	var indexImage =0;
+	//Pad审核
+	var	isPadCheck = false;
+	//光标最后停留的标签id名称
+	var last = "";
+	//货币对信息
+	var currPairArr = new Array();
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function() {serverEntrance();});
+
+	// 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+
+	function checkEvent() {
+		try {
+			//如果光标停留在输入框上,更新last
+			if(document.activeElement.tagName == "INPUT"){
+				last = document.activeElement.id;
+			}
+			//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+			if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+				top.wins.checkEvent(event.srcElement, last);
+			}else{
+				top.wins.checkEvent(event.srcElement, event.srcElement.id);
+			}
+		}
+		catch (e) {}
+	}
+
+	// 服务流程处理入口
+	function serverEntrance() {
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		if (typeof(top.YHAXIDCardReader) == "undefined")
+		{
+			onServiceFailed(top.langcur.oFxBuySellFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oNoIDCardReader);
+		}else if(new top.CheckCard().cardSignStatus() !="true"){
+			onServiceFailed(top.langcur.oFxBuySellFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, new top.CheckCard().cardSignStatus());
+		}else {
+			if (top.cardreader.isCardPresent()) {
+				if(top.pool.get("strCardType") != "1"){
+					InsertCard();//提示插入本行借记卡
+				}else{
+					top.pool.set("strNavigate2Url", "");
+					acceptIDCard();
+				}
+			}else{
+				top.serviceCtrl.navigate2InsertCard();
+			}
+		}
+	}
+
+	function InsertCard() {
+		top.serviceCtrl.stopUserTimeout();
+		onCardEjected = function() {
+			top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeInvalCardTick);
+			// 播放提示音
+			try {
+				top.soundPlayer.playback("/Sound/TakeCardTip.mp3");
+			} catch (e) {
+			}
+			top.wins.showMain("oLTakeInvalCardTip");
+		}
+		onCardTaken = function() {
+			top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+		}
+		onDeviceError_Idc = function() {
+			if (top.cardreader.isCardPresent()) {
+				top.YHAXCardReader.Capture();
+			}
+			onServiceFailed(top.langcur.oFxBuySellFailed, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError);
+		}
+		onCardCapturedTipEnd = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onCardCaptured = function() {
+			top.pool.set("printType","3");//选择打印的凭条类型
+	        top.receiptprinter.printAndEject();
+			top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+			top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+		}
+		//退卡前屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.cardreader.eject();
+	}
+
+	// 允许读取身份证
+	function acceptIDCard() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onDeviceError_ID = onCardInvalid_ID = function() {
+			onServiceFailed(top.langcur.oFxBuySellFailed, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDReaderFailed);
+		}
+		onCardReaded = function() {
+			idCardEject();
+		}
+		onCardInserted_ID = function() {
+			top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+		}
+		//退出身份证读取流程
+		onKey_Cancel = onKey_F98 = function() {
+			top.idCardReader.cancelAccept();
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		onTimeout_ID = onTimeout = function()
+		{
+			top.serviceCtrl.navigate2Quit();
+		}
+		//插入身份证页面屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oIdCardTick);
+		top.idCardReader.accept();
+		top.serviceCtrl.changeNaviStatus('1');
+		// 播放提示音
+		try {top.soundPlayer.playback("/Sound/PutIDCard.mp3");} catch (e) {}
+		top.wins.showMain("oLIDCardTip");
+	}
+
+	// 提示取走二代身份证
+	function idCardEject() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("isPersonal","1");//人证合一
+		onDeviceError_ID = onTimeout_ID = function() {
+			onServiceFailed(top.langcur.oFxBuySellFailed, top.TERMRETCODE_ID_EJECTFAILED, top.langcur.oEjectIDFailed);
+		}
+		onCardTaken_ID = function()
+		{
+		}
+		    //超时退出
+	    onTimeout = function()
+	    {
+	    	top.idCardReader.IDCardEvents.clearAll();
+			//进行联网核查流程
+	        top.idCardReader.idCardTakenComplete();
+	    }
+
+		top.serviceCtrl.startUserTimeout(onTimeout, 10, oIdCardTakeTick);
+		window.operateCtrl.enableInput();
+		top.idCardReader.eject();
+		// 播放提示音
+		try {
+			top.soundPlayer.playback("/Sound/TakeIDCard.mp3");
+		} catch (e) {
+		}
+		top.serviceCtrl.changeNaviStatus('2');
+		top.wins.showMain("oLIDCardTakeTip");
+	}
+
+	function onNetworkVirificationSuccessful(){
+		//查看有无客户号。
+		if(top.pool.get("customNo") == null || top.pool.get("customNo") == "") {
+			onServiceFailed(top.langcur.oReLostFail, top.TERMRETCODE_ID_READFAILED, "您在我行无客户号，无法为您办理该业务");
+			return;
+		}
+		top.serviceCtrl.stopUserTimeout();
+		//开始影像文件上传交易
+		top.pool.set("strImageType", "IDType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+    }
+
+    //影像文件上传成功回调函数
+	function onImageFileSuccessful(){
+		top.serviceCtrl.stopUserTimeout();
+		var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+		top.pool.set("strBatchId", strBatchId);
+		if(indexID == 0)
+		{
+			TakePic();
+		}
+		else if(indexID == 1)
+		{
+			//货币对子账户查询
+			top.wins.showNewProcessingTip("正在查询外币子账户，请稍候...");
+			top.trans.send902109Async();
+			
+		}
+		else if(indexID == 2)
+		{
+			var htmlstr = infoToPic.innerHTML;
+			top.pool.set("htmlstr",htmlstr);
+			oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+			infoToPic.style.visibility = "hidden";
+			top.wins.showNewProcessingTip("交易处理中，请稍候...");
+			top.trans.sendBusinessApplicationAsync();
+		}
+	}
+
+	//拍照
+	function TakePic()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		onTimeout = function()
+		{
+			top.cameras.display("Person","Destroy");//关闭摄像头
+			top.serviceCtrl.navigate2Quit();
+		}
+		window.operateCtrl.enableInput();
+		window.frames["ifreamPhoto"].CamerasLoad();//加载子页面摄像头相关方法
+		top.serviceCtrl.changeNaviStatus('3');
+		top.wins.showMain("oLTakePicTip");
+	}
+
+	function PhotoPrevStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2SecondMenu();//拍照返回后步骤
+		window.operateCtrl.enableInput();
+	}
+
+	function PhotoNextStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+
+	//查询货币对信息成功
+	function onCurrencyPairSuccess() {
+		top.serviceCtrl.stopUserTimeout();
+		var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+		itemCount = parseInt(itemCount, 10);
+		if(itemCount == 0){
+			onServiceFailed(top.langcur.oFxBuySellFailed, top.exchxmlasync.strTermRetCode, "无货币对汇率信息");
+			return;
+		}
+		for (var i = 1; i <= itemCount; i++) {
+			var currencyPair = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/currencyPair");
+			var midAmt = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/mid");
+			var custBid2 = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/custBid2");
+			var custBid = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/custBid");
+			var custOffer2 = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/custOffer2");
+			var custOffer = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/custOffer");
+			currPairArr[currPairArr.length] = new Array(
+					currencyPair,
+					midAmt,
+					custBid2,
+					custBid,
+					custOffer2,
+					custOffer);
+		}
+		showCurrencyPairMsg();
+	}
+
+	//查询货币对信息成功
+	function showCurrencyPairMsg() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		document.getElementById("chooseBuyCurr").value = "EUR";
+		document.getElementById("chooseSellCurr").options[0].selected = true;
+		document.getElementById("chooseCurr").value = "";
+		document.getElementById("midAmt").value = "";
+		document.getElementById("cBuyAmt").value = "";
+		document.getElementById("hBuyAmt").value = "";
+		document.getElementById("cSellAmt").value = "";
+		document.getElementById("hSellAmt").value = "";
+
+		onKey_F99 = onKey_Enter = function() {
+			if(document.getElementById("chooseBuyCurr").value == document.getElementById("chooseSellCurr").value
+			|| document.getElementById("chooseCurr").value == "") {
+				error_TXTCurr.innerHTML = top.langcur.oPlsChooseRightCurr;
+				return;
+			}
+			TransFxAmount();
+		}
+		onKey_F98 = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		onTimeout = function()
+		{
+		    top.serviceCtrl.navigate2Quit();
+		}
+
+		top.serviceCtrl.changeNaviStatus('4');
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oInqRateTick);
+		top.wins.showMain("oLInqRateTip");
+	}
+
+	function onQueryCurrentSubAccountSuccessful() {
+		top.serviceCtrl.stopUserTimeout();
+		var count=0;//记录现汇账户个数
+		var strRecordArr = new Array();
+		var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+		itemCount = parseInt(itemCount, 10);
+		for (var i = 1; i <= itemCount; i++) {
+			var currCode = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/currCode");
+			var acctBalance = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/acctBalance");
+			var availBalance = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/availBalance");
+			var openDate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/openDate");
+			var subAcctType = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/subAcctType");
+			if(subAcctType == "CNY") {
+				continue;
+			}
+			 if(subAcctType.substring(subAcctType.length - 1, subAcctType.length) == "2"){ //如果外币子账户是现汇
+				count++; 
+				continue;
+			} 
+			strRecordArr[strRecordArr.length] = new Array(
+					strRecordArr.length + 1,
+					currCode,
+					acctBalance,
+					availBalance,
+					openDate,
+					i);
+		}
+		if(count==0){
+			 onServiceFailed(top.langcur.oFxBuySellFailed, "1202", "无现汇外币子账户");
+			 return;
+		}
+		var strRecordArr = new Array();
+		var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+		var obj = document.getElementById("chooseSellCurr");
+		var opText;
+		itemCount = parseInt(itemCount, 10);
+		for (var i = 1; i <= itemCount; i++) {
+			var subAcctType = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/subAcctType");
+			 if(subAcctType.indexOf("1")>0){//说明这是现钞子账户
+				var currCode="";
+			}else{
+				var currCode = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/currCode");
+			} 
+			var acctBalance = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/acctBalance");
+			var availBalance = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/availBalance");
+			var openDate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/openDate");
+			//如果活期子账户的余额为0，将currCode置为空
+			if(acctBalance==0){
+				currCode="";
+			}
+			if(currCode == "") {
+				continue;
+			}
+			if(currCode == "CNY") {
+				continue;
+			}
+			if(currCode == "EUR") {
+				opText="EUR-欧元";
+			}
+			if(currCode == "USD") {
+				opText="USD-美元";
+			}
+			if(currCode == "SGD") {
+				opText="SGD-新加坡元";
+			}
+			if(currCode == "JPY") {
+				opText="JPY-日元";
+			}
+			if(currCode == "CAD") {
+				opText="CAD-加拿大元";
+			}
+			if(currCode == "AUD") {
+				opText="AUD-澳元";
+			}
+			if(currCode == "HKD") {
+				opText="HKD-港币";
+			}
+			if(currCode == "GBP") {
+				opText="GBP-英镑";
+			}
+			top.pool.set(currCode,availBalance);
+			var new_opt = new Option(opText, currCode);      
+			obj.options.add(new_opt);
+		}
+		if(obj.options.length == 0) {
+			onServiceFailed(top.langcur.oFxTerminateFailed, "1202", "无外币子账户");
+			return;
+		}
+		top.wins.showNewProcessingTip("");
+		top.trans.send906401Async();//货币对信息查询
+	}
+
+	//信息填写
+	function TransFxAmount() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strCyFlag"," ");//买入卖出的标志
+		document.getElementById("strBuyCurr").innerHTML = top.pool.get("chooseBuyCurr");
+		document.getElementById("strSellCurr").innerHTML = top.pool.get("chooseSellCurr");
+		document.getElementById("MRJE").checked =true;
+		document.getElementById("MCJE").checked =false;
+		document.getElementById("input_amt1").disabled = false;
+		document.getElementById("input_amt2").disabled = true;
+		input_amt1.value = "";
+		input_amt2.value = "";
+		exRate.innerHTML = top.pool.get("custBid");
+		error_TXTAmt.innerHTML ="";
+
+		onKey_F99 = onKey_Enter = function() {
+			top.inputmethod.Close();
+			if(!new top.StringCtrl(input_amt1.value).isValidAmount() || input_amt1.value <= 0
+			|| !new top.StringCtrl(input_amt2.value).isValidAmount() || input_amt2.value <= 0) {
+				error_TXTAmt.innerHTML = top.langcur.oPlsInputBuySellAmt;
+				return;
+			}
+
+			if(parseFloat(input_amt2.value,10)>parseFloat(top.pool.get(top.pool.get("curSellCur")))) {
+						error_TXTAmt.innerHTML = "卖出金额必须小于或等于子账户余额";
+						return;
+					}
+			//买入卖出金额
+			top.pool.set("fxBuyAmt", input_amt1.value);
+			top.pool.set("fxSellAmt", input_amt2.value);
+			//买入币种、买入账户类型
+			top.pool.set("BuyCurr", top.pool.get("chooseBuyCurr"));
+			top.pool.set("BuyAccType", top.pool.get("chooseBuyCurr") + "2");
+			//卖出币种、卖出账户类型
+			top.pool.set("SellCurr", top.pool.get("chooseSellCurr"));
+			top.pool.set("SellAccType", top.pool.get("chooseSellCurr") + "2");
+			//录入币种
+			if(document.getElementById("input_amt2").disabled) {
+				top.pool.set("strCyCode", top.pool.get("chooseBuyCurr"));
+				top.pool.set("strCyFlag","buy");
+			}else {
+				top.pool.set("strCyCode", top.pool.get("chooseSellCurr"));
+				top.pool.set("strCyFlag","sell");
+			}
+			
+			userSign();
+		}
+
+		onKey_F98 = function() {
+			top.inputmethod.Close(); 
+			showCurrencyPairMsg();
+		}
+
+		input_amt1.onkeypress = function()
+		{
+			error_TXTAmt.innerHTML = "&nbsp;";
+		    top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTransMsgTick);
+		}
+
+		input_amt2.onkeypress = function()
+		{
+			error_TXTAmt.innerHTML = "&nbsp;";
+		    top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTransMsgTick);
+		}
+
+		onTimeout = function()
+		{
+			top.inputmethod.Close();
+			error_TXTAmt.innerHTML = "&nbsp;";
+		    top.serviceCtrl.navigate2Quit();
+		}
+
+		top.serviceCtrl.changeNaviStatus('5');
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTransMsgTick);
+		sonAcc.innerHTML= top.pool.get(top.pool.get("curSellCur"));
+		top.wins.showMain("oLTransMsgTip");
+		input_amt1.focus();
+	}
+
+	//用户签名
+	function userSign()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+		oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+		oSigFinger.style.visibility = "visible";
+		oESign.style.visibility = "visible";
+		text_pid2.innerHTML = top.pool.get("strIDCardNum");
+		text_name2.innerHTML = top.pool.get("strIDName");
+		text_ethnic2.innerHTML = top.pool.get("strIDNation");
+		text_address2.innerHTML = top.pool.get("strIDAddress");
+
+		text_strPan.innerHTML = top.pool.get("strPan");
+
+		text_fxBuyCurr.innerHTML = top.pool.get("chooseBuyCurr");
+		text_fxSellCurr.innerHTML = top.pool.get("chooseSellCurr");
+		if(top.pool.get("strCyFlag")=="buy"){
+			text_fxBuyAmt.innerHTML = new top.StringCtrl(parseFloat(top.pool.get("fxBuyAmt"))).formatNumber(2);
+			text_fxSellAmt.innerHTML = "以实际成交金额为准";
+		}else if(top.pool.get("strCyFlag")=="sell"){
+			text_fxBuyAmt.innerHTML = "以实际成交金额为准";
+			text_fxSellAmt.innerHTML = new top.StringCtrl(parseFloat(top.pool.get("fxSellAmt"))).formatNumber(2);
+		}
+		text_date.innerHTML = new top.DateTimeCtrl().getYYYYMMDD2();
+		text_time.innerHTML = new top.DateTimeCtrl().getHHmmSSWithSep();
+		text_term.innerHTML = top.terminal.strTerminalNum;
+		window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(window.frames['ifreamSign'].onTimeout, top.iUserTimeout,oSigFingerTick);
+		Tip_UserSign.innerHTML = top.langcur.oUserSign;
+		top.serviceCtrl.changeNaviStatus('6');
+		top.wins.showMain("oLUserSignTip");
+	}
+
+	function SignPrevStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";
+		oSigAgain.style.visibility = "hidden";
+		oSigFinger.style.visibility = "hidden";
+		oESign.style.visibility = "hidden";
+		TransFxAmount();
+		window.operateCtrl.enableInput();
+	}
+
+	function SignNextStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+
+	//业务办理单上传成功
+	function onSuccessful()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		//身份证图片查询
+		top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+		top.pool.set("strImageType","IDType");
+		top.trans.sendImageFileQueryAsync();
+	}
+
+	//图片查询结果
+	function onImageFileQuerySuccessful()
+	{
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		if(indexImage == 0){
+			top.pool.set("idPhotoBackUrl",top.pool.get("back"));//反
+			top.pool.set("idPhotoUrl",top.pool.get("Front"));//正
+			//进行查询
+			indexImage ++;
+			top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+			top.pool.set("strImageType","ZNGYType");
+			top.trans.sendImageFileQueryAsync();
+		}else if(indexImage == 1){
+			isPadCheck = true;
+			top.pool.set("scenePhotoUrl",top.pool.get("cameras"));//现场
+	        var Msg = new top.JSONCtrl();
+			Msg.setJson("customerName", "账户名称：" + top.pool.get("strIDName"));
+			Msg.setJson("customerNum", "卡号：" + top.pool.get("strPan"));
+			Msg.setJson("sellCurrency", "卖出币种：" + sellCurrencychina2(top.pool.get("SellCurr")));
+			if(top.pool.get("strCyFlag")=="buy"){
+				Msg.setJson("sellAmount", "卖出金额：" + "以实际成交金额为准");
+				Msg.setJson("buyCurrency", "买入币种：" + sellCurrencychina2(top.pool.get("BuyCurr")));
+				Msg.setJson("buyAmount", "买入金额：" + new top.StringCtrl(parseFloat(top.pool.get("fxBuyAmt"))).formatNumber(2));
+			}else if(top.pool.get("strCyFlag")=="sell"){
+				Msg.setJson("sellAmount", "卖出金额：" + new top.StringCtrl(parseFloat(top.pool.get("fxSellAmt"))).formatNumber(2));
+				Msg.setJson("buyCurrency", "买入币种：" + sellCurrencychina2(top.pool.get("BuyCurr")));
+				Msg.setJson("buyAmount", "买入金额：" + "以实际成交金额为准");
+			}
+			Msg.setJson("strChaoHui", "钞汇类型：现汇");
+			top.pool.set("strCheckContent", Msg.jsonStr);
+			top.pool.set("strbusinessCode", "906406");
+			top.pool.set("strbusinessName", "外汇买卖");
+			//进行审核
+			top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+			top.trans.send910301Async();
+		}
+	}
+	//将币种的英文名称改为英文加中文显示。
+	function sellCurrencychina2(strCurrencymoney){
+		if(strCurrencymoney=="HKD"){
+			return strCurrencymoney+"-港元";
+		}else if(strCurrencymoney=="USD"){
+			return strCurrencymoney+"-美元";
+		}else if(strCurrencymoney=="AUD"){
+			return  strCurrencymoney+"-澳元";
+		}else if(strCurrencymoney=="SGD"){
+			return  strCurrencymoney+"-新加坡元";
+		}else if(strCurrencymoney=="GBP"){
+			return strCurrencymoney+"-英镑";
+		}else if(strCurrencymoney=="JPY"){
+			return strCurrencymoney+"-日元";
+		}else if(strCurrencymoney=="CAD"){
+			return strCurrencymoney+"-加拿大元";
+		}else if(strCurrencymoney=="EUR"){
+			return  strCurrencymoney+"-欧元";
+		}else{
+			return "";
+		}
+	}
+	//审核超时处理
+	function onProcessingTimeout() 	{
+			top.serviceCtrl.navigate2Quit_F();
+	}
+
+	//审核成功
+	function onCheckLoadingSuccessful()
+	{
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strCyFlag"," ");
+		//发起外汇买卖交易
+		top.wins.showNewProcessingTip("正在发起外汇买卖交易，请稍候...");
+		top.trans.send906406Async();
+	}
+
+	// 显示成功信息
+	function onServiceSuccess() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	    {
+			oPrintReceipt.style.visibility = "hidden";
+		}else
+		{
+			onKey_F99 = onKey_Enter = function() {
+				//打印凭条
+				top.pool.set("Amount", top.pool.get("fxBuyAmt") * 100);
+				var exchRate = parseFloat(top.exchxmlasync.msgxmldomResp.selectSingleNodeValue("/TransMsg/dataList/F60/exchRate"));
+				top.pool.set("exchRate",new top.StringCtrl(exchRate).formatNumber(4));
+				top.pool.set("printType", "21");
+				top.serviceCtrl.navigate2PrintReceipt();
+			}
+		}
+
+		onKey_F98 = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		//交易成功后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		Tip_Title.innerHTML = top.langcur.oFxBuySellSucc;
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.changeNaviStatus('7');
+		top.wins.showMain("oLServiceSuccessTip");
+	}
+
+	function onServiceFailed(title, retcode, retdesc) {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onTimeout = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		oTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+		//交易失败后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+		top.wins.showMain("oLServiceFailedTip");
+	}
+
+	//查询汇率信息
+	function inqFxRate() {	
+		top.pool.set("curSellCur","");
+		top.pool.set("curSellCur",document.getElementById("chooseSellCurr").value);//记录当前选择卖出外币
+		var chooseCurr = "" + document.getElementById("chooseBuyCurr").value
+							+ document.getElementById("chooseSellCurr").value;
+		for(var j = 0; j < currPairArr.length; j++) {
+			if(chooseCurr == currPairArr[j][0]) {
+				document.getElementById("chooseCurr").value = document.getElementById("chooseBuyCurr").value
+													  + "/" + document.getElementById("chooseSellCurr").value;
+				document.getElementById("midAmt").value = currPairArr[j][1];
+				document.getElementById("cBuyAmt").value = currPairArr[j][2];
+				document.getElementById("hBuyAmt").value = currPairArr[j][3];
+				document.getElementById("cSellAmt").value = currPairArr[j][4];
+				document.getElementById("hSellAmt").value = currPairArr[j][5];
+				top.pool.set("custBid", currPairArr[j][3]);
+				top.pool.set("custOffer", currPairArr[j][5]);
+				top.pool.set("chooseBuyCurr", document.getElementById("chooseBuyCurr").value);
+				top.pool.set("chooseSellCurr", document.getElementById("chooseSellCurr").value);
+				error_TXTCurr.innerHTML = "&nbsp;";
+				top.pool.set("strCurrFlag", "强势货币");
+				break;
+			}
+			else {
+				document.getElementById("chooseCurr").value = "";
+				document.getElementById("midAmt").value = "";
+				document.getElementById("cBuyAmt").value = "";
+				document.getElementById("hBuyAmt").value = "";
+				document.getElementById("cSellAmt").value = "";
+				document.getElementById("hSellAmt").value = "";
+				error_TXTCurr.innerHTML = "暂无该货币对汇率信息";
+			}
+		}
+		/* if(top.pool.get("strCurrFlag") != "强势货币") {
+			chooseCurr = "" + document.getElementById("chooseSellCurr").value
+							+ document.getElementById("chooseBuyCurr").value;
+			for(var j = 0; j < currPairArr.length; j++) {
+				if(chooseCurr == currPairArr[j][0]) {
+					document.getElementById("chooseCurr").value = document.getElementById("chooseBuyCurr").value
+														  + "/" + document.getElementById("chooseSellCurr").value;
+					document.getElementById("midAmt").value = (1/currPairArr[j][1]).toFixed(4);
+					document.getElementById("cBuyAmt").value = (1/currPairArr[j][2]).toFixed(4);
+					document.getElementById("hBuyAmt").value = (1/currPairArr[j][3]).toFixed(4);
+					document.getElementById("cSellAmt").value = (1/currPairArr[j][4]).toFixed(4);
+					document.getElementById("hSellAmt").value = (1/currPairArr[j][5]).toFixed(4);
+					top.pool.set("custBid", 1/currPairArr[j][3]);
+					top.pool.set("custOffer", 1/currPairArr[j][5]);
+					top.pool.set("chooseBuyCurr", document.getElementById("chooseBuyCurr").value);
+					top.pool.set("chooseSellCurr", document.getElementById("chooseSellCurr").value);
+					error_TXTCurr.innerHTML = "&nbsp;";
+					break;
+				}else {
+					document.getElementById("chooseCurr").value = "";
+					document.getElementById("midAmt").value = "";
+					document.getElementById("cBuyAmt").value = "";
+					document.getElementById("hBuyAmt").value = "";
+					document.getElementById("cSellAmt").value = "";
+					document.getElementById("hSellAmt").value = "";
+					error_TXTCurr.innerHTML = "暂无该货币对汇率信息";
+				}
+			}
+		} */
+		
+		top.pool.set("strCurrFlag", "");
+	}
+
+	//选择金额
+	function selectAmount() {
+		if(document.getElementById("MRJE").checked) {
+			if(document.getElementById("input_amt1").disabled){
+				document.getElementById("input_amt1").value = "";
+				document.getElementById("input_amt2").value = "";
+				document.getElementById("input_amt1").disabled = false;
+				document.getElementById("input_amt2").disabled = true;
+				exRate.innerHTML = top.pool.get("custBid");
+			}
+		}else if(document.getElementById("MCJE").checked) {
+			if(document.getElementById("input_amt2").disabled) {
+				document.getElementById("input_amt1").value = "";
+				document.getElementById("input_amt2").value = "";
+				document.getElementById("input_amt2").disabled = false;
+				document.getElementById("input_amt1").disabled = true;
+				exRate.innerHTML = top.pool.get("custOffer");
+			}
+		}
+		top.inputmethod.Close();
+	}
+
+	//试算买入/卖出金额
+	function input_fxAmt() {
+ 		var fxRate = parseFloat(exRate.innerHTML);
+ 		if(input_amt2.disabled){
+ 			if ((input_amt1.value).indexOf(".") > 0) {
+ 				if(strBuyCurr.innerHTML == "JPY") {
+ 					error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+ 					input_amt1.value = "";
+ 					input_amt1.focus();
+ 				}else {
+ 					var str = (input_amt1.value).substr(find_str((input_amt1.value), ".", 1) + 1, (input_amt1.value).length);
+ 	 				if (str.indexOf(".") > 0) {
+ 	 					error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+ 	 					input_amt1.value = "";
+ 	 					input_amt1.focus();
+ 	 				} else {
+ 	 					if (str.length == 0) {
+ 	 					}else if (str.length >2)
+ 	 					{
+ 	 						error_TXTAmt.innerHTML = "金额只支持两位小数";
+ 	 						input_amt1.value = input_amt1.value.substr(0,input_amt1.value.length-1);
+ 	 						input_amt1.focus();
+ 	 					}else if(!new top.StringCtrl(input_amt1.value).isValidAmount()) {
+ 	 						error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+ 	 						input_amt1.value = "";
+ 	 						input_amt1.focus();
+ 	 					}
+ 	 				}
+ 				}
+ 			}else if((input_amt1.value).indexOf("00") ==0){
+ 					error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+					input_amt1.value = "";
+					input_amt1.focus();
+ 			}else {
+ 				if (!new top.StringCtrl(input_amt1.value).isValidAmount()) {
+ 					error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+ 					input_amt1.value = "";
+ 					input_amt1.focus();
+ 				}
+ 			}
+ 			if(input_amt1.value == "" || input_amt1.value == null || fxRate == "" || fxRate == null) {
+ 	 			input_amt2.value = "";
+ 			}else {
+ 				input_amt2.value = new top.StringCtrl(input_amt1.value * fxRate).formatNumber(2);
+ 			}
+ 		}else if(input_amt1.disabled) {
+ 			if ((input_amt2.value).indexOf(".") > 0) {
+ 				if(strSellCurr.innerHTML == "JPY") {
+ 					error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+ 					input_amt2.value = "";
+ 					input_amt2.focus();
+ 				}else {
+ 					var str = (input_amt2.value).substr(find_str((input_amt2.value), ".", 1) + 1, (input_amt2.value).length);
+ 	 				if (str.indexOf(".") > 0) {
+ 	 					error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+ 	 					input_amt2.value = "";
+ 	 					input_amt2.focus();
+ 	 				} else {
+ 	 					if (str.length == 0) {
+ 	 					}else if (str.length >2)
+ 	 					{
+ 	 						error_TXTAmt.innerHTML = "金额只支持两位小数";
+ 	 						input_amt2.value = input_amt2.value.substr(0,input_amt2.value.length-1);
+ 	 						input_amt2.focus();
+ 	 					}else if(!new top.StringCtrl(input_amt2.value).isValidAmount()) {
+ 	 						error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+ 	 						input_amt2.value = "";
+ 	 						input_amt2.focus();
+ 	 					}
+ 	 				}
+ 				}
+ 			}else if((input_amt2.value).indexOf("00") ==0){
+ 					error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+					input_amt2.value = "";
+					input_amt2.focus();
+ 			}else {
+ 				if (!new top.StringCtrl(input_amt2.value).isValidAmount()) {
+ 					error_TXTAmt.innerHTML = top.langcur.oPlsInputRightAmt;
+ 					input_amt2.value = "";
+ 					input_amt2.focus();
+ 				}
+ 			}
+ 			if(input_amt2.value == "" || input_amt2.value == null || fxRate == "" || fxRate == null) {
+ 	 			input_amt1.value = "";
+ 			}else {
+ 				input_amt1.value = new top.StringCtrl(input_amt2.value / fxRate).formatNumber(2);
+ 			}
+ 		}
+	}
+
+	//根据特定字符查找所在位置
+	function find_str(str,f_str,n){
+		var arr_str;
+	    var tmp_str=0;
+	    var arr_str=str.split(f_str);
+	    if(arr_str.length<n){n=arr_str.length}
+	    for(i=0;i<n;i++){
+	       tmp_str=arr_str[i].length+tmp_str;
+	    }
+	    return tmp_str+i-1;
+	}
+
+	//用密码键盘输入时输入框校验
+	function CheckValue() {
+		if(input_amt1.value.length > 0 || input_amt2.value.length > 0){
+			input_fxAmt();
+		}
+	}
+
+	function ShowKeyboard(id) {
+		top.inputmethod.ShowDigit(800, 660);
+		if(id == 1) {
+			if(input_amt2.disabled) {
+				input_amt1.focus();
+			}else {
+				input_amt2.focus();
+			}
+		}
+		if(id == 2) {
+			if(input_amt1.disabled) {
+				input_amt2.focus();
+			}else {
+				input_amt1.focus();
+			}
+		}
+
+	}
+
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+	<div class="divFlowPage" id="divFlowPage">
+	   <table border="0" cellpadding="0" cellspacing="0">
+		 <tr>
+		   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+		   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+		   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+		   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td><div class="stepLine" id="nodeline41"></div></td>
+		   <td><div class="stepLine" id="nodeline42"></div></td><td width="34" class="stepStatusIcon" id="node5"></td><td><div class="stepLine" id="nodeline51"></div></td>
+		   <td><div class="stepLine" id="nodeline52"></div></td><td width="34" class="stepStatusIcon" id="node6"></td><td><div class="stepLine" id="nodeline61"></div></td>
+		   <td><div class="stepLine" id="nodeline62"></div></td><td width="34" class="stepStatusIcon" id="node7"></td><td width="38"></td>
+		 </tr>
+		 <tr height="70">
+		   <td class="font25" align="center" colspan="3">读取身份证</td>
+		   <td class="font25" align="center" colspan="3">取身份证</td>
+		   <td class="font25" align="center" colspan="3">拍照认证</td>
+		   <td class="font25" align="center" colspan="3">货币选择</td>
+		   <td class="font25" align="center" colspan="3">金额填写</td>
+		   <td class="font25" align="center" colspan="3">签名确认</td>
+		   <td class="font25" align="center" colspan="3">完成</td>
+		 </tr>
+	  </table>
+    </div>
+
+	<div id="oLIDCardTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oIdCardTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br /> <br /> <span id="oInsertID" class="Tip_Title"></span>
+						<br /> <img src="../Image/ID_in.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	</div>
+
+	<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br>
+			<br>
+			<br>
+			<br>
+			<br>
+			<br> <span class="Tip_Tick" id="oIdCardTakeTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br /> <br /> <span id="oIDCardTake" class="Tip_Title"></span>
+						<br /> <img src="../Image/id_out.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="oLTakePicTip" class="oLTakePicTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		<tr height="100%">
+			<td align="center"><iframe id="ifreamPhoto" src="../Service/TakePhoto.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		</tr>
+	</table>
+	</div>
+
+	<div id="oLInqRateTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oInqRateTick"></span>
+			<table width="65%" height="40%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td colspan="3" align="center" class="Tip_Title"><span id="oFxBuySellRateInq"></span></td>
+				</tr></br></br></br>
+				<tr>
+					<td>
+						<fieldset style="border: 2px double #3e80ca" align="center">
+							<legend id="oCurrencyPair" class="Tip_Content"></legend>
+							</br></br>
+							<table>
+								<tr>
+									<td width="200px" align="right" class="Tip_Content"><span id="oFxBuyCurr"></span>：&nbsp;&nbsp;</td>
+									<td align="left">
+										<select id="chooseBuyCurr" class="input_short22" onchange="inqFxRate();">
+											<option id="oEUR" value="EUR"></option>
+											<option id="oUSD" value="USD"></option>
+											<option id="oSGD" value="SGD"></option>
+											<option id="oJPY" value="JPY"></option>
+											<option id="oCAD" value="CAD"></option>
+											<option id="oAUD" value="AUD"></option>
+											<option id="oHKD" value="HKD"></option>
+											<option id="oGBP" value="GBP"></option>
+										</select>
+									</td>
+									<td width="200px" align="right" class="Tip_Content"><span id="oFxSellCurr"></span>：&nbsp;&nbsp;</td>
+									<td align="left">
+										<select id="chooseSellCurr" class="input_short22" onchange="inqFxRate();">
+												<option  value="">--请选择--</option>
+										</select>
+									</td>
+								</tr>
+							</table>
+							</br></br>
+						</fieldset>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<fieldset style="border: 2px double #3e80ca" align="center">
+							<legend id="oFxBuySellMsg" class="Tip_Content"></legend>
+							</br></br>
+							<table>
+								<tr>
+									<td width="200px" align="right" class="Tip_Content"><span id="oCurrencyPair"></span>：&nbsp;&nbsp;</td>
+									<td align="left" ><input id="chooseCurr" class="input_short22" disabled/></td>
+									<td width="200px" align="right" class="Tip_Content">中间价：&nbsp;&nbsp;</td>
+									<td align="left" ><input id="midAmt" class="input_short22" disabled/></td>
+								</tr>
+								<tr>
+									<td width="200px" align="right" class="Tip_Content"><span id="oPreChaoBuyPrice"></span>：&nbsp;&nbsp;</td>
+									<td align="left" ><input id="cBuyAmt" class="input_short22" disabled/></td>
+									<td width="200px" align="right" class="Tip_Content"><span id="oPreHuiBuyPrice"></span>：&nbsp;&nbsp;</td>
+									<td align="left" ><input id="hBuyAmt" class="input_short22" disabled/></td>
+								</tr>
+								<tr>
+									<td width="200px" align="right" class="Tip_Content"><span id="oPreChaoSellPrice"></span>：&nbsp;&nbsp;</td>
+									<td align="left" ><input id="cSellAmt" class="input_short22" disabled/></td>
+									<td width="200px" align="right" class="Tip_Content"><span id="oPreHuiSellPrice"></span>：&nbsp;&nbsp;</td>
+									<td align="left" ><input id="hSellAmt" class="input_short22" disabled/></td>
+								</tr>
+							</table>
+							</br></br>
+						</fieldset>
+					</td>
+				</tr>
+				<tr>
+					<td align="center"><pre class="Error_Title" id="error_TXTCurr"></pre></td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+		<span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+	</div>
+
+	<div id="oLTransMsgTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br>
+			<span class="Tip_Tick" id="oTransMsgTick"></span>
+			<table width="75%" height="50%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td colspan="4" align="center" class="Tip_Title"><span id="oFxBuySellMsg"></span></td>
+				</tr></br></br></br></br></br>
+				<tr>
+					<td align="left" class="Tip_Content"><span id="oClientBuyCurr"></span>:&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="strBuyCurr"></span></td>
+					<td align="left" class="Tip_Content"><span id="oClientSellCurr"></span>:&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="strSellCurr"></span></td>
+				</tr>
+				<tr>
+					<td align="left" class="Tip_Content"><span id="oBuyChaoHuiType"></span>:&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="oPreHui"></span></td>
+					<td align="left" class="Tip_Content"><span id="oSellChaoHuiType"></span>:&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="oPreHui"></span></td>
+				</tr>
+				<tr>
+					<td align="left" class="Tip_Content">
+						<label for="MRJE"><input id="MRJE" name="amount" type="radio" style="zoom:150%;" onclick="selectAmount()" checked="checked"/><span id="oFxBuyAmt"></span>&nbsp;&nbsp;</label>
+					</td>
+					<td align="left"><input type="text" class="input_amount" id="input_amt1" maxlength="12" onclick="javascript:ShowKeyboard(1);" onkeyup="return input_fxAmt()"/></td>
+					<td align="left" class="Tip_Content">
+						<label for="MCJE"><input id="MCJE" name="amount" type="radio" style="zoom:150%;" onclick="selectAmount();"/><span id="oFxSellAmt"></span>&nbsp;&nbsp;</label>
+					</td>
+					<td align="left"><input type="text" class="input_amount" id="input_amt2" maxlength="12" onclick="javascript:ShowKeyboard(2);" onkeyup="return input_fxAmt()"/></td>
+				</tr>
+				<tr>
+					<td align="left" class="Tip_Content"><span id="oReferDealRate"></span>:&nbsp;&nbsp;</td>
+					<td align="left" class="Tip_Alarm"><span id="exRate"></span></td>
+					<td colspan = "2" align="left" class="Tip_Content">该币种子账户金额为<span id="sonAcc" class="Tip_Alarm"></span></td>
+				</tr>
+				<tr>
+					<td colspan = "3" class="Tip_Content"><span style="color:red">该汇率仅供参考，以最终成交汇率为准</span></td>
+				</tr>
+			</table></br></br>
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td align="center"><span class="Error_Title" id="error_TXTAmt"></span></td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+		<span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+	</div>
+
+	<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+		<div class="FULLSCR">
+		<span class="Tip_Tick" id="oSigFingerTick"></span>
+		<br><br><br><br><br><br><br><br>
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td height="20px" align="center" class="Error_Title" id="Tip_UserSign"></td>
+				</tr>
+			</table>
+			<div id="infoToPic">
+			<table width="75%" height="20%" border="0" bgcolor="#FFFFFF" cellpadding="0" cellspacing="0" align="center">
+				<tr><td height="20px"></td></tr>
+				<tr>
+					<td width="3%"></td>
+					<td width="68%">
+						<fieldset>
+						<legend><span id="oUserTip1"></span></legend>
+						<table>
+							<tr>
+								<td>&nbsp;&nbsp;<span id="oTextName"></span>&nbsp;&nbsp;<span id="text_name2"></span></td>
+								<td>&nbsp;&nbsp;<span id="oTextEth"></span>&nbsp;&nbsp;<span id="text_ethnic2"></span></td>
+							</tr>
+							<tr>
+								<td colspan="4">&nbsp;&nbsp;<span id="oTextPid"></span>&nbsp;&nbsp;<span id="text_pid2"></span></td>
+							</tr>
+							<tr>
+								<td colspan="4">&nbsp;&nbsp;<span id="oTextAddr"></span>&nbsp;&nbsp;<span id="text_address2"></span></td>
+							</tr>
+						</table>
+						</fieldset>
+					</td>
+					<td width="3%"></td>
+				</tr>
+				<tr><td height="20px"></td></tr>
+				<tr>
+					<td width="3%"></td>
+					<td width="68%">
+						<fieldset>
+						<legend><span id="oUserTip2"></span></legend>
+						<table>
+						  	<tr>
+							    <td nowrap colspan="5">&nbsp;&nbsp;<span id="oTextStrPan"></span>&nbsp;&nbsp;<span id="text_strPan"></span></td>
+							</tr>
+			                <tr>
+							    <td nowrap>&nbsp;&nbsp;<span id="oFxBuyCurr"></span>:&nbsp;&nbsp;<span id="text_fxBuyCurr"></span></td>
+								<td nowrap>&nbsp;&nbsp;<span id="oFxSellCurr"></span>:&nbsp;&nbsp;<span id="text_fxSellCurr"></span></td>
+								<td nowrap>&nbsp;&nbsp;<span id="oFxBuyAmt"></span>:&nbsp;&nbsp;<span id="text_fxBuyAmt"></span></td>
+								<td nowrap>&nbsp;&nbsp;<span id="oFxSellAmt"></span>:&nbsp;&nbsp;<span id="text_fxSellAmt"></span></td>
+								<td nowrap>&nbsp;&nbsp;钞汇标识:&nbsp;&nbsp;<span id="oPreHui"></span></td>
+							</tr>
+							<tr>
+							    <td nowrap>&nbsp;&nbsp;<span id="oTextDate"></span>&nbsp;&nbsp;<span id="text_date"></span></td>
+								<td nowrap>&nbsp;&nbsp;<span id="oTextTime"></span>&nbsp;&nbsp;<span id="text_time"></span></td>
+								<td nowrap>&nbsp;&nbsp;<span id="oTextTerm"></span>&nbsp;&nbsp;<span id="text_term"></span></td>
+							</tr>
+						</table>
+						</fieldset>
+					</td>
+					<td width="3%"></td>
+				</tr>
+				<tr><td height="20px"></td></tr>
+			</table>
+			</div>
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+			        <td colspan="2" ><iframe id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			    </tr>
+			</table>
+		</div>
+		<span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>
+		<span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+		<span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+		<span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span>
+		<span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+	</div>
+
+	<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<br/><br/><br/><br/><br/><br/><br/><br/>
+				<tr class="FirstLine">
+					<td align="center" colspan="2">
+						<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+						<span class="Tip_Title" id="Tip_Title"></span>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	    <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" id="oPrintReceipt" name="oPrintReceipt"></button></span>
+	</div>
+
+	<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr>
+					<td align="center">
+						<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+							<tr class="Table_Head">
+								<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+							</tr>
+							<tr class="Table_Record">
+								<td id="oDescription"></td>
+								<td><span id="oFailedRetDesc"></span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="oLTakeInvalCardTip" class="FULLSCR" style="visibility: hidden;">
+		<span class="Tip_Tick" id="oTakeInvalCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center"><span id="oReInsertDebCard" class="Tip_Title"></span><br />
+				<br /> <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+				</td>
+			</tr>
+		</table>
+	</div>
+
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+</body>
+</html>

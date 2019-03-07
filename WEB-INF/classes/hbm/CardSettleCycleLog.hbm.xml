@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.CardSettleCycleLog" table="CardSettleCycleLog" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strTerminalNum" column="strTerminalNum" type="string"/>
+	<property name="termBatchNo" column="iTermBatchNo" type="int"/>
+	<property name="dtStart" column="dtStart" type="timestamp"/>
+	<property name="dtEnd" column="dtEnd" type="timestamp"/>
+	<property name="status" column="iStatus" type="int"/>
+	<property name="cardSurplusCount" column="iCardSurplusCount" type="int"/>
+	<property name="cardRefillCount" column="iCardRefillCount" type="int"/>
+	</class>
+</hibernate-mapping>

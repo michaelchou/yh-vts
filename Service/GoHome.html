@@ -1,0 +1,71 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>返回主页页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  function home()
+  {
+        top.journalPrinter.addJournalWithTime("客户点击回首页");
+        top.inputmethod.Close();//隐藏虚拟键盘
+		if (typeof(top.YHAXSigCameras) != "undefined")//电子密码签名
+        {
+			if(top.pool.get("SigCloseFlag") !="" && top.pool.get("SigCloseFlag") != null && top.pool.get("SigCloseFlag")=="1"){
+				//关闭签名面板
+				try {
+					top.journalPrinter.addJournalWithTime("尝试关闭电子签名板 回主页");
+					top.sigCameras.display("Extra","Destroy");//关闭电子签名面板
+					top.sigCameras.sigCamerasEvents.clearAll();
+				} 
+				catch (e){}
+			}
+		}
+		if (typeof(top.YHAXCameras) != "undefined")//摄像头
+        {
+			if(top.pool.get("PhotoCloseFlag") !="" && top.pool.get("PhotoCloseFlag") != null && top.pool.get("PhotoCloseFlag")=="1"){
+				//关闭摄像头
+				try {
+					top.journalPrinter.addJournalWithTime("尝试关闭摄像头预览窗口 回主页");
+					top.cameras.display("Person","Destroy");
+					top.cameras.camerasEvents.clearAll();
+				} 
+				catch (e){}
+			}
+		}
+		if (typeof(top.YHAXFingerScanner) != "undefined")//指纹仪
+        {
+			//关闭指纹仪
+			try {
+				   //top.journalPrinter.addJournalWithTime("尝试关闭指纹仪 回主页");
+				   top.fingerScanner.cancelRead();
+				   top.fingerScanner.FingerEvents.clearAll();
+			} 
+			catch (e){}
+		}
+		if (typeof(top.YHAXBarcodeReader) != "undefined")//二维码
+        {
+			//取消二维码
+			try {
+			       //top.journalPrinter.addJournalWithTime("尝试关闭二维码扫描 回主页");
+				   top.barcodeReader.cancelRead();
+				   top.barcodeReader.BarcodeEvents.clearAll();
+			} 
+			catch (e){}
+		}
+		if(top.pool.get("pwdReset") == 1 && top.pool.get("pwdReset") != null && top.pool.get("pwdReset")!= "")
+		{
+			top.serviceCtrl.navigate2Quit();
+		}else{
+			top.serviceCtrl.navigate2SecondMenu();//返回介质菜单
+		}
+  }
+</script>
+</head>
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><img src="../Terminal/Style/Default/Img/home.png" width="205" height="60" onclick="home();"/></td>
+	  </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>拍照页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var takepicTimeOut = top.iUserTimeout;//拍照超时时间
+var count = 0; //拍照计数器
+var picTimeoutFlag = false;//拍照超时标识
+function CamerasLoad()
+{
+	
+	var obj=document.getElementById("FacePhoto"); 
+	oPicConfirm.style.visibility = "hidden";//没拍照前隐藏确定按钮
+	onKey_F99 = onKey_Enter = function()
+    {
+	   clearInterval(count);//清楚计数器
+	   count = 0;//计数器初始化
+	   top.journalPrinter.addJournalWithTime("尝试关闭摄像头预览窗口 客户点击确定");
+	   top.cameras.display("Person","Destroy");//关闭摄像头
+    }
+	
+	onKey_F7 = function()
+    {
+	    // 记录流水
+		top.journalPrinter.addJournalWithTime("尝试拍照 客户点击拍照");
+	    oPicConfirm.style.visibility = "hidden";//拍照前隐藏确定按钮
+		top.cameras.takePictureEx("Person");//拍照
+    }
+	onKey_Cancel = onKey_F98 = function()
+    {
+	   top.pool.set("returnFlag","1"); //返回标志
+	   clearInterval(count);//清楚计数器
+	   count = 0;//计数器初始化
+	   top.journalPrinter.addJournalWithTime("尝试关闭摄像头预览窗口 客户点击返回】");
+       top.cameras.display("Person","Destroy");//关闭摄像头
+	   
+    }
+	
+	onPictureTaked = function()//拍照预览照片回调函数
+	{
+	   var ret = new top.FileControl().fileCopy("C:\\",top.COLS_ZNGYPHOTOS_FILEPATH,"cameras.jpg");//复制拍照照片
+	   if(!ret){
+			window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_CARD_FAILED, "影像上传失败"); 
+	   }
+	   obj.style.filter = "progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod = scale)";
+       obj.filters("DXImageTransform.Microsoft.AlphaImageLoader").src = top.COLS_CAMERAS_FILEPATH + "?" + Math.random();//预览拍照照片
+	   oPicConfirm.style.visibility = "visible";//拍照后显示确定按钮
+	}
+	
+	onPreviewWindowDestroy = function()//摄像头关闭成功的回调函数
+	{
+	    top.pool.set("PhotoCloseFlag",""); //摄像头打开标志
+	    oPicConfirm.style.visibility = "hidden";
+		if(top.pool.get("returnFlag") !="" && top.pool.get("returnFlag") != null
+			&& top.pool.get("returnFlag")=="1"){
+			top.pool.set("returnFlag","");
+			window.parent.frames.PhotoPrevStep(); //返回主页面执行下一步流程
+		}else{
+			if(!picTimeoutFlag) {
+				window.parent.frames.PhotoNextStep(); //返回主页面执行下一步流程
+			}
+		}		
+	}
+	onPreviewComplete = function()//摄像头预览窗体打开成功
+	{
+	    top.pool.set("PhotoCloseFlag","1"); //摄像头打开标志
+	}
+	onPreviewFaild = function()//摄像头预览窗体打开失败
+	{
+	    top.pool.set("PhotoCloseFlag",""); //摄像头关闭标志
+        window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_CARD_FAILED, "摄像头预览窗口打开失败"); 
+	}
+	onDeviceError_cameras = function()//摄像头预览窗体失败、摄像头硬件故障回调函数
+	{
+	    top.pool.set("PhotoCloseFlag",""); //摄像头关闭标志
+        window.parent.frames.onServiceFailed("交易失败", top.TERMRETCODE_CARD_FAILED, "摄像头硬件故障"); 
+	}
+	
+
+    //播放提示音
+	try{top.soundPlayer.playback("/Sound/TakePhoto.wav");}catch(e){}
+	// 记录摄像头预览窗体打开
+	top.journalPrinter.addJournalWithTime("尝试打开摄像头预览窗口");
+	top.cameras.display("Person","Create");//打开摄像头
+	obj.style.filter = "progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod = scale)";
+    obj.filters("DXImageTransform.Microsoft.AlphaImageLoader").src = "c:\\Cols\\LocalPage\\images\\PhotoReview.jpg" + "?" + Math.random();//默认预览照片
+	document.getElementById("oTakePicTick").value = takepicTimeOut;
+	checkTakePicTick();//计数器处理
+}
+
+//计时处理,不能用innerHTML,不然屏幕会闪
+function checkTakePicTick()
+  {
+    if(takepicTimeOut > 1){
+	   takepicTimeOut =  takepicTimeOut - 1;
+	   document.getElementById("oTakePicTick").value = takepicTimeOut;
+	}else{
+	   clearInterval(count);//清楚计数器
+	   count = 0;//计数器初始化
+	   top.journalPrinter.addJournalWithTime("尝试关闭摄像头预览窗口 超时");
+	   picTimeoutFlag = true;
+	   top.cameras.display("Person","Destroy");//关闭摄像头
+	   top.serviceCtrl.navigate2QuitMV();
+	}
+	count = setTimeout(checkTakePicTick,1000);
+  }
+  
+  
+</script>
+</head>
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div class="photo">
+  <div class="Tip_Tick"><input type="text" style="border:0;font-size:60px;font-weight:blod;COLOR:red;background-color:transparent;font-family:Arial;" value="" id="oTakePicTick" name="oTakePicTick"></div>
+   <br><br><br><br><br><br>
+  <table width="100%" height="98.5%" border="0" cellpadding="0" cellspacing="0" align="center">
+    <tr>
+     <td align="center">
+        <table  width="100%" height="78%" border="0" align="center">
+            <tr>
+              <td align="right" colspan="2"><pre class="TimeOut_Title" id="TimeOut_Title"></pre></td>
+            </tr>
+            <tr>
+              <td height ="110" align="center" colspan="2" class="Tip_Title"></td>
+            </tr>
+            <tr>
+              <td height ="45" align="center" colspan="2" class="Tip_Title">拍照认证</td>
+            </tr>
+            <tr>
+              <td height ="50" align="center" colspan="2" class="Tip_Title"></td>
+            </tr>
+            <tr>
+              <td height ="460px" width="500px" align="left"></td>
+              <td height ="460px" align="left"><div id="FacePhoto" class="Photo_Tick"></div></td>
+            </tr>
+        </table>
+     </td>
+    </tr>
+  </table>
+  <span class="MMENUMiddle"><button onclick="javascript:onKey_F7();" class="Menu_Right" name="oCancel" id="oTakePic">拍照</button></span>
+  <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return" ></button></span>
+  <span class="MENU99" id="oPicConfirm"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm"></button></span>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+  </body>
+</html>

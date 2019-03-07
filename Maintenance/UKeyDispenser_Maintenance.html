@@ -1,0 +1,244 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>管理员界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  function doMouseDown(){
+	//top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  showMenu();
+}
+
+var Enr = new top.EventHandling(top.YHAXUkeyDispenser);
+
+var mrv = new top.MultiRecordView();
+var strHeadingArr = new Array
+(
+  "按键",
+  "维护功能"
+);
+var strRecordArr = new Array
+(
+  new Array("1", "状态", "1"),
+  new Array("2", "复位", "2")
+);
+
+//选择的数字键
+function onChangeNum(Key)
+{
+  if(Key == 1)
+  {
+	  top.journalPrinter.addJournalWithTime("客户选择  查看状态");
+	  window.operateCtrl.disableInput(true);
+	  showStatus();
+  }
+  else if(Key == 2)
+  {
+	  top.journalPrinter.addJournalWithTime("客户选择  模块复位");
+	  window.operateCtrl.disableInput(true);
+	  reset();
+  }
+}
+
+// 显示菜单
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+
+ 
+  onKey_1 = function()
+  {
+	  top.journalPrinter.addJournalWithTime("客户选择  查看状态");
+	  window.operateCtrl.disableInput(true);
+	  showStatus();
+  }
+  onKey_2 = function()
+  {
+	  top.journalPrinter.addJournalWithTime("客户选择  模块复位");
+	  window.operateCtrl.disableInput(true);
+	  reset();
+  }
+  mrv.strClassName_Table_Head             			= "ADMTable_Head";
+  mrv.strClassName_Table_Record           			= "ADMTable_Record";
+  mrv.strClassName_Table_Record2         			= "ADMTable_Record2";
+  mrv.strClassName_Table_RecordSelected    	= "ADMTable_RecordSelected";
+  mrv.oTHead = oTHead;
+  mrv.oTBody = oTBody;
+  mrv.oTablePageTip = oTablePageTip;
+  mrv.oMPrevPage = oMPrevPage;
+  mrv.oMNextPage = oMNextPage;
+  mrv.strRecordArr = strRecordArr;
+  mrv.strHeadingArr = strHeadingArr;
+  mrv.oMSelNext = oMSelNext;
+  mrv.iRowsPerPage = 8;
+  onKey_F2 = function(){mrv.onPrevPage();}
+  onKey_F3 = function(){mrv.onNextPage();}
+  onKey_F4 = function(){mrv.onSelNext();}
+  onKey_Enter = onKey_F6 = function()
+  {
+  var selected=mrv.getCurSel() ;
+  //alert(selected  );
+    try{eval("onKey_" + mrv.getCurSel() + "();");}catch(e){}
+  }
+  onKey_F7 = function()
+  {
+      top.serviceCtrl.navigate2("/Maintenance/DeviceMenu_Maintenance.html");
+  }
+  onKey_Cancel = onKey_F8 = function()
+  {
+     top.serviceCtrl.navigate2Quit();
+  }
+	//当前行点击响应
+	SelectCurrentRow = function(selectCurRow){
+		mrv.iCurSelInPage = selectCurRow;
+		mrv.onSelRowStyle();			//设置选中行的效果
+	}
+  mrv.showMX();
+
+  top.wins.showMain("oLMtnMenu");
+  window.operateCtrl.enableInput();
+}
+
+// 显示状态
+function showStatus()
+{
+  var textArr = new Array
+  (
+    "UKEY模块状态<br/><br/>",
+    "设备状态:" + top.YHAXUkeyDispenser.StDeviceStatus + "<br/>",
+    "UKEY:&nbsp;&nbsp;&nbsp;&nbsp;" + top.YHAXUkeyDispenser.StMediaStatus + "<br/>"
+  );
+  showText(textArr, showMenu);
+}
+
+
+function reset()
+{
+//alert("reset"  );
+  var textArr = new Array
+  (
+    "复位UKEY模块<br/><br/>",
+    "正在进行..."
+  );
+  showText(textArr, null);
+  onResetComplete = function()
+  {
+    Enr.clearAll();
+    var textArr = new Array
+    (
+      "复位UKEY模块<br/><br/>",
+      "完成<br/>",
+      "设备: " + top.YHAXUkeyDispenser.StDeviceStatus
+    );
+    showText(textArr, showMenu);
+  }
+  onDeviceError = function()
+  {
+    Enr.clearAll();
+    var textArr = new Array
+    (
+      "复位UKEY模块<br/><br/>",
+      "失败<br/>",
+      "设备: " + top.YHAXUkeyDispenser.StDeviceStatus
+    );
+    showText(textArr, showMenu);
+  }
+  //alert("event begin"  );
+  Enr.appendEvent("ResetComplete", onResetComplete);
+  Enr.appendEvent("DeviceError", onDeviceError);
+  Enr.appendEvent("FatalError", onDeviceError);
+   // alert("event end"  );
+  top.YHAXUkeyDispenser.Reset("RETAIN");
+    //alert("reset end"  );
+}
+
+/*显示提示文本*/
+var funcAfterShowText;
+function showText(textArr, func)
+{
+  funcAfterShowText = func;
+  var str = "";
+  for (var i=0; i<textArr.length; i++){
+		str += textArr[i];
+		top.journalPrinter.addJournalWithTime(
+				textArr[i].replace(/<br\/>/gi,"").replace(/&nbsp;/gi,"")
+				);
+	}
+  if (funcAfterShowText != null)
+  {
+    onKey_Enter = onKey_F7 = function()
+    {
+      window.operateCtrl.disableInput(true);
+      funcAfterShowText();
+    }
+	onKey_Cancel = onKey_F8 = function()
+    {
+       top.serviceCtrl.navigate2Quit();
+    }
+    oConfirmText.innerHTML = str;
+    top.wins.showMain("oLConfirmText");
+    window.operateCtrl.enableInput();
+  }
+  else
+  {
+    oInfoText.innerHTML = str;
+    top.wins.showMain("oLInfoText");
+  }
+}
+
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLInfoText" class="FULLSCR">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table border="0" cellpadding="0" cellspacing="0"><tr><td class="Tip_Title" id="oInfoText"></td></tr></table>
+      </td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="oLConfirmText" class="FULLSCR">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table border="0" cellpadding="0" cellspacing="0"><tr><td class="Tip_Title" id="oConfirmText"></td></tr></table>
+      </td></tr>
+    </table>
+  </div>
+  <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" id="oReturn"></button></span>
+  <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+<div id="oLMtnMenu" class="FULLSCR">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine"><td align="center">
+        <span class="Tip_Title" id="oUKeyDispenserMtn"></span><br/><br/>
+        <table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="45%" height="60%">
+          <thead class="ADMTable_Head" id="oTHead"></thead>
+          <tbody id="oTBody"></tbody>
+        </table>
+        <span class="Tip_Content" id="oTablePageTip"></span>
+      </td></tr>
+    </table>
+  </div>
+  <span class="MMENU2" id="oMPrevPage"><button onmousedown="javascript:onKey_F2();" class="Menu_Left" id="oPrevPage" style="visibility:hidden;"></button></span>
+  <span class="MMENU3" id="oMNextPage"><button onmousedown="javascript:onKey_F3();" class="Menu_Left" id="oNextPage" style="visibility:hidden;"></button></span>
+  <span class="MMENU5" id="oMSelNext"><button onmousedown="javascript:onKey_F4();" class="ADMNext" id="oSelNext"></button></span>
+  <span class="MMENU6"><button onmousedown="javascript:onKey_F6();" class="ADMConfirm" id="oConfirm"></button></span>
+  <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+  <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+</div>
+
+</body>
+</html>

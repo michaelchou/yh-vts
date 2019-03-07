@@ -1,0 +1,113 @@
+
+
+
+
+.Error_Title
+{
+  color:#f69022;
+  font-size:20px;
+  font-family:Î¢ÈíÑÅºÚ;
+  font-weight:noraml;
+  letter-spacing:2px;
+  padding-left:10%;
+}
+
+.login{
+    margin: 180px auto 0 auto;
+    min-height: 420px;
+    max-width: 420px;
+    padding: 40px;
+    /* background-image:url('/Terminal/Style/Default/Img/login_bg.png'); */
+	filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(enabled=true, sizingMethod=scale, src="../Terminal/Style/Default/Img/login_bg.png");
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 4px;
+}
+
+.close{
+
+   cursor:pointer;  
+}
+.message {
+	width:80%;
+    margin: 0 0 0 -100px;
+    padding: 18px 10px 18px 150px;
+    position: relative;
+    color:#3E80CA;
+    font-size:36px;
+	font-family:ºÚÌå;
+}
+.message1 {
+	width:128%;
+    margin: 5px 0 0 -58px;
+    padding: 18px 10px 18px 150px;
+    background: #27A9E3;
+    position: relative;
+    color: #fff;
+    font-size: 30px;
+	font-family:Î¢ÈíÑÅºÚ;
+}
+.img_login
+{
+  width:97px;
+  height:67px;
+}
+.input_login
+{
+  filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(enabled=true, sizingMethod=scale, src="../Terminal/Style/Default/Img/input_login.png");
+  BORDER:#3E80CA 1px solid;
+  width:300px;
+  height:59px;
+  cursor:pointer;  
+  font-size: 28px;
+  font-weight: bold;
+  font-family:Î¢ÈíÑÅºÚ;
+  padding-left:10px;
+   padding-top:15px;
+  background-color:transparent;
+}
+
+.btn_login
+{
+  filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(enabled=true, sizingMethod=scale, src="../Terminal/Style/Default/Img/btn_login.jpg");
+  BORDER:#FFFFFF 0px solid;
+  width:204px;
+  height:59px;
+  cursor:pointer;  
+  background-color:transparent;
+}
+.btn_reset
+{
+  filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(enabled=true, sizingMethod=scale, src="../Terminal/Style/Default/Img/btn_reset.jpg");
+  BORDER:#FFFFFF 0px solid;
+  width:204px;
+  height:59px;
+  cursor:pointer;  
+  background-color:transparent;
+}
+
+.btn_login1
+{
+   z-index:2;
+  width:204px;
+  height:59px;
+  cursor:pointer;  
+  background-color:transparent;
+
+}
+.btn_reset1
+{
+	z-index:2;
+  filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(enabled=true, sizingMethod=scale, src="../Terminal/Style/Default/Img/btn_reset.jpg");
+  BORDER:#FFFFFF 0px solid;
+  width:204px;
+  height:59px;
+  cursor:pointer;  
+  background-color:transparent;
+}
+
+
+
+
+
+

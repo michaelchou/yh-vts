@@ -1,0 +1,308 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>牌价查询</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css"
+	type="text/css" />
+<script type="text/javascript">
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function() {serverEntrance();});
+
+	// 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+
+	function checkEvent() {
+		try {
+			var arr = new Array(
+				new Array(oLInfoConfigTip, "input_tel"),
+				new Array(InputPassword1, "input_Password1"),
+				new Array(InputPassword2, "input_Password2")
+			);
+			for (var i = 0; i < arr.length; i++) {
+				if (arr[i][0].style.visibility.toLowerCase() == "visible") {
+					top.wins.checkEvent(event.srcElement, arr[i][1]);
+					break;
+				}
+			}
+		} catch (e) {
+		}
+	}
+
+	// 服务流程处理入口
+	function serverEntrance() {
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		/* if (top.cardreader.isCardPresent()) {
+			if(top.pool.get("strCardType") != "1"){
+				//提示插入本行借记卡
+				InsertCard();
+			}else{
+				top.pool.set("strNavigate2Url", "");
+				top.pool.set("strCurrency", "")
+				top.pool.set("strTateType", "01");
+				top.pool.set("Amount", "100");
+				//发起汇率查询
+				top.serviceCtrl.stopUserTimeout();
+		 		top.wins.showNewProcessingTip("");
+				top.trans.send906201Async();
+			}
+		}else{
+			top.serviceCtrl.navigate2InsertCard();
+		} */
+		top.pool.set("strNavigate2Url", "");
+		top.pool.set("strCurrency", "")
+		top.pool.set("strTateType", "01");
+		top.pool.set("Amount", "100");
+		//发起汇率查询
+		top.serviceCtrl.stopUserTimeout();
+ 		top.wins.showNewProcessingTip("");
+		top.trans.send906201Async();
+	}
+
+	function InsertCard() {
+		onCardEjected = function() {
+			top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeInvalCardTick);
+			// 播放提示音
+			try {
+				top.soundPlayer.playback("/Sound/TakeCardTip.mp3");
+			} catch (e) {
+			}
+			top.wins.showMain("oLTakeInvalCardTip");
+		}
+		onCardTaken = function() {
+			top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+		}
+		onDeviceError_Idc = function() {
+			if (top.cardreader.isCardPresent()) {
+				top.YHAXCardReader.Capture();
+			}
+			onServiceFailed(top.langcur.oInqPriceFailed, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError);
+		}
+		onCardCapturedTipEnd = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onCardCaptured = function() {
+			top.pool.set("printType","3");//选择打印的凭条类型
+	        top.receiptprinter.printAndEject();
+			top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+			top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+		}
+		//退卡前屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.cardreader.eject();
+	}
+
+
+	// 显示成功信息
+	function inqFxRateSuccess() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		document.getElementById("DateTime").innerHTML = new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep();
+
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onKey_F98 = function() {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		//交易成功后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		window.operateCtrl.enableInput();
+		viewMultiRecord();
+		top.wins.showMain("oLServiceSuccessTip");
+	}
+
+	function viewMultiRecord() {
+		var mrv = new top.MultiRecordView();
+		var strRecordArr = new Array();
+		var strHeadingArr = new Array(
+			top.langcur.oSerialNumber,
+			top.langcur.oCurrency,
+			top.langcur.oMiddlePrice,
+			top.langcur.oHuiBuyPrice,
+			top.langcur.oChaoBuyPrice,
+			top.langcur.oSellPrice);
+		var strAlignArr = new Array("center", "center", "center", "center", "center", "center");
+		var strRecordArr = new Array();
+		var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+		itemCount = parseInt(itemCount, 10);
+		for (var i = 1; i <= itemCount; i++) {
+			var currCode = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/currCode");
+			var remitCentralParityRate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/remitCentralParityRate");
+			var remitBidRate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/remitBidRate");
+			var cashBidRate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/cashBidRate");
+			var remitAskRate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/remitAskRate");
+			if(currCode == "CNY") {
+				continue;
+			}
+			strRecordArr[strRecordArr.length] = new Array(
+					i,
+					currCode,
+					remitCentralParityRate,
+					remitBidRate,
+					cashBidRate,
+					remitAskRate,
+					i);
+		}
+
+		//测试数据
+// 		strRecordArr[0] = new Array(1, "英镑(GBP)", "892.39", "888.81", "860.25", "895.96");
+// 		strRecordArr[1] = new Array(2, "港币(HKD)", "88.67", "88.51", "87.78", "88.83");
+// 		strRecordArr[2] = new Array(3, "美元(USD)", "690.12", "688.80", "683.21", "691.43");
+// 		strRecordArr[3] = new Array(4, "新加坡元(SGD)", "491.66", "489.68", "473.95", "493.63");
+// 		strRecordArr[4] = new Array(5, "日元(JPY)", "6.1451", "6.1204", "5.9238", "6.1697");
+// 		strRecordArr[5] = new Array(6, "加元(CAD)", "501.23", "499.22", "483.18", "503.23");
+// 		strRecordArr[6] = new Array(7, "澳元(AUD)", "510.10", "508.05", "491.73", "512.14");
+// 		strRecordArr[7] = new Array(8, "欧元(EUR)", "756.89", "753.85", "729.63", "759.92");
+
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		mrv.oTHead = oTHead;
+		mrv.oTBody = oTBody;
+		//mrv.oTablePageTip = oTablePageTip;
+		mrv.oMFirstPage = oMFirstPage;
+		mrv.oMPrevPage = oMPrevPage;
+		mrv.oMNextPage = oMNextPage;
+		mrv.oMEndPage = oMEndPage;
+		mrv.strRecordArr = strRecordArr;
+		mrv.strHeadingArr = strHeadingArr;
+		//mrv.oMSelNext = oMSelNext;
+		mrv.iRowsPerPage = 5;
+		onKey_F1 = function() {
+			mrv.onFirstPage();
+			top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		}
+		onKey_F2 = function() {
+			mrv.onPrevPage();
+			top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		}
+		onKey_F3 = function() {
+			mrv.onNextPage();
+			top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		}
+		onKey_F4 = function() {
+			mrv.onEndPage();
+			top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		}
+		//onKey_F5 = function(){mrv.onSelNext();}
+		mrv.show();
+	}
+
+	function onServiceFailed(title, retcode, retdesc) {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onTimeout = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		//交易失败后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		oTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+		top.wins.showMain("oLServiceFailedTip");
+	}
+
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onselect="document.selection.empty()" onmouseup="document.selection.empty()">
+
+	<div id="oLServiceSuccessTip" class="FULLSCR"style="visibility: hidden;">
+		<div class="FULLSCR"><br/><br/><br/><br/><br/><br/>
+		<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+		<table width="100%" height="80%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center">
+                    <span class="Tip_Title" id="oSRCBFxPrice"></span>
+                    <br/>
+                    <table id="oTable" width="65%" height="10%">
+                        <tr>
+                        	<td align="right" class="Tip_Content"><span id="oDateTime"></span>：&nbsp;&nbsp;</td>
+							<td align="left" class="Tip_Content"><span id="DateTime"></span></td>
+							<td align="right" class="Tip_Content"><span id="oUnit"></span>：&nbsp;&nbsp;</td>
+							<td align="left" class="Tip_Content"><span id="oRMBFx"></span></td>
+                        </tr>
+                    </table>
+                    <table cellpadding="2" cellspacing="1" class="Table_Ob" id="oTable" width="65%" height="50%">
+					  <thead class="Table_Head" id="oTHead"></thead>
+					  <tbody id="oTBody">
+					  </tbody>
+					</table>
+                    <span class="Tip_Content" id="oTablePageTip"></span>
+                </td>
+			</tr>
+		</table>
+		</div>
+		<span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+		<span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+		<span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+		<span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()" class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	</div>
+
+	<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+			<table width="100%" height="100%" border="0" cellpadding="0"
+				cellspacing="0">
+				<tr>
+					<td align="center">
+						<table cellpadding="10" cellspacing="1" class="Table_Ob"
+							width="55%">
+							<tr class="Table_Head">
+								<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+							</tr>
+							<tr class="Table_Record">
+								<td id="oDescription"></td>
+								<td><span id="oFailedRetDesc"></span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="oLTakeInvalCardTip" class="FULLSCR"
+		style="visibility: hidden;">
+		<span class="Tip_Tick" id="oTakeInvalCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center"><span class="Tip_Title" id="oReInsertDebCard"></span><br />
+				<br /> <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+				</td>
+			</tr>
+		</table>
+	</div>
+
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+</body>
+</html>

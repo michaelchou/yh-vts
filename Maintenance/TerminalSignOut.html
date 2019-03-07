@@ -1,0 +1,411 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>设备签退</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script language="javascript">
+// 禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick", checkEvent);
+document.attachEvent("ondblclick", checkEvent);
+document.attachEvent("onfocusin", checkEvent);
+document.attachEvent("onkeypress", checkEvent);
+var isFingerTime = "";
+var checkTellerNum = false;
+//光标最后停留的标签id名称
+var last = "";
+function checkEvent()
+{
+  try
+  {
+	//如果光标停留在输入框上,更新last
+	if(document.activeElement.tagName == "INPUT"){
+		last = document.activeElement.id;
+	}
+	//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+	if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+		top.wins.checkEvent(event.srcElement, last);
+	}else{
+		top.wins.checkEvent(event.srcElement, event.srcElement.id);
+	}
+  }catch(e){}
+}
+  function doMouseDown(){
+	//top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+     window.operateCtrl.disableInput(true);
+	 onKey_Enter = onKey_F6 = function()
+     {
+	   //
+	   error_InputTellerNum.innerHTML = "&nbsp;";
+ 	   error_InputTellerPassword.innerHTML = "&nbsp;";
+	   showInputTellerNum();
+     }
+	 onKey_F7 = function()
+     {
+        top.serviceCtrl.navigate2Maintenance();
+     }
+     onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	 window.operateCtrl.enableInput();
+	 top.wins.showMain("oLConfirmTip");
+	 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">是否确认要签退？</span>";
+  }
+  
+  /*
+	录入员工号
+  */
+  function showInputTellerNum(){
+	onKey_Enter = onKey_F99 = function()
+	{
+	    //判断输入的柜员号是否有效
+		if (new top.StringCtrl(input_TellerNum.value.substring(0,8)).isAllDigit2() && input_TellerNum.value.length == 7 )
+		{
+			top.inputmethod.Close();
+			top.pool.set("strTellerum", input_TellerNum.value);//柜员
+			error_InputTellerNum.value = "";
+			//查询柜员的权限
+			top.wins.showProcessingTip(top.langcur.send910207);
+			top.trans.send910207Async();
+		}
+		else
+		{ 
+		  error_InputTellerNum.innerHTML = top.langcur.oInputRightTellerNum;
+		  input_TellerNum.value = "";
+		  input_TellerNum.focus();
+		}
+	}
+	 onKey_F98 = function()
+     {
+		top.inputmethod.Close();
+        top.serviceCtrl.navigate2Maintenance();
+     }
+	window.operateCtrl.enableInput();
+	oInputTellerNum.innerHTML = top.langcur.InputTellerNum;
+	top.wins.showMain("oLInputTellerNum");
+	input_TellerNum.value = "";
+	input_TellerNum.focus();	
+	top.inputmethod.ShowDigit(490,570);
+}
+//柜员信息查询成功，判断指纹方式还是密码方式
+  function TellerQuerySucess()
+  {
+ 	 top.serviceCtrl.stopUserTimeout();
+ 	if(top.pool.get("strLoginType") == "0"){
+ 		//柜员进行指纹授权
+		//柜员进行指纹授权
+		if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY"){
+			onServiceFailed("设备签退失败","","指纹仪故障");
+		}else{
+			fingerInScanner();
+		}	
+ 	}else if(top.pool.get("strLoginType") == "1"){
+ 		//柜员进行密码授权
+ 		inputTellerPassword();
+ 	}else{
+ 		error_InputTellerNum.innerHTML = "柜员登入方式未知";
+ 		showInputTellerNum();
+ 	}
+  }
+  //柜员信息查询失败
+  function onTellerQueryFailed(title, retcode, retdesc)
+  {
+ 	top.serviceCtrl.stopUserTimeout();
+ 	error_InputTellerNum.innerHTML = retdesc;
+ 	showInputTellerNum(); 
+  }
+//柜员进行密码验证
+  function inputTellerPassword()
+  {
+ 	top.serviceCtrl.stopUserTimeout();
+ 	window.operateCtrl.disableInput(true);
+ 	onKey_Enter = onKey_F99 = function()
+ 	{
+ 		top.serviceCtrl.stopUserTimeout();
+ 	    //判断输入的柜员号是否有效
+ 		if (input_TellerPassword.value.length > 0 )
+ 		{
+ 			top.inputmethod.Close();
+ 			top.pool.set("strTellerPwd", input_TellerPassword.value);//柜员
+ 			error_InputTellerPassword.value = "";
+ 			//验证柜员密码
+ 			top.wins.showProcessingTip(top.langcur.send910208);
+ 			top.trans.send910208Async();
+ 		}
+ 		else
+ 		{ 
+ 		  error_InputTellerPassword.innerHTML = top.langcur.oInputRightTellerPwd;
+ 		  input_TellerPassword.value = "";
+ 		  input_TellerPassword.focus();
+ 		}
+ 	}
+ 	onTimeout = onKey_Cancel = onKey_F98 = function()
+ 	{
+ 		top.inputmethod.Close();
+ 		oTellerPwdTick.innerHTML = "&nbsp";
+ 		top.serviceCtrl.stopUserTimeout();
+ 		error_InputTellerNum.innerHTML = "&nbsp;";
+ 		error_InputTellerPassword.innerHTML = "&nbsp;";
+ 		showInputTellerNum();
+ 	}
+ 	input_TellerPassword.onkeypress = function() {
+ 		error_InputTellerPassword.innerHTML = "&nbsp;";
+	}
+ 	window.operateCtrl.enableInput();
+ 	oInputTellerPwd.innerHTML = top.langcur.InputTellerPwd;
+ 	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oTellerPwdTick);
+ 	top.wins.showMain("oLInputTellerPwd");
+ 	input_TellerPassword.value = "";
+ 	input_TellerPassword.focus();	
+ 	top.inputmethod.ShowFullEnglish(280, 570);
+  }
+  //柜员密码验证失败
+  function onTellerCheckFailed(title, retcode, retdesc)
+  {
+	top.serviceCtrl.stopUserTimeout();
+	error_InputTellerPassword.innerHTML = retdesc;
+	inputTellerPassword();  
+  }
+ //校验柜员密码
+  function input_checkTellerPwd()
+  {
+	error_InputTellerPassword.innerHTML = "&nbsp;";
+  	if (!new top.StringCtrl(input_TellerPassword.value).isDigitOrLetter())
+  	{
+  		error_InputTellerPassword.innerHTML = top.langcur.oInputRightTellerPwd;
+  		input_TellerPassword.value = "";
+  		input_TellerPassword.focus();
+  	}
+  }
+/*
+指纹录入
+*/
+ function fingerInScanner()
+  {
+    window.operateCtrl.disableInput(true);
+	onReadTellerFingerCompleted = function(strFeatureData)
+    {
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strFeatureData",strFeatureData);	
+		isFingerTime = "1";
+		//进行指纹验证
+		top.wins.showProcessingTip(top.langcur.send910206);
+		top.trans.send910206Async();
+		
+		//测试
+		//checkFingerSucess();
+    }
+	onDeviceError_Finger = function()
+	{
+		onServiceFailed("设备签退失败","","指纹仪故障");
+	}	
+	onInvalidFinger = function()
+	{
+		onServiceFailed("设备签退失败","","无效指纹");		
+	}
+	
+	onTimeout = onKey_Cancel = onKey_F98 = function(){
+		top.YHAXFingerScanner.CancelRead();
+		//返回至柜员号输入界面
+		showInputTellerNum();
+	}		
+	
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oFingerInTick);
+	top.fingerScanner.readTellerFinger();
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/Finger.mp3");}catch(e){}
+    top.wins.showMain("oLFingerInTip");
+ }
+  
+  //指纹授权成功
+  function checkFingerSucess()
+  {
+	top.journalPrinter.addJournalWithTime("柜员签退：" + top.pool.get("strTellerum"));
+	oConfirm.style.visibility = "hidden";
+	Tip_Title.innerHTML  = "<span class=\"Tip_Title\">正在发送签退交易，请稍候...</span>";
+	top.wins.showMain("oLConfirmTip");
+	//发送签退报文
+    top.trans.send911204Async();	 
+  } 
+  
+  
+  //签退成功
+  function onServiceSuccessful()
+  {
+	 top.terminal.signTellerNum = "";
+     window.operateCtrl.disableInput(true);
+     onKey_Enter = onKey_F7 = function()
+     {
+         top.serviceCtrl.navigate2Maintenance();
+     }
+     onKey_Cancel = onKey_F8 = function()
+     {
+	     top.serviceCtrl.navigate2Quit();
+     }
+     window.operateCtrl.enableInput();
+     top.wins.showMain("oLServiceSuccessTip");
+   }
+   //签退失败
+   function onServiceFailed(title, retcode, retdesc)
+   {
+      window.operateCtrl.disableInput(true);
+      onKey_Enter = onKey_F7 = function()
+      {
+         top.serviceCtrl.navigate2Maintenance();
+      }
+
+      onKey_Cancel = onKey_F8 = function()
+      {
+         top.serviceCtrl.navigate2Quit();
+      }
+
+      oFailed.innerHTML = title;
+      oFailedRetDesc.innerHTML = retdesc;
+  
+      window.operateCtrl.enableInput();
+      top.serviceCtrl.startUserTimeout(onKey_Cancel, null, null);
+      top.wins.showMain("oLServiceFailedTip");
+}
+
+ //打开数字键盘
+function ShowKeyboard(){
+	top.inputmethod.ShowDigit(490,570);
+}
+
+function ShowKeyboard3(){
+	top.inputmethod.ShowFullEnglish(280, 570);
+}
+//校验柜员号
+function input_checkTellerNum(){
+	  if (!new top.StringCtrl(input_TellerNum.value).isDigitOrLetter())
+		{
+			error_InputTellerNum.innerHTML = top.langcur.oInputRightTellerNum;
+			input_TellerNum.value = "";
+			input_TellerNum.focus();
+		}
+}
+</script>
+</head>	
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLConfirmTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+  
+  <div id="oLInputTellerNum" class="FULLSCR"  style="visibility: hidden;">
+    <div class="FULLSCR">
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr><td align="center">
+           <pre class="Tip_Title" id="oInputTellerNum"></pre>
+           <br />
+           <input name="input_TellerNum" id="input_TellerNum" class="input_long3" maxlength="7" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkTellerNum()" />
+           <br />
+           <br />
+           <pre class="Error_Title" id="error_InputTellerNum">&nbsp;</pre>
+        </td></tr>
+      </table>
+    </div>
+    <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+    <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm" ></button></span>
+  </div>
+
+<div id="oLInputTellerPwd" class="FULLSCR">
+  <div class="FULLSCR">
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0" background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg">
+        <tr><td align="center">
+           <pre class="Tip_Title" id="oInputTellerPwd"></pre>
+           <br />
+           <input  type="password" name="input_TellerPassword" id="input_TellerPassword" class="input_long3" maxlength="6" onclick="javascript:ShowKeyboard3();" onkeyup="return input_checkTellerPwd()" />
+           <br />
+           <br />
+           <pre class="Error_Title" id="error_InputTellerPassword">&nbsp;</pre>
+        </td></tr>
+      </table>
+    </div>
+    <span class="Tip_Tick" id="oTellerPwdTick"></span>
+  	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+    <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm" ></button></span>
+  </div>
+ 
+  <div id="oLFingerInTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0" background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg">
+	  <tr>
+		<td></td>
+	  </tr>
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <!--<img src="../Terminal/Style/Default/Img/LOGO.gif" width="130" height="130" />-->
+		   </br></br>
+		   <span class="Tip_Title" id="">请将手指在指纹仪上长按&nbsp;<span class=\"TickCount_Title\">3</span>&nbsp;秒后抬起!</span>
+			</br></br></br></br></br></br></br>
+		   <pre class="Error_Title" id="error_FingerIn">&nbsp;</pre>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+  </div>
+  <span class="Tip_Tick" id="oFingerInTick"></span>
+</div>
+ 
+  <div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+	    <br/><br/>
+        <span class="Tip_Title">签退成功</span>
+		<br><br><br>
+	    </td></tr>
+    </table>
+   </div>
+   <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+  </div>
+  
+  
+   
+  <div id="oLServiceFailedTip" class="FULLSCR">
+	<div class="FULLSCR">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="ADMTable_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oFailed"></td>
+						</tr>
+						<tr class="ADMTable_Record">
+							<td id="oDescription"></td>
+							<td>
+								<span id="oFailedRetDesc"></span>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+    <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+  </div>
+
+</body>
+</html>

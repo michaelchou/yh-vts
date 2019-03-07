@@ -1,0 +1,202 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>首页菜单页面</title>
+<LINK rel="stylesheet" href="../Terminal/Style/Default/Style.css" type="text/css" />
+<LINK rel="stylesheet" href="../Terminal/Style/Default/idangerous.swiper.css" type="text/css" />
+<style>
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.swiper-container {
+  width: 100%;
+  height: 88%;
+  top: 16%;
+  left: 0%;
+  color: #fff;
+  text-align: center;
+}
+.swiper-slide {
+  width: 850px;
+  height: 672px;
+}
+.red-slide {
+  background: #ca4040;
+}
+.blue-slide {
+  background: #4390ee;
+}
+.orange-slide {
+  background: #ff8604;
+}
+.green-slide {
+  background: #49a430;
+}
+.pink-slide {
+  background: #973e76;
+}
+.swiper-slide .title {
+  font-style: italic;
+  font-size: 42px;
+  margin-top: 80px;
+  margin-bottom: 0;
+  line-height: 45px;
+}
+.pagination {
+  position: absolute;
+  z-index: 30;
+  left: 47%;
+  top: 96%;
+}
+.swiper-pagination-switch {
+  width:25px;
+  height:25px;
+  display:inline-block;
+  border-radius:100%;
+  background:#ffffff;
+  opacity: 0;
+  margin-right: 22px;
+  border: 2px solid #fff;
+  cursor: pointer;
+  behavior:url("../Terminal/Style/Default/PIE.htc");
+}
+.swiper-visible-switch {
+  background: #aaa;
+}
+/*选择的页签颜色*/
+.swiper-active-switch {
+  background: #f98e26;
+}
+</style>
+<script type="text/javascript">
+var  strServiceUrl ="";
+/*开始运行服务*/
+function startService(strServiceAction)
+{
+	var menuName = "";
+	switch(strServiceAction){
+		case "DebitCardMenu":
+			menuName = "借记卡";break;
+		case "DepositRptMenu":
+			menuName = "存单";break;
+		case "LifeServiceMenu":
+			menuName = "生活服务";break;
+		case "SignTransMenu":
+			menuName = "签约";break;
+		case "CreditCardMenu":
+			menuName = "信用卡";break;
+		case "AccountMenu":
+			menuName = "账户管理";break;
+		case "TransRemitMenu":
+			menuName = "转账汇款";break;
+		case "ForeignMenu":
+			menuName = "外汇业务";break;
+		case "TestChargeMenu":
+			menuName = "卡折现金";break;
+		default:
+			menuName = strServiceAction;
+	}
+   top.journalPrinter.addJournalWithTime("客户选择 " + menuName);
+   strServiceUrl = strServiceAction;
+}
+
+</script>
+</head>
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+			<span class="Tip_Tick" id="oServiceMenuTip"></span>
+  <div class="swiper-container">
+    <div class="swiper-wrapper">
+      <div class="swiper-slide">
+
+        <table border="0" align="center" cellpadding="18" cellspacing="0">
+			<tr valign="top">  
+			   <td><img src="../Terminal/Style/Default/Img/jjk.png" onclick="javascript:startService('DebitCardMenu');" width="246" height="212"></td>
+               <td><img src="../Terminal/Style/Default/Img/cd.png" onclick="javascript:startService('DepositRptMenu');" width="246" height="212"></td>
+               <td><img src="../Terminal/Style/Default/Img/shfw.png" onclick="javascript:startService('LifeServiceMenu');" width="246" height="212"></td>
+            </tr>
+            <tr valign="top">
+               <td><img src="../Terminal/Style/Default/Img/dzyh.png" onclick="javascript:startService('SignTransMenu');" width="246" height="212"></td>
+               <td><img src="../Terminal/Style/Default/Img/xyk.png" onclick="javascript:startService('CreditCardMenu');" width="246" height="212"></td>
+               <td><img src="../Terminal/Style/Default/Img/zhgl.png" onclick="javascript:startService('AccountMenu');" width="246" height="212"></td>
+            </tr>
+            <tr valign="top">
+               <td><img src="../Terminal/Style/Default/Img/zzhk.png" onclick="javascript:startService('TransRemitMenu');" width="246" height="212"></td>
+               <td><img src="../Terminal/Style/Default/Img/whyw.png"onclick="javascript:startService('ForeignMenu');" width="246" height="212"></td>
+<!--                <td><img src="../Terminal/Style/Default/Img/whyw.png"onclick="javascript:startService('ForeignMenu');" width="246" height="212"></td> -->
+               <td><img src="../Terminal/Style/Default/Img/kzxj.png" onclick="javascript:startService('CashMenu');" width="246" height="212"></td>
+            </tr>
+		</table>
+      </div>
+	  <!--影藏第二页菜单-->
+      <!-- <div class="swiper-slide">
+        <table border="0" align="center" cellpadding="0" cellspacing="10" >
+			<tr valign="top">
+               <td rowspan="2"><img src="/Terminal/Style/Default/Img/wybk.png" onclick="javascript:startService('0001_901101_00001');" width="350" height="390"></td>
+               <td><img src="/Terminal/Style/Default/Img/dzxj.png" onclick="javascript:startService('IcServiceMenu');" width="350" height="189"></td>
+               <td><img src="/Terminal/Style/Default/Img/cxfw.png" onclick="javascript:startService('IcServiceMenu');" width="350" height="189"></td>
+            </tr>
+            <tr valign="top">
+               <td><img src="/Terminal/Style/Default/Img/cxfw.png" onclick="javascript:startService('InqueryServiceMenu');" width="350" height="189"></td>
+               <td rowspan="2"><img src="/Terminal/Style/Default/Img/qtyw.png" onclick="javascript:startService('OtherMenu');" width="350" height="390"></td>
+            </tr>
+            <tr valign="top">
+               <td><img src="/Terminal/Style/Default/Img/dzxj.png" onclick="javascript:startService('IcServiceMenu');" width="350" height="189"></td>
+            </tr>
+		</table>
+      </div> -->
+	  <!--影藏第二页菜单-->
+    </div>
+	<!--影藏菜单分页图标-->
+	<div class="pagination"></div>
+	<!--影藏菜单分页图标-->
+  </div>
+  <script>
+  function  init(){
+	top.journalPrinter.addJournalWithTime("init");
+	onTimeout = function()
+    {
+			top.terminal.swipquit = "true";
+			top.terminal.swipquitcard = "true";
+			top.serviceCtrl.navigate2Quit();
+
+    }
+	if(top.terminal.QueueNumberFlag == "1" ){
+		top.journalPrinter.addJournalWithTime("显示计时");
+		document.getElementById("oServiceMenuTip").style.visibility="visible";
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceMenuTip);
+	}else{
+		top.journalPrinter.addJournalWithTime("隐藏计时");
+		top.serviceCtrl.stopUserTimeout();
+		var serviceMenuTip=document.getElementById("oServiceMenuTip");
+		if(serviceMenuTip){
+			serviceMenuTip.innerHTML="";
+		}
+	}
+}
+init();
+  </script>
+  <script type="text/javascript" src="../JavaScript/jquery-1.10.1.min.js"></script>
+  <script type="text/javascript" src="../JavaScript/idangerous.swiper.min.js"></script>
+  <script>
+  var mySwiper = new Swiper('.swiper-container',{
+    onSlideClick: function(swiper){
+	  if(strServiceUrl == null || strServiceUrl == ""){
+	      return;
+	  }else{
+	      var strUrl = "/Service/" + strServiceUrl + ".html";
+	      window.parent.frames.selectTrans(strUrl);
+	  }
+    },
+	<!--影藏菜单分页图标-->
+    pagination: '.pagination',
+	<!--影藏菜单分页图标-->
+    //paginationClickable: true,
+    moveStartThreshold: 100
+  })
+  </script>
+  
+</body>
+</html>

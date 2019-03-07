@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.FlushData" table="FlushData" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strPan" column="strPan" type="string"/>
+	<property name="strTransCode" column="strTransCode" type="string"/>
+	<property name="amount" column="dAmount" type="big_decimal"/>
+	<property name="strDestPan" column="strDestPan" type="string" />
+	<property name="strTrack2" column="strTrack2" type="string" />
+	<property name="strTrack3" column="strTrack3" type="string" />
+	<property name="strTerminalNum" column="strTerminalNum" type="string" />
+	<property name="strEncrypType" column="strEncrypType" type="string" />
+	<property name="strPinBlock" column="strPinBlock" type="string" />
+	<property name="strField55" column="strField55" type="string" />
+	<property name="strField57" column="strField57" type="string" />
+	<property name="strOrgTsn" column="strOrgTsn" type="string" />
+	<property name="flushTimes" column="iFlushTimes" type="int" />
+	</class>
+</hibernate-mapping>

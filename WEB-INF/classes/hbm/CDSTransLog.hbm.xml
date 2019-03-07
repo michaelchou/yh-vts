@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.CDSTransLog" table="CDSTransLog" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strTerminalNum" column="strTerminalNum" type="string"/>
+    <property name="transCode" column="strTransCode" type="string"/>
+	<property name="strOCRNum" column="strOCRNum" type="string"/>
+	<property name="strAccountNum" column="strAccountNum" type="string"/>
+	<property name="strIDCardNum" column="strIDCardNum" type="string"/>
+	<property name="amt" column="dAmt" type="big_decimal"/>
+	<property name="dtOccur" column="dtOccur" type="timestamp"/>
+	<property name="fee" column="dFee" type="big_decimal"/>
+	<property name="strAuthIDCardNum" column="strAuthIDCardNum" type="string"/>
+	<property name="strHostRetCode" column="strHostRetCode" type="string"/>
+	<property name="hostTxStatus" column="iHostTxStatus" type="int"/>
+	<property name="termTxStatus" column="iTermTxStatus" type="int"/>
+	<property name="strHostSerialNo" column="strHostSerialNo" type="string"/>
+	<property name="strAccMode" column="strAccMode" type="string"/>
+	<property name="strCDSType" column="strCDSType" type="string"/>
+	<property name="dtHostOccur" column="dtHostOccur" type="timestamp"/>
+	<property name="termBatchNo" column="iTermBatchNo" type="int"/>
+	<property name="settleCycleStatus" column="iSettleCycleStatus" type="int"/>
+    <property name="strTermSerialNo" column="strTermSerialNo" type="string"/>
+	<property name="strOrigstrTxSerialNo" column="strOrigstrTxSerialNo" type="string"/>
+	<property name="strSingleBusinessNum" column="strSingleBusinessNum" type="string"/>
+	<property name="strRate" column="strRate" type="string"/>
+	<property name="strInterest" column="strInterest" type="string"/>
+	<property name="strTimeLimit" column="strTimeLimit" type="string"/>
+	<property name="strExInfo1" column="strExInfo1" type="string"/>
+	<property name="strExInfo2" column="strExInfo2" type="string"/>
+	<property name="strExInfo3" column="strExInfo3" type="string"/>
+	<property name="strExInfo4" column="strExInfo4" type="string"/>
+	<property name="strExInfo5" column="strExInfo5" type="string"/>
+	</class>
+</hibernate-mapping>

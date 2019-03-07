@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.CardTransLog" table="CardTransLog" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strTerminalNum" column="strTerminalNum" type="string"/>
+    <property name="transCode" column="strTransCode" type="string"/>
+	<property name="strPan" column="strPan" type="string"/>
+	<property name="strIDCardNum" column="strIDCardNum" type="string"/>
+	<property name="dtOccur" column="dtOccur" type="timestamp"/>
+	<property name="hostTxStatus" column="iHostTxStatus" type="int"/>
+	<property name="termTxStatus" column="iTermTxStatus" type="int"/>
+	<property name="strHostSerialNo" column="strHostSerialNo" type="string"/>
+	<property name="strHostRetCode" column="strHostRetCode" type="string"/>
+	<property name="strCardType" column="strCardType" type="string"/>
+	<property name="dtHostOccur" column="dtHostOccur" type="timestamp"/>
+	<property name="termBatchNo" column="iTermBatchNo" type="int"/>
+	<property name="settleCycleStatus" column="iSettleCycleStatus" type="int"/>
+    <property name="strTermSerialNo" column="strTermSerialNo" type="string"/>
+	<property name="strOrigstrTxSerialNo" column="strOrigstrTxSerialNo" type="string"/>
+	<property name="strSingleBusinessNum" column="strSingleBusinessNum" type="string"/>
+	<property name="strExInfo1" column="strExInfo1" type="string"/>
+	<property name="strExInfo2" column="strExInfo2" type="string"/>
+	</class>
+</hibernate-mapping>

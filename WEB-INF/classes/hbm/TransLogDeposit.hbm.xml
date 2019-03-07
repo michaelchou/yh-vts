@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.TransLogDeposit" table="TransLogDeposit" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strTerminalNum" column="strTerminalNum" type="string" />
+    <property name="transCode" column="strTransCode" type="string"/>
+	<property name="dtOccur" column="dtOccur" type="timestamp"/>
+	<property name="strPan" column="strPan" type="string"/>
+	<property name="damount" column="dAmount" type="big_decimal"/>
+	<property name="dfee" column="dFee" type="big_decimal"/>
+	<property name="ihostTransStatus" column="iHostTransStatus" type="int"/>
+	<property name="strHostRetCode" column="strHostRetCode" type="string"/>
+	<property name="strHostTsn" column="strHostTsn" type="string"/>
+	<property name="itermTransStatus" column="iTermTransStatus" type="int"/>
+	<property name="strTermSerialNo" column="strTermSerialNo" type="string"/>
+	<property name="isettleCycle" column="iSettleCycle" type="int"/>
+	<property name="isettleCycleStatus" column="iSettleCycleStatus" type="int"/>
+	<property name="strSingleBusinessNum" column="strSingleBusinessNum" type="string"/>
+	<property name="strExInfo1" column="strExInfo1" type="string"/>
+	<property name="strExInfo2" column="strExInfo2" type="string"/>
+	<property name="strExInfo3" column="strExInfo3" type="string"/>
+	<property name="strExInfo4" column="strExInfo4" type="string"/>
+	<property name="strExInfo5" column="strExInfo5" type="string"/>
+	</class>
+</hibernate-mapping>

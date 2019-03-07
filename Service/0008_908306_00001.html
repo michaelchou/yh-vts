@@ -1,0 +1,762 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>短信通关闭</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var isReturn = false;
+var changeCheckBoxFlag =false;
+var last = "";//光标最后停留的标签id名称
+var	isPadCheck = false;//审核超时标识
+
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick",checkEvent);
+document.attachEvent("ondblclick",checkEvent);
+document.attachEvent("onfocusin",checkEvent);
+document.attachEvent("onkeypress",checkEvent);
+
+function checkEvent() {
+	try {
+		//如果光标停留在输入框上,更新last
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text"){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	}
+	catch (e) {}
+}
+
+function serverEntrance(){
+	top.pool.set("strNavigate2Url", window.location.pathname);
+	if (typeof(top.YHAXIDCardReader) == "undefined")
+	{
+		onServiceFailed(top.langcur.oSMSContactCancleFail, top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oNoIDCardReader); 
+	}else if(new top.CheckCard().cardSignStatus() !="true"){
+		onServiceFailed(top.langcur.oSMSContactCancleFail, top.TERMRETCODE_CARD_NOCARDDISPERSER, new top.CheckCard().cardSignStatus());
+	}else{				
+		if (top.cardreader.isCardPresent()){
+			if(top.pool.get("strCardType") != "1"){			
+				InsertDebitCard();//提示插入借记卡				
+		    }else{	
+				top.pool.set("strNavigate2Url", "");
+				acceptIDCard();
+			}
+		}else{
+			top.serviceCtrl.navigate2InsertCard();
+		}
+	}
+}
+
+function InsertDebitCard()
+{
+	onCardEjected = function()
+	{
+		top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+		// 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("oLTakeCardTip");
+	}
+
+	onCardTaken = function()
+	{
+		top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+	}
+
+	onDeviceError_Idc = function()
+	{
+		if (top.cardreader.isCardPresent()){
+			top.YHAXCardReader.Capture();
+		} 
+		onServiceFailed(top.langcur.oSMSContactRegFail, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError); 
+	}
+
+	onCardCapturedTipEnd = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	onCardCaptured = function()
+	{
+		top.pool.set("printType","3");//选择打印的凭条类型
+		top.receiptprinter.printAndEject();
+		top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+		top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+	}
+	top.cardreader.eject();
+}
+			
+// 允许读取身份证
+function acceptIDCard()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onDeviceError_ID  = onTimeout_ID  = onCardInvalid_ID = function()
+	{
+		onServiceFailed(top.langcur.oSMSContactCancleFail, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDReaderFailed);
+		//top.wins.showNewProcessingTip2(top.langcur.oIDReaderFailed,10,true);
+		//isReturn = true;
+		//setTimeout("idCardEject()",10000);
+	}
+	onCardInserted_ID = function() {
+		top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+	}	
+	onCardReaded = function()
+	{
+		idCardEject();//取走身份证
+	}
+
+	onKey_Cancel = onKey_F98 = function()
+	{		
+		if (top.idCardReader.isCardPresent()){
+		   isReturn = true;
+		   idCardEject();
+		}else{
+			top.idCardReader.cancelAccept();
+			//serverEntrance();
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+	}
+	onTimeout = function()
+	{
+		top.idCardReader.cancelAccept();
+		if (top.idCardReader.isCardPresent()){
+			isReturn = true;
+			idCardEject();
+		}else{
+			top.serviceCtrl.navigate2Quit();
+		}
+	}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oIdCardTick);
+	top.idCardReader.accept();
+	top.serviceCtrl.changeNaviStatus('1');
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/PutIDCard.mp3");}catch(e){}
+	top.wins.showMain("oLIDCardTip");
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+}
+			  
+          
+// 提示取走二代身份证
+function idCardEject()
+{
+	top.pool.set("isPersonal","1");//人证合一校验
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onDeviceError_ID  = onTimeout_ID  = function()
+	{
+		onServiceFailed(top.langcur.oSMSContactCancleFail, top.TERMRETCODE_ID_EJECTFAILED, top.langcur.oEjectIDFailed);
+	}
+	onTimeout = function()
+	{
+		if(isReturn){
+			top.serviceCtrl.navigate2SecondMenu();
+		}else{
+			top.idCardReader.IDCardEvents.clearAll();
+			//进行联网核查流程
+			top.idCardReader.idCardTakenComplete();
+		}
+	}
+	top.serviceCtrl.startUserTimeout(onTimeout,10,oIdCardTakeTick);
+	window.operateCtrl.enableInput();
+	top.idCardReader.eject();
+	top.serviceCtrl.changeNaviStatus('2');
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/TakeIDCard.mp3");}catch(e){}
+	top.wins.showMain("oLIDCardTakeTip");
+}
+
+//联网核查成功
+function onNetworkVirificationSuccessful(){
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	//开始影像文件上传交易 
+	sendImageFile("IDType");
+}
+
+//影像文件上传交易 
+function sendImageFile(strImageType){
+	imageType = strImageType;
+	top.pool.set("strImageType", strImageType);//上传类型,后台会根据这个区分送到影像平台哪个接口
+	if("IDType"==strImageType){
+		top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+	}else{
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+	}
+	top.wins.showNewProcessingTip(top.langcur.oSendImage);
+	top.trans.sendImageFileAsync();	
+}
+//影像文件上传成功回调函数
+function onImageFileSuccessful(){
+	if("IDType" == imageType){
+		//发送查询注册信息
+		top.wins.showProcessingTip(top.langcur.oSendQueryRegInfo);
+		top.trans.send908303Async();
+	}else if("ZNGYType_PhotoPic" == imageType ){
+		//回显维护信息
+		showPhoneNews();
+	}else if("ZNGYType_SignPic" == imageType){
+		var htmlstr = infoToPic.innerHTML;
+		top.pool.set("htmlstr",htmlstr);
+		oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+		infoToPic.style.visibility = "hidden";
+		top.wins.showNewProcessingTip("交易处理中，请稍候...");
+		top.trans.sendBusinessApplicationAsync();
+	}
+}
+
+//电子凭证上送成功
+function onSuccessful(){
+	//审核前URL查询
+	queryImageURL("IDType");
+}
+
+//图片URL查询
+function queryImageURL(strImageType){
+	queryImageType = strImageType;
+	top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+	top.pool.set("strImageType",strImageType);
+	top.trans.sendImageFileQueryAsync();
+}
+
+ //图片查询结果
+function onImageFileQuerySuccessful()
+{ 
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	if("IDType" == queryImageType){
+		top.pool.set("idPhotoBackUrl",top.pool.get("back"));//反
+		top.pool.set("idPhotoUrl",top.pool.get("Front"));//正				
+		//进行查询
+		queryImageURL("ZNGYType");
+	}else if("ZNGYType" == queryImageType){	
+		top.pool.set("scenePhotoUrl",top.pool.get("cameras"));//现场
+		//PAD审核
+		sendPadCheck();
+	}
+}
+
+//PAD审核
+function sendPadCheck() {
+	var Msg = new top.JSONCtrl();
+
+	Msg.setJson("signCardNo","签约卡号："+top.pool.get("strPan"));	
+	Msg.setJson("signPhone","手机号："+top.pool.get("strPhone"));	
+	
+	top.pool.set("strCheckContent",Msg.jsonStr);
+	top.pool.set("strbusinessCode","001");
+	top.pool.set("strbusinessName","短信通关闭");		
+	//进行审核
+	top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+	top.trans.send910301Async();
+	
+}
+//PAD审核成功
+function onCheckLoadingSuccessful(){
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	// 发起短信通关闭交易
+	top.wins.showProcessingTip("正在发送短信通关闭交易，请稍候...");
+	top.pool.set("strAcctType","2");
+	top.trans.send908305Async();
+}
+
+//审核超时处理
+function onProcessingTimeout(){
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.navigate2Quit();  
+}
+    
+	
+  //拍照
+  function TakePic()
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	//top.serviceCtrl.changeNaviStatus('4');
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	onTimeout = function()
+	{
+	    top.cameras.display("Person","Destroy");//关闭摄像头
+		top.serviceCtrl.navigate2Quit();
+	}
+    window.operateCtrl.enableInput();
+	top.serviceCtrl.changeNaviStatus('3');
+	window.frames["ifreamPhoto"].CamerasLoad();//加载子页面摄像头相关方法
+    top.wins.showMain("oLTakePicTip");
+  }   
+  
+ function PhotoPrevStep()//TakePhoto页面过度方法
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	top.serviceCtrl.navigate2SecondMenu();//拍照返回后步骤
+    window.operateCtrl.enableInput();
+  }
+  
+  function PhotoNextStep()//TakePhoto页面过度方法
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	//拍照后下一步骤
+	sendImageFile("ZNGYType_PhotoPic");//上传影像平台
+    window.operateCtrl.enableInput();
+  } 
+  
+  //查询成功
+function onQueryServiceSuccessful(){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strSerialNo",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/signContractSerialNo"));
+	top.pool.set("mobile",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/mobile"));
+	top.pool.set("resIDName",top.exchxmlasync.msgxmldomResp.getElementValue("F61_6_NM"));
+	top.pool.set("strPhone",top.pool.get("mobile"));
+	TakePic();
+}
+  
+//关闭信息回显
+function showPhoneNews(){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//身份信息
+	text_pid.innerHTML = top.pool.get("strIDCardNum");
+	text_name.innerHTML = top.pool.get("strIDName");
+	text_gender.innerHTML = top.pool.get("strIDSex");
+	text_address.innerHTML = top.pool.get("strIDAddress");
+	text_ethnic.innerHTML = top.pool.get("strIDNation");
+	text_strpan.innerHTML = top.pool.get("strPan");
+	text_tel.innerHTML = top.pool.get("mobile");
+	onKey_Enter = onKey_F99 = function()
+	{
+		userSign();	
+	}
+
+	onKey_Cancel = onKey_F98 = function()
+	{
+		//TakePic();
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, ophoneNewsTick);
+	top.serviceCtrl.changeNaviStatus('4');
+	top.wins.showMain("phoneNews");
+	window.operateCtrl.enableInput();
+}
+   
+//用户签名
+function userSign()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+	oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+	oSigFinger.style.visibility = "visible";
+	oESign.style.visibility = "visible";
+	text_pid2.innerHTML = top.pool.get("strIDCardNum");
+	text_name2.innerHTML = top.pool.get("strIDName");
+	text_ethnic2.innerHTML = top.pool.get("strIDNation");
+	text_address2.innerHTML = top.pool.get("strIDAddress");
+
+	text_strPan.innerHTML = top.pool.get("strPan");
+	text_phone.innerHTML = top.pool.get("mobile");
+
+	text_date.innerHTML = new top.DateTimeCtrl().getYYYYMMDD2();
+	text_time.innerHTML = new top.DateTimeCtrl().getHHmmSSWithSep();
+	//text_jour.innerHTML = top.pool.get("strCustomerId");;
+	text_term.innerHTML = top.terminal.strTerminalNum
+	window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.changeNaviStatus('5');
+	top.serviceCtrl.startUserTimeout(window.frames['ifreamSign'].onTimeout, top.iUserTimeout,oSigFingerTick);
+	top.wins.showMain("oLUserSignTip");
+}
+
+function SignPrevStep()//ESign页面过度方法
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oSigConfirm.style.visibility = "hidden";
+	oSigAgain.style.visibility = "hidden";
+	oSigFinger.style.visibility = "hidden";
+	oESign.style.visibility = "hidden";
+	showPhoneNews();
+	window.operateCtrl.enableInput();
+}
+
+function SignNextStep()//ESign页面过度方法
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+	//上传影像平台
+	sendImageFile("ZNGYType_SignPic");
+	window.operateCtrl.enableInput();
+}   
+  
+  // 显示成功信息
+function onServiceSuccess()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	{
+		oPrintReceipt.style.visibility = "hidden";	
+	}else
+	{
+		onKey_F99 = onKey_Enter = function()
+		{
+			//打印凭条
+			top.pool.set("printType", "9");
+			//为共用凭条
+			top.pool.set("strPhone",top.pool.get("mobile"));
+			top.pool.set("cardPassbookNo",top.pool.get("strPan"));
+			top.pool.set("strTransCode","908305DEL");
+			top.serviceCtrl.navigate2PrintReceipt();
+		}
+	}
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccessTick);
+	Tip_Title.innerHTML = top.langcur.oSMSCancelSucc;
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.changeNaviStatus('6');
+	top.wins.showMain("oLServiceSuccessTip");
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+}
+
+  function onServiceFailed(title, retcode, retdesc)
+  {
+	  window.operateCtrl.disableInput(true);
+	  top.serviceCtrl.stopUserTimeout();
+	  onTimeout = function()
+	  {
+		top.serviceCtrl.navigate2SecondMenu();
+	  }
+	  oTitle.innerHTML = title;
+	  oFailedRetDesc.innerHTML = retdesc;
+      oLSafeQuit.style.visibility = "visible";
+	  oLGoHome.style.visibility = "visible";
+	  window.operateCtrl.enableInput();
+	  top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oServiceFailedTick);
+	  top.wins.showMain("oLServiceFailedTip");
+  }
+  
+  //协议选择
+function selectCheck(){
+	if(!changeCheckBoxFlag){
+	  changeCheckBoxFlag =true;
+	  checkbox.className="checkBox";
+	  oLSelect.style.visibility = "";
+	}else{
+	  changeCheckBoxFlag =false;
+	  checkbox.className="uncheckBox";
+	  oLSelect.style.visibility = "hidden";
+	}
+}
+
+function ShowKeyboard()
+{
+	top.inputmethod.ShowDigit(890,620);
+}
+
+        </script>
+    </head>
+    <body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg"  oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<!-- 导航条 -->
+<div class="divFlowPage" id="divFlowPage">
+	   <table border="0" cellpadding="0" cellspacing="0">
+		 <tr>
+		   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+		   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+		   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+		   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td><div class="stepLine" id="nodeline41"></div></td>
+		   <td><div class="stepLine" id="nodeline42"></div></td><td width="34" class="stepStatusIcon" id="node5"></td><td><div class="stepLine" id="nodeline51"></div></td>
+		   <td><div class="stepLine" id="nodeline52"></div></td><td width="34" class="stepStatusIcon" id="node6"></td><td width="38"></td>
+		 </tr>
+		 <tr height="70">
+		   <td class="font25" align="center" colspan="3" id="oFlowInID"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowReadID"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowPhoto"></td>
+		   <td class="font25" align="center" colspan="3" id="oCardDisInfo"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowConfirm"></td>
+		   <td class="font25" align="center" colspan="3" id="oFlowComplete"></td>
+		 </tr>
+	  </table>
+    </div>
+<div id="oLIDCardTip" class="FULLSCR" style="visibility:visible;">
+   <div class="FULLSCR">
+    <br><br><br><br><br><br>
+    <span class="Tip_Tick" id="oIdCardTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine" height="100">
+        <td align="center">
+           <br/>
+           <br/>
+           <span class="Tip_Title" id="oInsertID"></span>
+           <br/>
+           <img src="../Image/ID_in.gif" width="870px" height="520px"/>
+        </td>
+      </tr>
+      <tr>
+        <td>&nbsp;</td>
+      </tr>
+     </table>
+     </div>
+     <span class="MENU98" ><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br>
+  <span class="Tip_Tick" id="oIdCardTakeTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine" height="100">
+    <td align="center">
+       <br/>
+       <br/>
+       <span class="Tip_Title" id="oIDCardTake"></span>
+       <br/>
+       <img src="../Image/id_out.gif" width="870px" height="520px"/>
+    </td>
+    </tr>
+      <tr>
+    <td>&nbsp;</td>
+    </tr>
+   </table>
+   </div>
+</div>
+
+ <div id="oLTakePicTip" class="oLTakePicTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe id="ifreamPhoto" src="../Service/TakePhoto.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+ </div>
+
+<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+   <span class="Tip_Tick" id="oSigFingerTick"></span>
+	   <br><br><br><br><br><br><br><br>
+		   <table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+					<tr>
+						<td height="20px" align="center" class="Error_Title" id="oUserSign"></td>
+					</tr>		
+		   </table>
+		   
+		<div id="infoToPic">   
+			<table width="75%" height="20%" border="0" bgcolor="#FFFFFF" cellpadding="0" cellspacing="0" align="center">
+			<tr><td height="20px" colspan="4"></td></tr>
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%" colspan="2">
+				<fieldset>
+				<legend><span id="oUserTip1"></span></legend>
+				<table>
+				<tr>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oTextName"></span>&nbsp;&nbsp;<span id="text_name2"></span></td>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oTextEth"></span>&nbsp;&nbsp;<span id="text_ethnic2"></span></td>
+					
+				</tr>
+				<tr>
+					<td nowrap colspan="4">&nbsp;&nbsp;<span id="oTextPid"></span>&nbsp;&nbsp;<span id="text_pid2"></span></td>
+				</tr>
+				<tr>
+					<td nowrap colspan="4">&nbsp;&nbsp;<span id="oTextAddr"></span>&nbsp;&nbsp;<span id="text_address2"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			
+			<tr><td height="20px" colspan="4"></td></tr>
+			
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%" colspan="2">
+			  <fieldset>
+			  <legend><span>客户信息</span></legend>
+			  <table>
+                <tr>
+				    <td colspan="2">&nbsp;&nbsp;<span>签约卡号:</span>&nbsp;&nbsp;<span id="text_strPan"></span></td>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oTextPhone"></span>&nbsp;&nbsp;<span id="text_phone"></span></td>
+				</tr>
+				
+				<tr>
+				    <td nowrap>&nbsp;&nbsp;<span id="oTextDate"></span>&nbsp;&nbsp;<span id="text_date"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTime"></span>&nbsp;&nbsp;<span id="text_time"></span></td>
+					<td nowrap colspan="2" >&nbsp;&nbsp;<span id="oTextTerm"></span>&nbsp;&nbsp;<span id="text_term"></span></td>
+					<!--td nowrap>&nbsp;&nbsp;<span id="oTextJour"></span>&nbsp;&nbsp;<span id="text_jour"></span></td-->
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			<tr><td height="20px" colspan="4"></td></tr>
+			</table>
+		</div>
+		
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+			<tr>
+		        <td colspan="2" ><iframe id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		    </tr>
+			</table>
+
+</div>
+     <span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>
+	 <span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+     <span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+     <span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span>
+     <span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+</div>
+
+
+<div id="phoneNews" class="FULLSCR">
+	<div class="FULLSCR">
+	<span class="Tip_Tick" id="ophoneNewsTick"></span>
+	<br><br><br><br><br><br><br><br>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+	<tr class="FirstLine"><td align="center">
+	<span class="Tip_Title" id="oSMSContactCancleInfo"></span>
+	<br/><br/><br/>
+	<table width="80%" height="55%" border="0" cellpadding="0" cellspacing="0">
+	<tr>
+		<td align="left" class="Tip_Content" >&emsp;&emsp;姓名:</td><td align="left" class="Tip_Alarm" ><span id="text_name"></span></td>
+		<td align="left" class="Tip_Content" >&emsp;&emsp;民族:</td><td align="left" class="Tip_Alarm" ><span id="text_ethnic"></span></td>
+	</tr>
+	<tr><td height="20"></td></tr>
+	<tr>
+		<td align="left" class="Tip_Content">&emsp;&emsp;性别:</td><td align="left" class="Tip_Alarm" ><span id="text_gender"></span></td>
+		<td align="left" class="Tip_Content">&emsp;&emsp;身份证号:</td><td align="left" class="Tip_Alarm" ><span id="text_pid"></span></td>
+	</tr>
+	<tr><td height="20"></td></tr>
+	<tr>
+		<td align="left" class="Tip_Content">&emsp;&emsp;地址:</td><td colspan="3" align="left" class="Tip_Alarm" ><span id="text_address"></span></td>
+	</tr>
+	<tr><td height="20"></td></tr>
+	
+	<tr>
+		<td align="left" class="Tip_Content">&emsp;&emsp;扣款卡号:</td><td align="left" class="Tip_Alarm" ><span id="text_strpan"></span></td>
+		<td align="left" class="Tip_Content"><!-- &emsp;&emsp;扣款凭证类型: --></td><td align="left" class="Tip_Alarm" ><!-- <span id="text_type"></span> --></td>
+	</tr>
+	<tr><td height="20"></td></tr>
+	<tr> 
+		<td align="left" class="Tip_Content">&emsp;&emsp;手机号码:</td><td align="left" class="Tip_Alarm"><span id="text_tel"></span></td>
+		<td align="left" colspan="2" class="Tip_Content"></td>
+	</tr>
+	</table>
+
+	<br/><br/><br/>
+	</td></tr>
+	</table>
+
+	</div>
+	<span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return"></button></span>
+    <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm"></button></span>
+</div>
+  
+ <div id="checkLoading" class="FULLSCR">
+   <div class="FULLSCR">
+     <span class="Tip_Tick" id="oCheckTick"></span>
+     <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+           <br/><br/>
+           <img alt="" src="../Terminal/Style/Default/Img/LOGO2.gif" style="background: transparent;" width="130" height="130"/>
+           <br/>
+           <span class="Tip_Title" id="oCheckLoading"></span><br/><br/><br/>
+           </td></tr>
+      </table>
+  </div>
+  </div>
+ 
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+	<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title" id ="oReInsertDebCard"></span><br/><br/>
+      <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div> 
+  
+  <div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <br/><br/><br/><br/><br/><br/><br/><br/>
+            <tr class="FirstLine"><td align="center" colspan="2">
+			<img src="../Terminal/Style/Default/Img/success.png" width="97" height="97" /></br></br>
+                <span class="Tip_Title" id="Tip_Title"></span>
+              </td>
+            </tr>
+        </table>
+  </div>
+  <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+
+  <span class="MENU99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="Menu_Right" id="oPrintReceipt" name="Menu_Right" ></button></span>
+
+  </div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <span class="Tip_Tick" id="oServiceFailedTick"></span>
+    <br/>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+          <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oTitle"></td></tr>
+          <tr class="Table_Record">
+            <td id="oDescription"></td>
+            <td><span id="oFailedRetDesc"></span></td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </div>
+</div>
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+</body>
+</html>

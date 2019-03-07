@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>后台登录</title> 
+<link href="../Terminal/Style/Default/login.css" type="text/css" rel="stylesheet"> 
+<script src="../JavaScript/jquery-1.12.1.min.js"></script> 
+<script type="text/javascript">
+  var  userlevel="";
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+  // 禁止页面其他非输入控件的元素获得焦点
+  document.attachEvent("onclick",		checkEvent);
+  document.attachEvent("ondblclick",	checkEvent);
+  document.attachEvent("onfocusin",		checkEvent);
+  document.attachEvent("onkeypress",	checkEvent);
+
+function checkEvent()
+{
+  var elem=document.getElementById("oLLoginTip");
+  if (elem.style.visibility.toLowerCase() == "visible"){
+  	try{
+	   if(input_username.value != null&&input_username.value.length!=2) {
+	  	 top.wins.checkEvent(event.srcElement, "input_username");
+	 	 input_username.focus();
+	   //}	else if(input_password.value != null&&input_password.value.length!=0) {
+	   }else{
+	  	 top.wins.checkEvent(event.srcElement, "input_password");
+	 	 input_password.focus();
+	  	}
+ 	 }catch(e){}
+ }
+
+} 
+
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+    top.serviceCtrl.stopUserTimeout();
+	onKey_F6 = onKey_Enter  = function()
+	{
+		acceptInput();
+		return true;
+	}
+	onKey_F8 = onKey_Cancel = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	onKey_F7  = function()
+	{
+		if(input_password.value != null) 
+		input_password.value="";
+		
+		if(input_username.value != null) 
+		input_username.value="";
+		error_input.innerHTML ="";
+		input_username.focus();
+		return true;
+	}
+	
+	top.wins.showMain("oLLoginTip");
+	var offsettop=$("#oLLoginTip").offset().top;   
+	var offsetleft=$("#oLLoginTip").offset().left;   
+	var width=$("#oLLoginTip").width();    
+	$("#close").css({position: "absolute",'top':offsettop,'left':offsetleft+width+40,'z-index':0});   
+	$("#reset").css({position: "absolute",'z-index':0});   	
+	$("#login").css({position: "absolute",'left':offsetleft+width/2+40,'z-index':0});   	
+    window.operateCtrl.enableInput();
+   	input_username.focus();
+} 
+
+  // 输入用户名与密码
+  function acceptInput()
+  {
+	var username = input_username.value;
+	var password = input_password.value;
+	if (username == null || username == "")
+	  { 
+	       error_input.innerHTML = "用户名不能为空，请重新输入";
+	       input_username.value = "";
+		   input_password.value = "";
+	       input_username.focus();
+		   return false;
+	  }	else if (username.length != 2)
+	  { 
+	       error_input.innerHTML = "用户名为2位数字，请重新输入";
+	       input_username.value = "";
+		   input_password.value = "";
+	       input_username.focus();
+		   return false;
+	  }
+	  var pattern=/^(\d+)$/;
+	  var result=pattern.test(username);
+	  if(result==false){
+	    	 error_input.innerHTML = "用户名为2位数字，请重新输入";
+	       input_username.value = "";
+		   input_password.value = "";
+	       input_username.focus();
+		   return false;
+		  }
+	  if (password == null || password == "")
+	  { 
+	       error_input.innerHTML = "密码不能为空，请重新输入";
+	       input_password.value = "";
+	    	input_password.focus();
+		   return false;
+	  }else if (password.length !=6||pattern.test(password)==false)
+	  { 
+	       error_input.innerHTML = "密码为6位数字，请重新输入";
+	       input_password.value = "";
+	       input_password.focus();
+		   return false;
+	  }
+	  if(checkUser(username,password)==false){
+	  	   error_input.innerHTML = "用户名或密码错误，请重新输入";
+	       input_password.value = "";
+	       input_username.value = "";
+	       input_username.focus();
+	       //记录流水
+		   var strJrn = new top.StringCtrl(username+"用户登录失败 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+           top.journalPrinter.addJournal(strJrn);
+		   return false;		   
+	  }else if(checkUpdate()){
+		   top.pool.set("maintenance_username",username);
+	       top.pool.set("maintenance_userlevel",userlevel); 
+		   var strJrn = new top.StringCtrl(username+"用户登录成功,检查版本可更新 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+           top.journalPrinter.addJournal(strJrn);
+	       top.serviceCtrl.navigate2("/Maintenance/CheckUpdate_Maintenance.html");
+	  }else if(password=="111111"){
+	       top.pool.set("maintenance_username",username);
+	       top.pool.set("maintenance_userlevel",userlevel);
+	       var strJrn = new top.StringCtrl(username+"用户登录成功 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+           top.journalPrinter.addJournal(strJrn);
+	       top.serviceCtrl.navigate2("/Maintenance/PasswordModify_Maintenance.html");		   
+	  }
+	    else{
+	       top.pool.set("maintenance_username",username);
+	       top.pool.set("maintenance_userlevel",userlevel);   	
+	       //记录流水
+		   var strJrn = new top.StringCtrl(username+"用户登录成功 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+           top.journalPrinter.addJournal(strJrn);
+		   top.serviceCtrl.navigate2("/Maintenance/Menu_Maintenance.html");		   
+	  }
+  }
+
+    //验证用户名密码
+   function checkUser(username,password){
+   	  var strUserData = new top.XmlManage().getXmlParamList(top.COLS_USER_XMLPATH,top.NODE_USER,top.NODE_CHILD_USER);
+	  var array = strUserData.split("|");
+	  if(array.length > 1){//有数据
+	     for(var i=0; i<array.length-1; i++){
+	         var strUserDetailData = array[i];
+		     var arrayDetail = strUserDetailData.split(",");
+		       if(arrayDetail.length > 3){//完整数据
+			         arrayDetail[1];
+		        }
+		     	if ( username == arrayDetail[1] && top.trans.getpassEncode(password)==arrayDetail[2]){        
+		     		userlevel=  arrayDetail[3];  
+                    return true;
+							   
+	            }	
+			}
+        }
+        return false;
+	} 
+    /*
+    *应用版本检查更新     0：表示无更新    1：表示可更新      2：表示强制更新
+    */
+    function checkUpdate(){
+    	if(top.terminal.isSmartTeller){
+    		//非移动智能终端，直接返回false
+    		return false;
+    	}
+    	var strColsUpdateFlag = new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_COLSVERSION_UPDATEFLAG, "0");
+    	var strAgentUpdateFlag = new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_AGENTVERSION_UPDATEFLAG, "0");
+    	if(strColsUpdateFlag != "0" || strAgentUpdateFlag !="0"){
+    		top.pool.set("ColsUpdateFlag",strColsUpdateFlag);
+    		top.pool.set("AgentUpdateFlag",strAgentUpdateFlag);
+    		return true;
+    	}
+    	return false;
+    }
+</script>
+</head> 
+<body onkeydown="if(event.keyCode==13){javascript:acceptInput()}">
+<div id="oLLoginTip" class="login" style="visibility:hidden;" >
+
+     <img id="close" src='../Terminal/Style/Default/Img/close.png'  class='close' onclick="javascript:onKey_F8()"></img>
+     
+    <div class="message">智能柜员机管理系统</div>
+		<br/><br/>
+		<img src='../Terminal/Style/Default/Img/img_username.jpg' class='img_login'></img> <input name="username" type="text" id="input_username" class="input_login"  maxlength="2" >
+		<br/>
+		<img src='../Terminal/Style/Default/Img/img_password.png' class='img_login'></img> <input name="password" type="password" id="input_password" maxlength="6" class="input_login"  >
+		<br/><br/><br/>
+		<pre class="Error_Title" id="error_input">&nbsp;</pre>
+		<br/>
+		<img  id="reset" src="../Terminal/Style/Default/Img/btn_reset.jpg" class='btn_reset1' onclick="javascript:onKey_F7()"></img>
+	
+		<img  id="login" src="../Terminal/Style/Default/Img/btn_login.jpg" class='btn_login1'  onclick="javascript:onKey_F6()"></img>
+		
+		<br/>
+		<br/>
+		
+		
+</div>
+</body>
+</html>

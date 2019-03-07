@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.SettleCycleLog" table="SettleCycleLog" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strTerminalNum" column="strTerminalNum" type="string" />
+	<property name="isettlecycle" column="isettlecycle" type="int"/>
+	<property name="dtStart" column="dtStart" type="timestamp"/>
+	<property name="dtEnd" column="dtEnd" type="timestamp"/>
+	<property name="isStatus" column="isStatus" type="int"/>
+	<property name="dcdmSurplusAmt" column="dCDMSurplusAmt" type="big_decimal"/>
+	<property name="dcimSurplusAmt" column="dCIMSurplusAmt" type="big_decimal"/>
+	<property name="dcdmAddAmt" column="dCDMAddAmt" type="big_decimal"/>
+	<property name="strExInfo1" column="strExInfo1" type="string"/>
+	<property name="strExInfo2" column="strExInfo2" type="string"/>
+	</class>
+</hibernate-mapping>

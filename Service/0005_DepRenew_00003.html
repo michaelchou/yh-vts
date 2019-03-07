@@ -1,0 +1,1273 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>存单续存：未到期流程</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  // 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+	function checkEvent()
+	{
+		try
+		{
+		//如果光标停留在输入框上,更新last
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+		}catch(e){}
+	}
+	var last ="";
+var isFingerTime = "";
+var imageType = "";  //上送影像平台类型
+var checkTellerNum = false;
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+	top.serviceCtrl.stopUserTimeout();
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	//选择本人/他人
+	chooseTransferType();
+  }
+   function chooseTransferType(){
+	//对比首次插入的身份证与存单身份证	
+	if(top.pool.get("strCdsIDNo") == top.pool.get("strIDCardNum")){
+		//存单与身份证一致
+		//电子签名
+		userSign();
+	}else{
+		//存单与身份证不一致
+		acceptAgentIDCard();
+	}
+  }
+  // 允许存单人读取身份证
+  function acceptAgentIDCard() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onCardInvalid_ID = function() {
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDReaderFailed);
+	}
+	onDeviceError_ID = function() {
+		onServiceFailed(top.langcur.oCDSFailed, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDCardError);
+	}
+	onCardInserted_ID = function() {
+		top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+	}
+	onAgentCardReaded = function() {		
+		AgentidCardEject();
+	}
+	//退出身份证读取流程
+	onKey_F98 = function() {
+		top.YHAXIDCardReader.CancelAccept();
+		//判断身份证状态
+		if(top.idCardReader.isCardPresent())//如果身份证存在，直接退出身份证
+		{
+		   top.YHAXIDCardReader.Eject(120*1000);
+		}
+		exceptionEjectCDS();
+	}
+	onTimeout_ID = onTimeout = function(){
+		//如果存单模块状态异常
+		top.pool.set("strbusinessName", "存单续存-代理人身份证放入超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	//插入身份证页面屏蔽安全退出及返回Home的功能
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+		
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oAgentIdCardTick);
+	top.idCardReader.acceptAgent();
+	// 播放提示音
+	try {
+		top.soundPlayer.playback("/Sound/PutAuthIDCard.mp3");
+	} catch (e) {}
+	top.wins.showMain("oLAgentIDCardTip");
+  }  
+  // 提示取走委托人二代身份证
+  function AgentidCardEject() {
+	top.pool.set("isAgent","1"); //是否是代理人
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onDeviceError_ID = onTimeout_ID = function() {
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_ID_EJECTFAILED,top.langcur.oEjectIDFailed);
+	}
+	onCardTaken_ID = function() {		
+	}
+	//超时退出
+	onTimeout = function()
+	{	
+		top.idCardReader.IDCardEvents.clearAll();	
+		//进行联网核查流程
+        top.idCardReader.idCardTakenComplete();
+	}
+
+	top.serviceCtrl.startUserTimeout(onTimeout, 10, oAgentIdCardTakeTick);
+	window.operateCtrl.enableInput();
+	top.idCardReader.eject();
+	// 播放提示音
+	try {
+		top.soundPlayer.playback("/Sound/TakeIDCard.mp3");
+	} catch (e) {}
+	top.wins.showMain("oLAgentIDCardTakeTip");
+  }	
+  //联网核查成功
+  function onNetworkVirificationSuccessful(){
+	top.serviceCtrl.stopUserTimeout();
+	//如果插入的身份证与存单开户人不一致	
+	if(top.pool.get("strAgentIDCardNum") != top.pool.get("strCdsIDNo")){
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_ID_EJECTFAILED,top.langcur.oCdsIdentDiff);		
+	}else{
+		if(top.pool.get("customNo") != null && top.pool.get("customNo") != ""){
+			//获取老客户手机号
+			top.pool.set("mobile",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/mobileCall"));
+			//老客户开始影像文件上传交易  
+			userSign();	
+		}else{
+			//创建客户号(默认)
+			top.pool.set("strPhone","99999999999");
+			top.wins.showNewProcessingTip(top.langcur.send901101Ad);
+			top.trans.sendCDS901101Async();
+		}	
+	}
+  }
+  //维护客户信息成功
+  function onUpdateCustomInfoSuccessful()
+  {
+	top.serviceCtrl.stopUserTimeout();
+	//sendImageFile("IDType");
+	userSign();	
+  }
+  //影像文件上传交易 
+  function sendImageFile(strImageType){
+	top.serviceCtrl.stopUserTimeout();
+	imageType = strImageType;
+	top.pool.set("strImageType", strImageType);//上传类型,后台会根据这个区分送到影像平台哪个接口
+	if("IDType"==strImageType){
+		top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+	}else{
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+	}
+	top.wins.showNewProcessingTip(top.langcur.oSendImage);
+	top.trans.sendImageFileAsync();	
+  }
+  //影像文件上传成功
+  function onImageFileSuccessful(){
+	top.serviceCtrl.stopUserTimeout();
+	var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+	top.pool.set("strBatchId",strBatchId);
+	if("IDType" == imageType){
+		//业务申请单
+		userSign();
+	}else if("ZNGYType_SignPic" == imageType){
+		//上传业务办理单
+		var htmlstr = infoToPic.innerHTML;
+		top.pool.set("htmlstr",htmlstr);
+		oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+		infoToPic.style.visibility = "hidden";
+		top.wins.showNewProcessingTip(top.langcur.sendBusiness);
+		top.trans.sendBusinessApplicationAsync();
+	}
+  }
+   //业务办理单、签名
+  function userSign()
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+	oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+	oSigFinger.style.visibility = "visible";
+	oESign.style.visibility = "visible";
+	infoToPic.style.visibility = "visible";
+	text_pid2.innerHTML = top.pool.get("strIDCardNum");
+	text_name2.innerHTML = top.pool.get("strIDName");
+	text_ethnic2.innerHTML = top.pool.get("strIDNation");
+	text_address2.innerHTML = top.pool.get("strIDAddress");
+	
+	if(top.pool.get("isAgent") == "1"){
+		text_strName.innerHTML	= top.pool.get("strAgentIDName");
+	}else{
+		text_strName.innerHTML	= top.pool.get("strIDName");
+	}
+	text_strType.innerHTML = top.cardreader.convertTransType(top.pool.get("strProductType"));
+	text_strTime.innerHTML = top.cardreader.convertTransType(top.pool.get("strDepositTerm"));	
+	text_strVNo.innerHTML = top.pool.get("strCDCertNum");
+	
+	text_Rate.innerHTML = parseFloat(top.pool.get("strCreditIntRate")).toString()+"%";
+	text_strAmount.innerHTML = new top.StringCtrl("").formatStrAmount(top.pool.get("strCDAmount"));	
+	text_StartDate.innerHTML = new top.StringCtrl("").formatStrToDataCDS(top.pool.get("strCdsOpenDate"));
+	text_EndDate.innerHTML = new top.StringCtrl("").formatStrToDataCDS(top.pool.get("strCdsEndDate"));
+	
+	text_date.innerHTML = new top.DateTimeCtrl().getYYYYMMDD2();
+    text_time.innerHTML = new top.DateTimeCtrl().getHHmmSSWithSep();
+    text_term.innerHTML = top.terminal.strTerminalNum;
+	
+	onTimeout = function(){
+		if(top.pool.get("SigCloseFlag") !="" && top.pool.get("SigCloseFlag") != null && top.pool.get("SigCloseFlag")=="1"){
+			//关闭签名面板
+			try {top.sigCameras.display("Extra","Destroy");} catch (e){}
+			top.sigCameras.sigCamerasEvents.clearAll();
+		}
+			
+	  if(top.pool.get("fingerCloseFlag") !="" && top.pool.get("fingerCloseFlag") != null && top.pool.get("fingerCloseFlag")=="1"){
+			//关闭指纹仪
+			try {top.YHAXFingerScanner.CancelRead();} catch (e){}
+		}
+		
+		top.pool.set("strbusinessName", "存单续存-客户签名确认超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	
+    window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+	window.operateCtrl.enableInput();	
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oSigFingerTick);
+    top.wins.showMain("oLUserSignTip");
+  }
+  function SignPrevStep()//ESign页面过度方法
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oSigConfirm.style.visibility = "hidden";
+	oSigAgain.style.visibility = "hidden";
+	oSigFinger.style.visibility = "hidden";
+	oESign.style.visibility = "hidden";	
+	infoToPic.style.visibility = "hidden";
+	if(top.pool.get("strNewAmount")>0){
+		top.pool.set("strCancelRes","1");
+		top.serviceCtrl.navigate2("/Service/0005_DepRenew_00005.html");
+	}else{
+		exceptionEjectCDS();
+	}	
+	window.operateCtrl.enableInput();
+  }
+  function SignNextStep()//ESign页面过度方法
+  {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	oSigConfirm.style.visibility = "hidden";//签名完隐藏确定按钮
+	//上传签名图片
+	sendImageFile("ZNGYType_SignPic");
+	window.operateCtrl.enableInput();
+  } 
+ //业务办理单上传成功
+  function onSuccessful()
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	//判断是否已经进行过大堂经理审核存单
+	if(top.pool.get("isTellerCheck") == "1"){
+		top.pool.set("isTellerCheck","");
+		top.pool.set("strCancelRes","2");
+		top.serviceCtrl.navigate2("/Service/0005_DepRenew_00005.html");
+	}else{
+		top.pool.set("isTellerCheck","");
+		//进行大堂经理现场审核
+		sendPadHelp();
+	}
+  } 
+  //发送大堂经理协助流程
+  function sendPadHelp() 
+  {
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strbusinessCode","905110");
+	top.pool.set("strbusinessName","存单续存-未到期存单现场审核");		
+	//呼叫大堂经理协助
+	top.wins.showNewProcessingTip(top.langcur.oCheckHelping);
+	top.trans.send910304Async();
+  }
+  //呼叫协助成功
+  function onCheckHelpingSuccessful()
+  {
+	//输入大堂经理输入柜员号
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_Enter = onKey_F99 = function()
+	{
+	    //判断输入的身份证是否有效
+		if (new top.StringCtrl(input_TellerNum.value.substring(0,8)).isAllDigit2() && input_TellerNum.value.length == 7 )
+		{
+			checkTellerNum =false;
+			top.inputmethod.Close();
+			top.pool.set("strTellerum", input_TellerNum.value);//柜员
+			error_InputTellerNum.value = "";
+			input_TellerNum.focus();
+			top.pool.set("isFingerMore","true");
+			top.pool.set("strLoginType","");
+			top.pool.set("strLoginNum","");
+			//查询柜员的权限
+			top.wins.showNewProcessingTip(top.langcur.send910207);
+			top.trans.send910207Async();	
+		}
+		else
+		{ 
+		  error_InputTellerNum.innerHTML = top.langcur.oInputRightTellerNum;
+		  input_TellerNum.value = "";
+		  input_TellerNum.focus();
+		}
+	}
+	  onKey_Cancel = onKey_F98 = function()
+	  {
+		 top.serviceCtrl.stopUserTimeout();
+		 top.inputmethod.Close();
+		 error_InputTellerNum.innerHTML = "&nbsp;";
+		 error_InputTellerPassword.innerHTML = "&nbsp;";
+		 exceptionEjectCDS();
+	  }
+
+	  input_TellerNum.onkeypress = function()
+	  {
+		error_InputTellerNum.innerHTML = "&nbsp;";
+	  }
+	  onTimeout = function()
+	  {
+		top.inputmethod.Close();
+		top.pool.set("strbusinessName", "存单续存-柜员号输入超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	  }
+	  checkTellerNum =true;
+	  window.operateCtrl.enableInput();
+	  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oInputTellerNumTick);
+	  oInputTellerNum.innerHTML = top.langcur.InputTellerNum;
+	  // 播放提示音
+	  //try{top.soundPlayer.playback("/Sound/InputPhoneNum.mp3");}catch(e){}
+	  top.inputmethod.ShowDigit(490,570);
+	  top.wins.showMain("oLInputTellerNum");
+	  input_TellerNum.value = "";
+	  input_TellerNum.focus();	
+  }
+  //柜员信息查询成功，判断指纹方式还是密码方式
+  function TellerQuerySucess()
+  {
+ 	top.serviceCtrl.stopUserTimeout();
+ 	if(top.pool.get("strLoginType") == "0"){
+		//柜员进行指纹授权
+		if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY"){
+			onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_FINGER_FAILED, top.langcur.oCDSFingerFail); 
+		}else{
+			fingerInScanner();
+		}
+ 	}else if(top.pool.get("strLoginType") == "1"){
+ 		top.pool.set("strLoginNum","1");
+ 		//柜员进行密码授权
+ 		inputTellerPassword();
+ 	}else{
+ 		error_InputTellerNum.innerHTML = "柜员登入方式未知";
+ 		onCheckHelpingSuccessful();
+ 	}
+  }
+  //柜员信息查询失败
+  function onTellerQueryFailed(title, retcode, retdesc)
+  {
+ 	top.serviceCtrl.stopUserTimeout();
+ 	error_InputTellerNum.innerHTML = retdesc;
+ 	onCheckHelpingSuccessful(); 
+  }
+  //柜员进行密码验证
+  function inputTellerPassword()
+  {
+ 	top.serviceCtrl.stopUserTimeout();
+ 	window.operateCtrl.disableInput(true);
+ 	onKey_Enter = onKey_F99 = function()
+ 	{
+ 		top.serviceCtrl.stopUserTimeout();
+ 	    //判断输入的柜员号是否有效
+ 		if (input_TellerPassword.value.length > 0 )
+ 		{
+ 			top.inputmethod.Close();
+ 			top.pool.set("strTellerPwd", input_TellerPassword.value);//柜员
+ 			error_InputTellerPassword.value = "";
+ 			//验证柜员密码
+ 			top.wins.showNewProcessingTip(top.langcur.send910208);
+ 			top.trans.send910208Async();
+ 		}
+ 		else
+ 		{ 
+ 		  error_InputTellerPassword.innerHTML = top.langcur.oInputRightTellerPwd;
+ 		  input_TellerPassword.value = "";
+ 		  input_TellerPassword.focus();
+ 		}
+ 	}
+ 	 onKey_Cancel = onKey_F98 = function()
+ 	{
+ 		top.inputmethod.Close();
+ 		oTellerPwdTick.innerHTML = "&nbsp";
+ 		top.serviceCtrl.stopUserTimeout();
+		error_InputTellerNum.innerHTML = "&nbsp;";
+	 	error_InputTellerPassword.innerHTML = "&nbsp;";
+ 		//判断是取单授权还是放单授权
+ 		if(top.pool.get("strLoginNum") == "1"){
+ 			//取单授权
+ 			onCheckHelpingSuccessful(); 
+ 		}else{
+			if(top.pool.get("strNewAmount")>0)
+			{
+				top.pool.set("strCancelRes","1");
+				top.serviceCtrl.navigate2("/Service/0005_DepRenew_00005.html");
+			}else{
+				top.serviceCtrl.navigate2Quit();
+			}
+ 		}
+ 	}
+	onTimeout = function(){
+		top.inputmethod.Close();
+		top.serviceCtrl.stopUserTimeout();
+		//判断是取单授权还是放单授权
+ 		if(top.pool.get("strLoginNum") == "1"){
+ 			top.pool.set("strbusinessName", "存单续存-柜员密码授权超时");
+ 			top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+ 			top.trans.send910304CDSFailedAsync();
+ 		}else{
+			if(top.pool.get("strNewAmount")>0)
+			{
+	 			top.pool.set("strbusinessName", "存单续存-柜员密码授权超时");
+	 			top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+	 			top.trans.send910304CDSFailedAsync();
+			}else{
+				top.serviceCtrl.navigate2Quit();
+			}
+ 		}
+	}
+ 	input_TellerPassword.onkeypress = function() {
+ 		error_InputTellerPassword.innerHTML = "&nbsp;";
+	}
+ 	window.operateCtrl.enableInput();
+ 	oInputTellerPwd.innerHTML = top.langcur.InputTellerPwd;
+ 	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oTellerPwdTick);
+ 	top.wins.showMain("oLInputTellerPwd");
+ 	input_TellerPassword.value = "";
+ 	input_TellerPassword.focus();	
+ 	top.inputmethod.ShowFullEnglish(280, 570);
+  }
+  //柜员密码验证失败
+  function onTellerCheckFailed(title, retcode, retdesc)
+  {
+	top.serviceCtrl.stopUserTimeout();
+	error_InputTellerPassword.innerHTML = retdesc;
+	inputTellerPassword();  
+  }
+  //指纹授权
+  function fingerInScanner()
+  {
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	onReadTellerFingerCompleted = function(strFeatureData)
+    {
+		top.pool.set("strFeatureData",strFeatureData);	
+		isFingerTime = "1";
+		//进行指纹验证
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.send910206Async();
+    }
+	onDeviceError_Finger = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_FINGER_FAILED, top.langcur.oCDSFingerFail); 
+	}	
+	onInvalidFinger = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_FINGER_FAILED, top.langcur.oCDSFingerInval); 
+	}	
+	//取消指纹授权
+	onKey_Cancel = onKey_F98 = function(){
+		top.YHAXFingerScanner.CancelRead();
+		exceptionEjectCDS();
+	}
+	if(isFingerTime == "1"){
+		error_FingerIn.innerHTML = top.langcur.oFingerCheckFailed;
+	}else{
+		error_FingerIn.innerHTML = "&nbsp;";
+	}
+	onTimeout_Finger = onTimeout = function()
+	{	
+		top.YHAXFingerScanner.CancelRead();
+		top.pool.set("strbusinessName", "存单续存-柜员指纹授权超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oFingerInTick);
+	top.fingerScanner.readTellerFinger();
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/Finger.mp3");}catch(e){}
+    top.wins.showMain("oLFingerInTip");
+  } 
+    //指纹授权成功
+  function checkFingerSucess()
+  {
+	top.serviceCtrl.stopUserTimeout();
+	//判断是指纹还是密码
+	if(top.pool.get("strLoginType") == "0"){
+		//指纹
+		if(isFingerTime =="1"){
+			isFingerTime ="";
+			//退存单，发送PAD审核交易
+			ejectCD();
+		}else if(isFingerTime =="2"){
+			//重新放入存单
+			isFingerTime ="";
+			showcheckCD();
+		}
+	}else{
+		//密码
+		if(top.pool.get("strLoginNum") == "1"){
+			ejectCD();
+		}else{
+			showcheckCD();	
+		}
+	}
+  }
+//指纹授权失败可以多次进行授权
+  function onFingerCheckFailed()
+  {
+	if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY"){
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_FINGER_FAILED, top.langcur.oCDSFingerFail); 
+	}else{
+		//第一次指纹授权
+		if(isFingerTime =="1"){
+			fingerInScanner();
+		}else{
+			//第二次指纹授权
+			fingerOutScanner();
+		} 
+	}
+  }
+  //退出存单
+  function ejectCD()
+  {
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	onMediaTaken = function(){	
+		//选择是否放入存单
+		sendPadCheck();
+	}
+	onDeviceError_cd = function()
+	{
+		top.documentscanner2.DocumentScannerEvents2.clearAll();
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_FINGER_FAILED, top.langcur.oEjectCDSFail);		
+	}
+	onTimeout = function()
+	{
+		top.YHAXDocumentScanner2.CancelAccept();
+		top.pool.set("strbusinessName","存单续存-设备退单超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oEjectCDTick);
+	window.operateCtrl.enableInput();
+	top.documentscanner2.eject();	
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/TakeCD.mp3");}catch(e){}
+	top.wins.showMain("oLEjectCDTip");
+  }
+  //上送PAD审核
+  function sendPadCheck()
+  {
+	top.serviceCtrl.stopUserTimeout();
+	var Msg = new top.JSONCtrl();	
+	//客户名称，定期产品名称，存期，利率，金额，起息日期，到期日期，凭证号码
+	Msg.setJson("customAccoutNum","存单账号："+ top.pool.get("strAccoutNum"));	
+	Msg.setJson("customName","客户名称："+ top.pool.get("strCdsIDName"));		
+	Msg.setJson("customProduct","定期产品名称："+ top.cardreader.convertTransType(top.pool.get("strProductType")));
+	Msg.setJson("customTime","存期："+ top.cardreader.convertTransType(top.pool.get("strDepositTerm")));		
+	Msg.setJson("customRate","利率："+ top.pool.get("strCreditIntRate"));
+	Msg.setJson("customAmount","金额："+ new top.StringCtrl("").formatStrAmount(top.pool.get("strCDAmount")));		
+	Msg.setJson("customStartDate","起息日期："+ top.pool.get("strCdsOpenDate"));
+	Msg.setJson("customEndDate","到期日期："+ top.pool.get("strCdsEndDate"));
+	Msg.setJson("customCertNum","凭证号码："+ top.pool.get("strCDCertNum"));
+	//要素齐全性 字段名integralityCheck  票据鉴伪   字段名receiptDistinguish
+	Msg.setJson("integralityCheck",top.pool.get("integralityCheck"));
+	Msg.setJson("receiptDistinguish",top.pool.get("receiptDistinguish"));	
+	//如果存在密押，柜员可以修改
+	if(top.pool.get("strAuthPin") !="" && top.pool.get("strAuthPin") != null){
+		Msg.setJson("customAuthPin","存单密押："+ top.pool.get("strAuthPin"));
+	}
+	top.pool.set("strCheckContent",Msg.jsonStr);
+	
+	top.pool.set("strbusinessCode","905110");
+	top.pool.set("strbusinessName","存单续存-未到期存单审核");		
+	//呼叫大堂经理协助
+	top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+	top.trans.send910301Async();
+  }
+    //PAD审核通过
+  function onCheckLoadingSuccessful()
+  {
+	top.serviceCtrl.stopUserTimeout();
+	//解析返回的JSON文件
+	var strReserve1 = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/reserve1");
+	if(strReserve1 != null && strReserve1 != "")
+	{
+		//修改后的凭证号、账号 
+		var Msg = new top.JSONCtrl();
+		var obj = Msg.getJson(strReserve1);
+		if(obj.customAccoutNum != null && obj.customAccoutNum != ""){
+			var strAccoutNum;
+		    if(obj.customAccoutNum.indexOf("存单账号：") != -1){
+				strAccoutNum = obj.customAccoutNum.split("存单账号：")[1];
+			}else{
+				strAccoutNum = obj.customAccoutNum;
+			}
+			top.pool.set("strNewAccoutNum",strAccoutNum);
+		}
+		if(obj.customCertNum != null && obj.customCertNum != ""){
+			var strCertNum;
+		    if(obj.customCertNum.indexOf("凭证号码：") != -1){
+				strCertNum = obj.customCertNum.split("凭证号码：")[1];
+			}else{
+				strCertNum = obj.customCertNum;
+			}
+			top.pool.set("strNewCDCertNum",strCertNum);	
+		}
+		if(obj.customAmount != null && obj.customAmount != ""){
+			var strAmount;
+		    if(obj.customAmount.indexOf("金额：") != -1){
+				strAmount = obj.customAmount.split("金额：")[1];
+			}else{
+				strAmount = obj.customAmount;
+			}
+			top.pool.set("strNewCDAmount",new top.StringCtrl("").YuanToFen(strAmount));	
+		}
+		if(obj.customAuthPin != null && obj.customAuthPin != ""){
+			var AuthPin;
+		    if(obj.customAuthPin.indexOf("存单密押：") != -1){
+				AuthPin = obj.customAuthPin.split("存单密押：")[1];
+			}else{
+				AuthPin = obj.customAuthPin;
+			}
+			top.pool.set("strNewCDAuthPin",AuthPin);	
+		}
+	}
+	//大堂经理选择是否重新放入存单	
+	choosePutCDS();
+  }
+  //大堂经理现场审核后判断是否放入存单
+  function choosePutCDS()
+  {
+	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();	
+	onKey_F99 = onKey_Enter = function() {
+		top.serviceCtrl.stopUserTimeout();
+		if(top.pool.get("strLoginType") == "0"){
+			//大堂经理进行指纹授权重新放入存单
+			if(top.YHAXFingerScanner.StDeviceStatus != "HEALTHY"){
+				onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_FINGER_FAILED, top.langcur.oCDSFingerFail); 
+			}else{
+				fingerOutScanner();
+			}
+		}else if(top.pool.get("strLoginType") == "1"){
+		 	//柜员进行密码授权
+		 	top.pool.set("strLoginNum","2");
+		 	inputTellerPassword();
+		}
+	}
+	onKey_Cancel = onKey_F98 = function() 
+	{
+		//如果销户列表中有余额
+		if(top.pool.get("strNewAmount")>0)
+		{
+			top.pool.set("strCancelRes","1");
+			top.serviceCtrl.navigate2("/Service/0005_DepRenew_00005.html");
+		}else{
+			top.serviceCtrl.navigate2Quit();
+		}		
+	}
+	onTimeout = function()
+	{
+		top.pool.set("strbusinessName", "存单续存-柜员放单选择超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+  	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oChoosePutTick);
+	Tip_TitleChoose.innerHTML = top.langcur.oCDSTelConfirm;
+	window.operateCtrl.enableInput();
+	// 播放提示音
+	//try{top.soundPlayer.playback("/Sound/TakeCD.mp3");}catch(e){}
+	top.wins.showMain("oLChoosePutTip");
+  }
+    //大堂经理进行指纹授权
+  function fingerOutScanner()
+  {
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	onReadTellerOutFingerCompleted = function(strFeatureData)
+    {
+		top.pool.set("strFeatureData",strFeatureData);	
+		isFingerTime = "2";
+		//进行指纹验证
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.send910206Async();		
+    }
+	onDeviceError_Finger = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_FINGER_FAILED, top.langcur.oCDSFingerFail); 
+	}	
+	onInvalidFinger = function()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		onServiceFailed(top.langcur.oCDSRenewFail, top.TERMRETCODE_FINGER_FAILED, top.langcur.oCDSFingerInval); 
+	}	
+	onTimeout_Finger = onTimeout = function()
+	{
+		top.YHAXFingerScanner.CancelRead();
+		top.pool.set("strbusinessName", "存单续存-柜员放单授权超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	//取消指纹授权
+	onKey_Cancel = onKey_F98 = function(){
+		top.YHAXFingerScanner.CancelRead();
+		exceptionEjectCDS();
+	}
+	if(isFingerTime == "2"){
+		error_FingerOut.innerHTML = top.langcur.oFingerCheckFailed;
+	}else{
+		error_FingerOut.innerHTML = "&nbsp;";
+	}
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oFingerOutTick);
+	top.fingerScanner.readTellerOutFinger();
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/Finger.mp3");}catch(e){}
+    top.wins.showMain("oLFingerOutTip");	  
+  }
+    //大堂经理重新放入存单
+  function  showcheckCD(){
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onTimeout = function()
+	{
+		top.documentscanner2.cancelAccept();
+		top.pool.set("strbusinessName", "存单续存-柜员放单超时");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+    }
+	onMediaInvalid = onMediaAccepted = onMediaInserted = function()
+    {
+		//数据赋值
+		if(top.pool.get("strNewAccoutNum") != null && top.pool.get("strNewAccoutNum")!= ""){
+			top.pool.set("strAccoutNum",top.pool.get("strNewAccoutNum"));
+			top.pool.set("strCDSNum",top.pool.get("strAccoutNum"));				
+		}
+		if(top.pool.get("strNewCDCertNum")!= null && top.pool.get("strNewCDCertNum")!= ""){
+			top.pool.set("strCDCertNum",top.pool.get("strNewCDCertNum"));
+		}
+		if(top.pool.get("strNewCDAmount")!= null && top.pool.get("strNewCDAmount")!= ""){
+			top.pool.set("strCDAmount",top.pool.get("strNewCDAmount"));
+		}
+		if(top.pool.get("strNewCDAuthPin")!= null && top.pool.get("strNewCDAuthPin")!= ""){
+			top.pool.set("strAuthPin",top.pool.get("strNewCDAuthPin"));
+		}
+		top.pool.set("strNewAccoutNum","");
+		top.pool.set("strNewCDAmount","");
+		top.pool.set("strNewCDCertNum","");
+		top.pool.set("strNewCDAuthPin","");
+		
+		top.pool.set("strCancelRes","2");
+		top.pool.set("isTellerCheck","1");//大堂经理审核存单
+		top.serviceCtrl.navigate2("/Service/0005_DepRenew_00005.html");
+	}	
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oRePutCDTick);
+	top.documentscanner2.acceptAndRead("CMC7","FRONT,BACK");
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/InputCD.mp3");}catch(e){}
+	top.wins.showMain("oLRePutCDTip");
+  }
+  //超时处理
+  function onProcessingTimeout(){
+	top.serviceCtrl.stopUserTimeout();
+	//如果存单模块状态异常
+	top.pool.set("strbusinessName", "存单续存-交易超时");
+	top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+	top.trans.send910304CDSFailedAsync();
+  }
+  //存单交易失败：呼叫大堂经理回调
+  function onShowTellCDSFailed(){
+	top.serviceCtrl.navigate2("/Service/CDSFailed.html"); 
+  }  
+   //异常处理:退存单
+  function exceptionEjectCDS()
+  {
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	onMediaTaken_Media = function()
+	{
+		//如果销户列表中有余额
+		if(top.pool.get("strNewAmount")>0)
+		{
+			//购物车有余额，进入销户流程
+			top.pool.set("strCancelRes","1");
+			top.serviceCtrl.navigate2("/Service/0005_DepRenew_00005.html");
+		}else{
+			top.serviceCtrl.navigate2Quit();
+		}
+	}
+	onDeviceError_cd = function()
+	{
+		top.documentscanner2.DocumentScannerEvents2.clearAll();
+		if(top.pool.get("strNewAmount")>0)
+		{
+			top.pool.set("strbusinessName", "存单续存-设备退单故障(购物车有钱)");
+		}else{
+			top.pool.set("strbusinessName", "存单续存-设备退单故障(购物车没有钱)");			
+		}
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	onTimeout = function()
+	{
+		top.YHAXDocumentScanner2.CancelAccept();
+		top.pool.set("strbusinessName", "存单续存-客户取单超时回收");
+		top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+		top.trans.send910304CDSFailedAsync();
+	}
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oExptEjectCDTick);
+	window.operateCtrl.enableInput();
+	top.documentscanner2.controlMedia("EJECT");
+	// 播放提示音
+	try{top.soundPlayer.playback("/Sound/TakeCD.mp3");}catch(e){}
+	top.wins.showMain("oLExptEjectCDTip");	
+  }  
+  function onServiceFailed(title, retcode, retdesc) {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	document.getElementById('infoToPic').style.visibility="hidden";
+	onKey_Cancel = onKey_F98 = function() {
+		top.serviceCtrl.stopUserTimeout();	
+		//存单退出
+		if ( top.YHAXDocumentScanner2.StDeviceStatus != "HEALTHY" || top.YHAXDocumentScanner2.StMediaStatus != "NOTPRESENT") {
+			exceptionEjectCDS();
+		}else{
+			if(top.pool.get("strNewAmount")>0)
+			{
+			top.pool.set("strCancelRes","1");
+			top.serviceCtrl.navigate2("/Service/0005_DepRenew_00005.html");
+		}else{
+			top.serviceCtrl.navigate2Quit();
+			}
+		}		
+	}
+	oTitle.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onKey_F98, top.iFailedTimeout, oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip");
+  } 
+ //用密码键盘输入时输入框校验
+  function CheckValue()
+  {
+	if(checkTellerNum){
+		input_checkTellerNum();
+	}	
+  }
+  function ShowKeyboard(){
+	  top.inputmethod.ShowDigit(490,570);
+  }
+  function input_checkTellerNum(){
+	  if (!new top.StringCtrl(input_TellerNum.value).isDigitOrLetter())
+		{
+			error_InputTellerNum.innerHTML = top.langcur.oInputRightTellerNum;
+			input_TellerNum.value = "";
+			input_TellerNum.focus();
+		}
+  } 
+  //校验柜员密码
+  function input_checkTellerPwd()
+  {
+	  error_InputTellerPassword.innerHTML = "&nbsp;";
+  	if (!new top.StringCtrl(input_TellerPassword.value).isDigitOrLetter())
+  	{
+  		error_InputTellerPassword.innerHTML = top.langcur.oInputRightTellerPwd;
+  		input_TellerPassword.value = "";
+  		input_TellerPassword.focus();
+  	}
+  }
+  
+  function ShowKeyboard3(){
+	top.inputmethod.ShowFullEnglish(280, 570);
+  }
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLIDCardTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br><br><br><br><br><br> 
+		<span class="Tip_Tick" id="oIdCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr class="FirstLine" height="100">
+				<td align="center"><br /> <br /> <span class="Tip_Title" id="oInsertPerID"></span>
+					<br /> <img src="../Image/ID_in.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>			
+</div>
+
+<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br><br><br><br><br><br> 
+		<span class="Tip_Tick" id="oIdCardTakeTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr class="FirstLine" height="100">
+				<td align="center"><br /> <br /> <span class="Tip_Title" id="oIDCardTake"></span>
+						<br /> <img src="../Image/id_out.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+		</table>
+	</div>
+</div>
+
+<div id="oLAgentIDCardTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br><br><br><br><br><br> 
+		<span class="Tip_Tick" id="oAgentIdCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr class="FirstLine" height="100">
+				<td align="center"><br /> <br /> <span class="Tip_Title" id="oInsertOthID"></span>
+					<br /> <img src="../Image/ID_in.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>			
+</div>
+
+<div id="oLAgentIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<br><br><br><br><br><br> 
+		<span class="Tip_Tick" id="oAgentIdCardTakeTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr class="FirstLine" height="100">
+				<td align="center"><br /> <br /> <span class="Tip_Title" id="oIDCardTake"></span>
+						<br /> <img src="../Image/id_out.gif" width="870px" height="520px" />
+				</td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+			</tr>
+		</table>
+	</div>
+</div>
+
+<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+   <span class="Tip_Tick" id="oSigFingerTick"></span>
+	   <br><br><br><br><br><br><br><br>
+		   <table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+					<tr>
+						<td height="20px" align="center" class="Error_Title" id="oUserSign"></td>
+					</tr>		
+		   </table>
+		   
+		<div id="infoToPic">   
+			<table width="75%" height="20%" border="0" bgcolor="#FFFFFF" cellpadding="0" cellspacing="0" align="center">
+			<tr><td height="20px" colspan="4"></td></tr>
+			
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%" colspan="2">
+				<fieldset>
+				<legend><span id="oUserTip1"></span></legend>
+				<table>
+				<tr>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oTextName"></span>&nbsp;&nbsp;<span id="text_name2"></span></td>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oTextEth"></span>&nbsp;&nbsp;<span id="text_ethnic2"></span></td>
+					
+				</tr>
+				<tr>
+					<td nowrap colspan="4">&nbsp;&nbsp;<span id="oTextPid"></span>&nbsp;&nbsp;<span id="text_pid2"></span></td>
+				</tr>
+				<tr>
+					<td nowrap colspan="4">&nbsp;&nbsp;<span id="oTextAddr"></span>&nbsp;&nbsp;<span id="text_address2"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			
+			<tr><td height="20px" colspan="4"></td></tr>
+			
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%" colspan="2">
+			  <fieldset>
+			  <legend><span id="oUserTip2"></span></legend>
+			  <table>
+                <tr>
+				    <td nowrap colspan="2">&nbsp;&nbsp;<span id="oCDSOPenName"></span>&nbsp;&nbsp;<span id="text_strName"></span></td>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oCDSOpenType"></span>&nbsp;&nbsp;<span id="text_strType"></span></td>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oVoucherNo"></span>&nbsp;&nbsp;<span id="text_strVNo"></span></td>	
+				</tr>
+				<tr>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oCDSTime"></span>&nbsp;&nbsp;<span id="text_strTime"></span></td>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oCDSOpenRate"></span>&nbsp;&nbsp;<span id="text_Rate"></span></td>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oCDSAmount"></span>&nbsp;&nbsp;<span id="text_strAmount"></span></td>					
+				</tr>
+				<tr>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oCDSStartDate"></span>&nbsp;&nbsp;<span id="text_StartDate"></span></td>
+					<td nowrap colspan="2">&nbsp;&nbsp;<span id="oCDSEndDate"></span>&nbsp;&nbsp;<span id="text_EndDate"></span></td>
+				</tr>
+				<tr>
+				    <td nowrap>&nbsp;&nbsp;<span id="oTextDate"></span>&nbsp;&nbsp;<span id="text_date"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTime"></span>&nbsp;&nbsp;<span id="text_time"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTerm"></span>&nbsp;&nbsp;<span id="text_term"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			<tr><td height="20px" colspan="4"></td></tr>
+			</table>
+		</div>
+		
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+			<tr>
+		        <td colspan="2" ><iframe id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		    </tr>
+			</table>
+
+</div>
+     <span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>
+	 <span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+     <span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+     <span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span>
+     <span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="Table_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+						</tr>
+						<tr class="Table_Record">
+							<td id="oDescription"></td>
+							<td><span id="oFailedRetDesc"></span></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div> 
+
+ <div id="oLInputTellerNum" class="FULLSCR">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oInputTellerNumTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <pre class="Tip_Title" id="oInputTellerNum"></pre>
+                    <br />
+                    <input name="input_TellerNum" id="input_TellerNum" class="input_long3" maxlength="7" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkTellerNum()" />
+                    <br />
+                    <br />
+                    <pre class="Error_Title" id="error_InputTellerNum">&nbsp;</pre>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return" ></button></span>
+    <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm" ></button></span>
+</div>	
+
+<div id="oLFingerInTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br><br><br>
+	<span class="Tip_Tick" id="oFingerInTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+	  <tr>
+		<td></td>
+	  </tr>
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <img src="../Terminal/Style/Default/Img/LOGO.gif" width="130" height="130" /></br></br>
+		   <span class="Tip_Title" id="">请将手指在指纹仪上长按&nbsp;<span class=\"TickCount_Title\">3</span>&nbsp;秒后抬起!</span>
+			</br></br></br></br></br></br></br>
+		   <pre class="Error_Title" id="error_FingerIn">&nbsp;</pre>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+  </div>
+  <span class="MENU98"><button onclick="javascript:onKey_F98();" class="return" name="return" ></button></span>
+</div>	
+
+<div id="oLChoosePutTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oChoosePutTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		<br /><br /><br /><br /><br /><br /><br /><br />
+			<tr class="FirstLine">
+				<td align="center" colspan="2"><span class="Tip_Title" id="Tip_TitleChoose"></span></td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	<span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+</div>
+
+<div id="oLEjectCDTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br>
+	<span class="Tip_Tick" id="oEjectCDTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <br/><br/>
+		   <span class="Tip_Title" id="oTakeCDS"></span>
+		   <br/>
+		   <img src="../Image/DepositRpt_in.gif" width="870px" height="520px"/>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+	 </div>
+</div>
+
+<div id="oLInputTellerPwd" class="FULLSCR">
+  <div class="FULLSCR">
+  <span class="Tip_Tick" id="oTellerPwdTick"></span>
+      <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr><td align="center">
+           <pre class="Tip_Title" id="oInputTellerPwd"></pre>
+           <br />
+           <input  type="password" name="input_TellerPassword" id="input_TellerPassword" class="input_long3" maxlength="6" onclick="javascript:ShowKeyboard3();" onkeyup="return input_checkTellerPwd()" />
+           <br />
+           <br />
+           <pre class="Error_Title" id="error_InputTellerPassword">&nbsp;</pre>
+        </td></tr>
+      </table>
+    </div>
+  	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+    <span class="MENU99"><button onclick="javascript:onKey_F99();" class="confirm" name="confirm" ></button></span>
+</div>
+
+<div id="oLFingerOutTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br><br><br>
+	<span class="Tip_Tick" id="oFingerOutTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+	  <tr>
+		<td></td>
+	  </tr>
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <img src="../Terminal/Style/Default/Img/LOGO.gif" width="130" height="130" /></br></br>
+		   <span class="Tip_Title" id="">请将手指在指纹仪上长按&nbsp;<span class=\"TickCount_Title\">3</span>&nbsp;秒后抬起!</span>
+			</br></br></br></br></br></br></br>
+		   <pre class="Error_Title" id="error_FingerOut">&nbsp;</pre>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+  </div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div>
+<div id="oLRePutCDTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br>
+	<span class="Tip_Tick" id="oRePutCDTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <br/><br/>
+		   <span class="Tip_Title" id="oRePutCheckedCDS"></span><br/>
+		   <img src="../Image/DepositRpt_in.gif" width="870px" height="520px"/>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+	</div>
+	 <!--
+	 <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>-->
+</div>
+
+<div id="oLExptEjectCDTip" class="FULLSCR" style="visibility:hidden;">
+  <div class="FULLSCR">
+    <br><br><br><br><br><br>
+	<span class="Tip_Tick" id="oExptEjectCDTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine" height="100">
+		<td align="center">
+		   <br/><br/>
+		   <span class="Tip_Title" id="oTakeCDS"></span>
+		   <br/>
+		   <img src="../Image/DepositRpt_out.gif" width="870px" height="520px"/>
+		</td>
+	  </tr>
+      <tr>
+		<td>&nbsp;</td>
+	  </tr>
+	 </table>
+	 </div>
+</div>
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+	
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,143 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>管理员界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script language="javascript">
+//Cols更新标识
+var strColsUpdateFlag = top.pool.get("ColsUpdateFlag");;
+//Agent更新标识
+var strAgentUpdateFlag = top.pool.get("AgentUpdateFlag");
+var strVersionName = "";
+  function doMouseDown(){
+	//top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+	  checkSelect();
+	  window.operateCtrl.disableInput(true);
+     onKey_F5 = onKey_F6= function()
+     {
+    	 var mType = "C";
+    	 try{SetRequestData(mType);}catch(e){};  
+     }
+	 onKey_F6 = function()
+     {
+		 var mType = "V";
+		 try{SetRequestData(mType);}catch(e){};  
+     }
+	 onKey_F7 = function()
+     {
+        top.serviceCtrl.navigate2Maintenance();
+     }
+     onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	 
+	 if(strColsUpdateFlag == "2" || strAgentUpdateFlag == "2"){
+		//更新当前服务状态
+		 var ret = new top.XmlManage().setXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_SERVICESTATUS_CURRENTSTATUS, top.SVCSTATUS_PAUSEBYDEV);
+		 oReturn.style.visibility = "hidden";
+		 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">当前" + strVersionName + "版本过低，请更新</span>";
+	  }else{
+		  Tip_Title.innerHTML  = "<span class=\"Tip_Title\">检查发现" + strVersionName + "有新版本，是否更新？</span>";
+	  }
+	 window.operateCtrl.enableInput();
+	 top.wins.showMain("oLConfirmTip");
+  }
+  //向监控客户端请求更新版本
+  function sendTrans()
+  {
+     //向监控请求版本更新交易
+	 var ret = top.serviceCtrl.SendUpdateVersion();
+     if( ret == true){
+    	 Tip_Cols_Title.innerHTML  = "";
+		 Tip_Agent_Title.innerHTML  = "";
+    	 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">" + strVersionName + "版本更新中...<br/>请勿操作，稍后将自动重启</span>";
+    	 oReturn.style.visibility = "hidden";
+    	 oQuitM.style.visibility = "hidden";
+    	 // 记录终端流水
+         var strJrn = strVersionName + "版本更新交易请求成功，等待监控下发版本 ";
+         top.journalPrinter.addJournalWithTime(strJrn);
+         setTimeout(onKey_Cancel, 5*1000);
+	 }else{
+	     Tip_Title.innerHTML  = "<span class=\"TickCount_Title\">版本更新失败，请稍后重试</span>";
+	     // 记录终端流水
+         var strJrn = strVersionName + "版本更新交易请求失败";
+         top.journalPrinter.addJournalWithTime(strJrn);
+	 }
+  }
+  function SetRequestData(Type){
+	  oLMenu6.style.visibility = "hidden";
+	  oLMenu7.style.visibility = "hidden"
+	  var strUpdateVersion = "";
+	  var strRequestData = "";
+	  var strTemp = "";
+	  if(Type == "C" && (strColsUpdateFlag == "1" || strColsUpdateFlag == "2")){
+		  strTemp= new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_COLSVERSION_LATESTVERSION, "1.0.0");
+		  strUpdateVersion = new top.StringCtrl(strTemp).prefixStr(' ',10) + new top.StringCtrl(" ").prefixStr(' ',10);	//cols客户端版本号
+		  strVersionName = "应用客户端";
+	  }
+	  if(Type == "V" && strAgentUpdateFlag == "1" || strAgentUpdateFlag == "2"){
+		  strTemp = new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_AGENTVERSION_LATESTVERSION, "1.0.0");
+		  strUpdateVersion = new top.StringCtrl(strTemp).prefixStr(' ',20);	//监控客户端版本号
+		  strVersionName = "监控客户端";
+	  }
+	  //报文头(MUV) + 设备号 + 设备运行状态
+	  var strHeader = "MUV" + new top.StringCtrl(""+top.terminal.strTerminalNum).suffixStr(' ', 8) + new top.StringCtrl(""+top.pool.get("devStatus")).suffixStr(' ', 1);
+	  //更新类型
+	  strUpdateType = new top.StringCtrl(Type).prefixStr(' ',2);
+	  strRequestData = strHeader + strUpdateType + strUpdateVersion;
+	  top.pool.set("strRequestData",strRequestData);
+	  sendTrans();
+  }
+  function checkSelect(){
+	  if(strColsUpdateFlag == "0"){
+		  //没有更新，屏蔽按钮
+		  oLMenu6.style.visibility = "hidden";
+	  }else{
+		  //有版本更新，显示原版本号和更新版本号
+		  var CurrentVersion= new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_COLSVERSION_CURRENTVERSION, "1.0.0");
+		  var LatestVersion= new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_COLSVERSION_LATESTVERSION, "1.0.1");
+		  Tip_Cols_Title.innerHTML = "<span class=\"Tip_Notice\">应用客户端当前版本:" + CurrentVersion + "&nbsp;&nbsp;&nbsp;&nbsp;更新版本:"  + LatestVersion +"</span>";
+	  }
+	  if(strAgentUpdateFlag == "0"){
+		  //没有更新，屏蔽按钮
+		  oLMenu7.style.visibility = "hidden";
+	  }else{
+		  //有版本更新，显示原版本号和更新版本号
+		  var CurrentVersion= new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_AGENTVERSION_CURRENTVERSION, "1.0.0");
+		  var LatestVersion= new top.XmlManage().getXmlParamStr(top.COLS_CONF_XMLPATH, top.COLS_AGENTVERSION_LATESTVERSION, "1.0.1");
+		  Tip_Agent_Title.innerHTML =  "<span class=\"Tip_Notice\">监控客户端当前版本:" + CurrentVersion + "&nbsp;&nbsp;&nbsp;&nbsp;更新版本:"  + LatestVersion +"</span>";
+	  }
+  }
+
+</script>
+</head>	
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLConfirmTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div  class="FirstLine">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="120">
+			  <td align="center"><span id="Tip_Title"></span></td>
+			</tr>
+			<tr height="50">
+			  <td align="center"><span id="Tip_Cols_Title"></span></td>
+			</tr>
+			<tr height="50">
+			  <td align="center"><span id="Tip_Agent_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+   <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F5,100);" class="ADMButton" name="oCols" style="font-family:微软雅黑;font-size: 20px;">更新应用客户端</button></span>	
+   <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMButton" name="oAgent" style="font-family:微软雅黑;font-size: 20px;">更新监控客户端</button></span>
+   <span class="MMENU5" id="oLMenu5"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+  </div>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>平账查询</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script language="javascript">
+  function doMouseDown(){
+	//top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+	 
+	 Tip_Title.innerHTML  = "<span class=\"Tip_Title\">正在发送尾箱查询交易，请稍候...</span>";
+	 top.wins.showMain("oLConfirmTip");
+	 //发送尾箱查询报文
+     top.trans.send909013Async();	   
+    
+	
+  }
+  //交易成功
+  function onServiceSuccessful()
+  {
+     window.operateCtrl.disableInput(true);
+     onKey_Enter = onKey_F6 = function()
+     {
+         top.serviceCtrl.navigate2Maintenance();
+     }
+     onKey_Cancel = onKey_F7 = function()
+     {
+	     top.serviceCtrl.navigate2Quit();
+     }
+	if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	{
+		oPrintReceipt.style.visibility = "hidden";	
+	}else{
+		onKey_F8 = function(){
+			oPrintReceipt.style.visibility = "hidden";
+			receiptprinter();		//打印凭条		
+		}
+	}
+	//var LocalBalance = getLocalBalance();		//本地钞箱总金额
+     window.operateCtrl.enableInput();
+     top.journalPrinter.addJournalWithTime("尾箱余额:" + top.pool.get("coreBalance") + " 元");
+     //top.journalPrinter.addJournalWithTime("本地余额:" + LocalBalance + " 元");
+	 coreBalance.innerHTML = top.pool.get("coreBalance") + " 元";
+	 //localBalance.innerHTML = LocalBalance + " 元";
+     top.wins.showMain("oLServiceSuccessTip");
+   }
+   //交易失败
+   function onServiceFailed(title, retcode, retdesc)
+   {
+      window.operateCtrl.disableInput(true);
+      onKey_Enter = onKey_F6 = function()
+      {
+         top.serviceCtrl.navigate2Maintenance();
+      }
+
+      onKey_Cancel = onKey_F7 = function()
+      {
+         top.serviceCtrl.navigate2Quit();
+      }
+
+      oFailed.innerHTML = title;
+      oFailedRetDesc.innerHTML = retdesc;
+  
+      window.operateCtrl.enableInput();
+      top.serviceCtrl.startUserTimeout(onKey_Cancel, null, null);
+      top.wins.showMain("oLServiceFailedTip");
+	}
+   /*
+    *获取本地钞箱总金额
+    *返回：以元为单位的本地钞箱总金额
+    */
+   function getLocalBalance(){
+	   var LocalBalance = 0;		//本地钞箱总金额
+	   var CashBoxInfoArr = new Array();
+	   var CashBoxInfosArr = new Array();
+	   var BoxCheck = new top.CashBoxCheck();
+	   var CashBoxInfoStr = BoxCheck.getCashBoxInfoStr();		//获取本地钞箱信息 
+		
+		CashBoxInfosArr = CashBoxInfoStr.split('|');
+		var len = CashBoxInfosArr.length;
+		for(var i=0;i<len;i++){
+			CashBoxInfoArr[i] = CashBoxInfosArr[i].split(',');
+			LocalBalance += parseFloat(CashBoxInfoArr[i][4]) * parseFloat(CashBoxInfoArr[i][6])
+		}
+		return (parseFloat(LocalBalance)/100.00 ).toFixed(2);
+   }
+   /*
+   *打印凭条
+   */
+   function receiptprinter(){
+	   var tempPrint = "";
+		tempPrint = tempPrint + "*************平账查询结果************\r\n";
+		tempPrint = tempPrint + "时间:"+new top.DateTimeCtrl().getYYYYMMDD2()+"  "+new top.DateTimeCtrl().getHHmmSSWithSep() + "\r\n";
+		tempPrint = tempPrint + "网点号:"+top.terminal.strOrgNum+" "+"终端号:"+top.terminal.strTerminalNum+" "+"柜员号:"+top.pool.get("maintenance_username") + "\r\n";
+		tempPrint = tempPrint + "尾箱余额：" + top.pool.get("coreBalance") + "元" + "\r\n";
+		//tempPrint = tempPrint + "本地余额：" + getLocalBalance() + "元";
+
+		top.receiptprinter.set(tempPrint);
+ 		top.receiptprinter.printAndEject();
+   }
+
+</script>
+</head>	
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+  <div id="oLConfirmTip" class="FULLSCR" class="FULLSCR" style="visibility: hidden;">
+    <div class="FULLSCR"><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="250"><td>&nbsp;</td><td>&nbsp;</td></tr>
+			<tr class="FirstLine">
+			  <td align="center" colspan="2"><span id="Tip_Title"></span></td>
+			</tr>
+	    </table>
+	</div>
+  </div>
+  
+  <div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+      	<td align="center">
+		    <br/><br/>
+	        <span class="Tip_Title">尾箱余额:</span><span id="coreBalance" class="Tip_Title"></span>
+	        <br/><br/>
+	        <!--<span class="Tip_Title">本地余额:</span><span id="localBalance" class="Tip_Title"></span>-->
+			<br><br><br>
+	    </td>
+	  </tr>
+    </table>
+   </div>
+   <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+   <span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+   <span class="MMENU6"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMButton" name="oPrintReceipt" id="oPrintReceipt"></button></span>
+  </div>
+   
+  <div id="oLServiceFailedTip" class="FULLSCR">
+	<div class="FULLSCR">
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="ADMTable_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oFailed"></td>
+						</tr>
+						<tr class="ADMTable_Record">
+							<td id="oDescription"></td>
+							<td>
+								<span id="oFailedRetDesc"></span>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+    <span class="MMENU8"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	<span class="MMENU7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+  </div>
+
+</body>
+</html>

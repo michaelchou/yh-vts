@@ -1,0 +1,254 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>信用卡账户信息查询页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />		
+<script type="text/javascript">
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+function serverEntrance(){
+	top.pool.set("strNavigate2Url", window.location.pathname);
+	if (top.cardreader.isCardPresent()){
+		if(top.pool.get("strCardType") != "3"){
+			InsertCreditCard();//提示插入信用卡  
+		}else{
+		//发起账户查询交易
+			top.wins.showNewProcessingTip("正在发起账户信息查询交易，请稍候...");
+			top.trans.send904503Async();
+		}	
+	}else{
+		top.serviceCtrl.navigate2InsertCard();
+	}
+}			
+
+//插入信用卡    	   
+function InsertCreditCard()
+{
+	onCardEjected = function()
+	{
+		top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+		// 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}
+		top.wins.showMain("oLTakeCardTip");
+	}
+	onCardTaken = function()
+	{
+		top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+	}
+	onDeviceError_Idc = function()
+	{
+		if (top.cardreader.isCardPresent()){
+			top.YHAXCardReader.Capture();
+		} 
+		onServiceFailed(top.langcur.oCreditCardQueryAccInfoFail, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError); 
+	}
+	onCardCapturedTipEnd = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+	onCardCaptured = function()
+	{
+		top.pool.set("printType","3");//选择打印的凭条类型
+		top.receiptprinter.printAndEject();
+		top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+		top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15*1000);
+	}
+	//退卡前屏蔽安全退出及返回Home的功能 
+	oLSafeQuit.style.visibility = "hidden";
+	oLGoHome.style.visibility = "hidden";
+	top.cardreader.eject();
+}
+function onServiceSuccessful_AccListQuery(){
+	top.pool.set("cnyBalance",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/cnyBalance"));
+	top.pool.set("cnyBalanceFlag",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/cnyBalanceFlag"));
+	top.pool.set("usdBalance",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/usdBalance"));
+	top.wins.showNewProcessingTip("正在发起账户信息查询交易，请稍候...");
+	top.trans.send904504Async();
+}
+
+function onQueryCustomSuccess(){
+	top.serviceCtrl.stopUserTimeout();
+	window.operateCtrl.disableInput(true);
+	onKey_Cancel = onKey_F98 = function()
+	{
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+
+	//超时退出
+	onTimeout = function()
+	{
+		top.serviceCtrl.navigate2Quit();
+	}
+
+	//信用卡账号
+	CreditAcc.innerHTML = top.pool.get("strPan");
+	//持卡人姓名
+	CreditName.innerHTML = top.exchxmlasync.msgxmldomResp.getElementValue("F61_6_NM");
+	//有效期
+	var Date = new top.StringCtrl("").formatStrToDataNew("20"+top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/expireDate")+"00");
+	CreditOkDate.innerHTML = Date.substring(0, Date.length-3);
+	//发卡日期
+	CreditOpenDate.innerHTML = new top.StringCtrl("").formatStrToDataNew(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/openDate"));
+	//主附卡
+	CreditFirst.innerHTML = top.ExchangeToCN904503(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/MSFlag"));
+	//卡状态
+	var state = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/cardStatus");
+	CreditStates.innerHTML = top.trans.convertCreditCardState(state);
+	//信用额度
+	MaxLimited.innerHTML = new top.StringCtrl("").formatStrAmount(parseFloat(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/creditLimit")));
+	//外币信用额度
+	OtherMaxLimited.innerHTML = new top.StringCtrl("").formatStrAmount(parseFloat(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/foreCurCreditLimit")));
+	//可用额度
+	UseLimited.innerHTML = new top.StringCtrl("").formatStrAmount(parseFloat(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/availLimit")));
+	//外币可用额度
+	OtherUseLimited.innerHTML = new top.StringCtrl("").formatStrAmount(parseFloat(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/foreCurAvailLimit")));
+	//预借现金额度
+	ObeLimited.innerHTML = new top.StringCtrl("").formatStrAmount(parseFloat(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/cashCreditLimit")));
+	//可预借现金额度
+	OkObeLimited.innerHTML = new top.StringCtrl("").formatStrAmount(parseFloat(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/cashAvailLimit")));
+	//账户余额
+	AccAmount.innerHTML = top.pool.get("cnyBalanceFlag") + new top.StringCtrl("").formatStrAmount(top.pool.get("cnyBalance"));
+	//外币账户余额
+	OtherAccAmount.innerHTML = new top.StringCtrl("").formatStrAmount(top.pool.get("usdBalance"));
+	//大额分期额度
+	MaxAmount.innerHTML = new top.StringCtrl("").formatStrAmount(parseFloat(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/LMPCreditLimit")));
+	//大额分期可用额度
+	OkMaxAmount.innerHTML = new top.StringCtrl("").formatStrAmount(parseFloat(top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/LMPAvailLimit")));
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oServiceSuccess2Tick);
+	top.wins.showMain("oLServiceSuccess2Tip");
+}
+
+//失败显示
+function onServiceFailed(title, retcode, retdesc)
+{
+window.operateCtrl.disableInput(true);
+top.serviceCtrl.stopUserTimeout();
+
+onTimeout = function()
+{
+top.serviceCtrl.navigate2SecondMenu();
+}
+
+oTitle.innerHTML = title;
+oFailedRetDesc.innerHTML = retdesc;
+
+window.operateCtrl.enableInput();
+top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oServiceFailedTick);
+top.wins.showMain("oLServiceFailedTip");
+}	
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg"  oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+	
+		
+<div id="oLServiceSuccess2Tip" class="FULLSCR" style="visibility:hidden;">
+   <div class="FULLSCR">
+	   <br><br><br><br><br><br><br><br>
+	   <span class="Tip_Tick" id="oServiceSuccess2Tick"></span>
+	   <table width="100%" height="65%" border="0" cellpadding="0" cellspacing="0" align="center">
+		   <tr class="FirstLine">
+		       <td align="center">
+				  <table width="70%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				   <tr>
+				     <td height ="45" align="center" colspan="4" class="Tip_Title" id="oAcInfo"></td>
+				   </tr>
+				   <tr>
+				     <td height ="35" align="center" colspan="4" class="Tip_Title"></td>
+				   </tr>
+				   <tr height ="50">
+				    <td nowrap align="left" class="Tip_Content" width="10%" id="">账号:</td><td nowrap align="left" class="Tip_Alarm" ><span id="CreditAcc"></span></td>
+					<td nowrap align="left" class="Tip_Content" width="10%" id="">持卡人姓名:</td><td nowrap align="left" class="Tip_Alarm" ><span id="CreditName"></span></td>
+				   </tr>
+				   <tr height ="50">
+				    <td nowrap align="left" class="Tip_Content" width="10%" id="">有效期:</td><td nowrap align="left" class="Tip_Alarm" ><span id="CreditOkDate"></span></td>
+					<td nowrap align="left" class="Tip_Content" width="10%" id="">发卡日期:</td><td nowrap align="left" class="Tip_Alarm" ><span id="CreditOpenDate"></span></td>
+				   </tr>
+				   <tr height ="50">
+				    <td nowrap align="left" class="Tip_Content" width="10%" id="">主附卡:</td><td nowrap align="left" class="Tip_Alarm" ><span id="CreditFirst"></span></td>
+					<td nowrap align="left" class="Tip_Content" width="10%" id="">卡状态:</td><td nowrap align="left" class="Tip_Alarm" ><span id="CreditStates"></span></td>
+				   </tr>
+				   
+				   <tr>
+				     <td height ="35" align="center" colspan="4" class="Tip_Title"></td>
+				   </tr>
+				  <tr height ="50">
+				    <td nowrap align="left" class="Tip_Content" width="10%" id="">信用额度:</td><td nowrap align="left" class="Tip_Alarm" ><span id="MaxLimited"></span></td>
+					<td nowrap align="left" class="Tip_Content" width="10%" id="">外币信用额度:</td><td nowrap align="left" class="Tip_Alarm" ><span id="OtherMaxLimited"></span></td>
+				  </tr>
+				  <tr height ="50">
+				    <td nowrap align="left" class="Tip_Content" width="10%" id="">可用额度:</td><td nowrap align="left" class="Tip_Alarm" ><span id="UseLimited"></span></td>
+					<td nowrap align="left" class="Tip_Content" width="10%" id="">外币可用额度:</td><td nowrap align="left" class="Tip_Alarm" ><span id="OtherUseLimited"></span></td>
+				  </tr>
+				  <tr height ="50">
+				    <td nowrap align="left" class="Tip_Content" width="10%" id="">预借现金额度:</td><td nowrap align="left" class="Tip_Alarm" ><span id="ObeLimited"></span></td>
+					<td nowrap align="left" class="Tip_Content" width="10%" id="">可预借现金额度:</td><td nowrap align="left" class="Tip_Alarm" ><span id="OkObeLimited"></span></td>
+				  </tr>
+				  <tr height ="50">
+				    <td nowrap align="left" class="Tip_Content" width="10%" id="">账户余额:</td><td nowrap align="left" class="Tip_Alarm" ><span id="AccAmount"></span></td>
+					<td nowrap align="left" class="Tip_Content" width="10%" id="">外币账户余额:</td><td nowrap align="left" class="Tip_Alarm" ><span id="OtherAccAmount"></span></td>
+				  </tr>
+				  <tr height ="50">
+				    <td nowrap align="left" class="Tip_Content" width="10%" id="">大额分期额度:</td><td nowrap align="left" class="Tip_Alarm" ><span id="MaxAmount"></span></td>
+					<td nowrap align="left" class="Tip_Content" width="10%" id="">大额分期可用额度:</td><td nowrap align="left" class="Tip_Alarm" ><span id="OkMaxAmount"></span></td>
+				  </tr>
+				  </table>
+		        </td>
+		   </tr>
+	  </table>
+   </div>
+    <span class="MENU98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+		
+		
+		<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+		  <div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span>
+			<br/>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			  <tr><td align="center">
+				<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+				  <tr class="Table_Head"><td colspan="2" class="Error_Title" align="center" id="oTitle"></td></tr>
+				  <tr class="Table_Record">
+					<td id="oDescription"></td>
+					<td><span id="oFailedRetDesc"></span></td>
+				  </tr>
+				</table>
+			  </td></tr>
+			</table>
+		  </div>
+		</div>
+
+		<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+			<span class="Tip_Tick" id="oTakeCardTick"></span>
+		  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine"><td align="center">
+			  <span class="Tip_Title" id="oReInsertCreditCard"></span><br/><br/>
+			  <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+			</td></tr>
+		  </table>
+		</div>
+		
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+    </body>
+</html>

@@ -1,0 +1,210 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>存单部提流程(资金支取选择&柜面支取流程)</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+  // 初始化本次服务流程
+  top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+  // 服务流程处理入口
+  function serverEntrance()
+  {
+    top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	onChooseDraw();
+  }
+
+  //选择支取方式
+  function onChooseDraw(){
+  	window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	//转账支取
+	onKey_F7 = function()
+	{
+		top.journalPrinter.addJournalWithTime("客户选择 部提转账支取");
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2("/Service/0005_DepDraw_00007.html");
+	}
+	
+	//现金支取
+	onKey_F8 = function()
+	{
+		top.journalPrinter.addJournalWithTime("客户选择 部提现金支取");
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.navigate2("/Service/0005_DepDraw_00006.html");
+	}
+
+	//柜面支取
+	onKey_F9 = function()
+	{
+		top.journalPrinter.addJournalWithTime("客户选择 部提柜面支取");
+		top.serviceCtrl.stopUserTimeout();
+		onCashDraw();
+	}
+	onTimeout = function()
+	{
+		top.pool.set("strbusinessName", "存单部提支取方式选择超时");
+		onUpdateTermStatus("4");
+	}
+	window.operateCtrl.enableInput();
+    top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oDrawTypeTick);
+	top.wins.showMain("oLDrawSelect");
+  }
+  //更新数据库信息
+  function onUpdateTermStatus(strTermTxStatus){
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strMangerVouchNo", top.pool.get("strNewVoucherNo"));
+	top.pool.set("iTransLogId",  top.pool.get("transLogId"));
+	top.pool.set("iTermTxStatus",strTermTxStatus);
+	top.pool.set("strMangerTransType","3");
+	top.pool.set("strMangerTransCode","905103");
+	top.pool.set("strMangerIDCardNum", top.pool.get("strIDCardNum"));
+	top.wins.showNewProcessingTip("正在更新凭证状态，请稍候...");	
+	top.trans.sendUpdateTermStatusAsync();	   
+  }
+  //如果是交易成功的情况则进行后续流程
+  function onUpdateTermStatusAsyncComplete(){
+	top.serviceCtrl.stopUserTimeout();
+	top.wins.showNewProcessingTip("存单部提资金支取超时，正在呼叫柜员协助，请稍候...");
+	top.trans.send910304CDSFailedAsync();
+  }
+  //柜面支取方式
+  function onCashDraw()
+  {
+	//发起插队取号 交易
+	top.pool.set("strType",top.misc.getValuesByName("strCdsLineDrawType"));
+
+	//正文内容xml组装
+	var strContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root>"
+						+"<custName>"+top.pool.get("strIDName")+"</custName>"
+						+"<IDType>00</IDType>"
+						+"<IDNo>"+top.pool.get("strIDCardNum")+"</IDNo>"
+						+"<amount>"+new top.StringCtrl("").formatStrAmount(top.pool.get("strDrawAmount"))+"</amount>"
+						+"<cashAnalysisNum>2102</cashAnalysisNum></root>"
+						+"<promoNo>NF</promoNo>"
+						+"<remark>取现</remark>";
+	top.pool.set("strContent",strContent);
+	top.wins.showNewProcessingTip(top.langcur.send910103);
+	top.trans.send910103Async();
+  }
+   // 柜面支取：打印叫号凭条
+  function onContentSuccessful()
+  {
+	top.pool.set("Amount",top.pool.get("strDrawAmount"));
+	top.pool.set("strTransName","存单部提");	
+	top.pool.set("strQueueNo",top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F60/queueNo"));//排队号
+	onReceiptEjected = function()
+	{
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oTakeReceiptTick);
+		top.wins.showMain("oTakeReceiptTip");
+	}
+	onTimeout = function()
+	{
+		
+		top.pool.set("strbusinessName", "存单部提-打印叫号凭条超时");
+		onUpdateTermStatus("4");		
+	}
+	onDeviceError_rpt_Print = onDeviceError_rpt_Eject =  onCaptureReceiptFailed = function()
+	{		
+		//打印新存单
+		top.pool.set("makeCdsFlag","2");
+		top.serviceCtrl.navigate2("/Service/0005_DepDraw_00008.html");
+	}
+	onReceiptCaptured = onReceiptTaken = function()
+	{
+		//打印新存单
+		top.pool.set("makeCdsFlag","1");
+		top.serviceCtrl.navigate2("/Service/0005_DepDraw_00008.html");
+	}
+	top.pool.set("printType","32");//选择打印的凭条类型
+	top.receiptprinter.printAndEject();
+  }
+   
+  function onShowTellCDSFailed(){
+	top.serviceCtrl.navigate2("/Service/CDSFailed.html");
+  }
+  //超时处理
+  function onProcessingTimeout(){
+	top.serviceCtrl.stopUserTimeout();
+	top.pool.set("strbusinessName", "存单部提-交易超时");
+	top.wins.showNewProcessingTip(top.langcur.oCheckHelping2);
+	top.trans.send910304CDSFailedAsync(); 
+  }
+  //交易失败
+  function onServiceFailed(title, retcode, retdesc){
+	top.wins.stopProcessingTimeout();
+	top.serviceCtrl.stopUserTimeout();
+	showSvcFailedInfo(title, retcode, retdesc);
+  }
+
+  //部提失败
+  function showSvcFailedInfo(title, retcode, retdesc)
+  {
+  	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	onKey_F98 = onKey_Cancel = onTimeout = function() {
+		top.serviceCtrl.stopUserTimeout();
+		onChooseDraw();
+	}
+	oTitle.innerHTML = title;
+	oFailedRetDesc.innerHTML = retdesc;
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout, oServiceFailedTick);
+	top.wins.showMain("oLServiceFailedTip");
+  }
+
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+<div id="oLDrawSelect" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oDrawTypeTick"></span>
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center">
+		<br/><br/><br/><br/><br/><br/><br/><br/>
+          <pre class="Tip_Title" id="oSelectType"></pre>
+		  <span class="MENU6CASH"><button onclick="javascript:onKey_F7()"  class="Menu_Right" name="oConfirm" id="oTransTaken"></button></span>
+	      <span class="MENU7CASH"><button onclick="javascript:onKey_F8()"  class="Menu_Right" name="oConfirm" id="oCashTaken"></button></span>
+	      <span class="MENU8CASH"><button onclick="javascript:onKey_F9()" class="Menu_Right" name="oConfirm" id="oCounterTaken"></button></span>
+	   </td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+		<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+		<table width="100%" height="100%" border="0" cellpadding="0"
+			cellspacing="0">
+			<tr>
+				<td align="center">
+					<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+						<tr class="Table_Head">
+							<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+						</tr>
+						<tr class="Table_Record">
+							<td id="oDescription"></td>
+							<td><span id="oFailedRetDesc"></span></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div>
+
+<div id="oTakeReceiptTip" class="FULLSCR">
+  <span class="Tip_Tick" id="oTakeReceiptTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr class="FirstLine"><td align="center">
+      <span class="Tip_Title" id="oPlsTakeReceipt1"></span><span class="Tip_Title" id="oPlsTakeReceipt2"></span><br/><br/>
+      <img src="../Image/TakeReceiptTip.gif" width="870px" height="520px" />
+    </td></tr>
+  </table>
+</div>
+</body>
+</html>

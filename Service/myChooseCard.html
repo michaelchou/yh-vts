@@ -1,0 +1,144 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>Professor Cloud</title>
+<link rel="stylesheet" href="../Terminal/Style/Default/main.css" type="text/css" media="screen">
+<link rel="stylesheet" href="../Terminal/Style/Default/slimbox2.css" type="text/css" media="screen">
+<script type="text/javascript" src="../JavaScript/jquery_003.js"></script>
+<script type="text/JavaScript" src="../JavaScript/jquery_004.js"></script>
+<script type="text/JavaScript" src="../JavaScript/slimbox2.js"></script>
+<script type="text/JavaScript" src="../JavaScript/cloud-carousel.js"></script>
+</head>
+<body bgColor="transparent"onselectstart ="return false" >
+ <div id="carousel2" style="top:2%;left:5%;width:1200px; height:600px; ">
+    <div style="position: absolute; width: 100%; height: 120%;background: transparent;" id="cardListDiv">
+		<!--<img class="cloudcarousel" id="img1" onmousedown="mdd()"  ondragstart="return false;" src="\Terminal\Style\Default\Img\02.jpg"  height="295" width="295">;
+		<img class="cloudcarousel" id="img2" onmousedown="mdd()"  ondragstart="return false;" src="\Terminal\Style\Default\Img\03.jpg"  height="295" width="295">;
+		<img class="cloudcarousel" id="img3" onmousedown="mdd()"  ondragstart="return false;" src="\Terminal\Style\Default\Img\04.jpg"  height="295" width="295">;-->
+	</div>
+    <div id="cardName" style="position:absolute; color:#011528;  top:70%;left:16%; font-size:20px;font-family:微软雅黑;" ></div>
+    <div id="cardDemo" style="position:absolute; color:#011528; top:75%; left:16%; font-size:20px;font-family:微软雅黑;" ></div>
+    <div id="but3" class="carouselLeft" style="position: absolute; top: 20px; left: 20px; display: inline;visibility:hidden;"></div>
+    <div id="but4" class="carouselRight" style="position: absolute; top: 20px; visibility:hidden;left: 64px; display: inline;"></div>
+ </div>
+
+<script type="text/javascript">
+
+// var CARDTYPE = [
+//  [2,"鑫通卡","鑫通卡是集芯片和磁条于一体的双界面IC卡，通过接触式与非接触式读取<br>卡片信息。可消费、转账结算、现金存取"],
+// 	[3,"鑫意卡","鑫意卡客户贵宾礼待：专享费率优惠、打造贵宾专属通道、免费贵宾专刊、<br>专职客户经理、丰富的投资理财产品等"],
+// 	[4,"鑫风卡","鑫风卡是由上海农商银行为解决本市部分客户群体交通费用改革而设计<br>开发的，具有动态额度调整、特定商户消费、控制现金存取等功能的贷记卡"]
+// ];
+var CARDTYPE = new Array();
+var myImg1;
+var myImg2;
+var myImg3;
+var now_cardNum=1;
+var cardMaxNum=3;
+function init(list){
+	var cardList = top.pool.get("cardList");
+	for (var i = 0; i < cardList.length; i++)
+	{
+		var smi = cardList[i];
+		CARDTYPE[i] = new Array();
+		CARDTYPE[i][0] = smi.strCuNum;
+		CARDTYPE[i][1] = smi.strCardName;
+		CARDTYPE[i][2] = smi.strCardDesc;
+		CARDTYPE[i][3] = smi.strCardType;
+		CARDTYPE[i][4] = smi.strCardPic;
+	}
+	now_cardNum=1;
+	cardName.innerHTML="";
+	cardName.innerHTML=CARDTYPE[now_cardNum-1][1];
+	cardDemo.innerHTML=CARDTYPE[now_cardNum-1][2];
+	var strHtml="";
+	var mymax=0;
+	for(var i=0; i < CARDTYPE.length; i++){
+		var strNum = parseInt(CARDTYPE[i][0]) - 1;
+		if((list[strNum][1] != "RETAINBIN") && list[strNum][2] != "EMPTY" && list[strNum][2] != "MISSING" && list[strNum][2] != "INOPERATIVE" && list[strNum][2] != "UNKNOWN"){
+			strHtml+="<img class=\"cloudcarousel\" id=\"img"+(mymax+1)+"\" onmousedown=\"mdd()\"  ondragstart=\"return false;\" src=\"..\\Terminal\\Style\\Default\\Img\\" + CARDTYPE[i][4] + "\"  height=\"295\" width=\"295\">";
+			mymax++;																																	  
+		}
+	}
+	cardMaxNum=mymax;
+	cardListDiv.innerHTML=strHtml;
+	$(document).ready(function(){
+    $("#carousel2").CloudCarousel({
+        xPos:600,
+        yPos:80,
+        buttonLeft: $('#but3'),
+        buttonRight: $('#but4'),
+        FPS:30,
+        autoRotate: 'left',
+        autoRotateDelay: 1000000,
+        speed:0.2,
+        mouseWheel:true,
+        bringToFront:true
+    });
+});
+	
+}
+
+ var myDown;
+ carousel2.onmousedown=function(e){
+     myDown=event.clientX;
+ }
+ carousel2.onmouseup=function(e){
+   myMove=myDown-event.clientX;
+    if(Math.abs(myMove)>80){
+      if(myMove<0){
+          $("#but3").mouseup();
+      }else{
+         $("#but4").mouseup();
+      }
+
+    }
+
+ }
+ function hiddenView(){
+	carousel2.style.visibility="hidden";
+ }
+ function showView(){
+	cardDemo.innerHTML=CARDTYPE[now_cardNum-1][2] + "，工本费为" + top.pool.get("strCardPrice") + "元。";
+	carousel2.style.visibility="visible";
+ }
+function mdd(ev){
+    var oEvent=ev||event;
+    myMove=myDown-oEvent.clientX;
+}
+
+function changeChooseName(num){
+	now_cardNum-=num;	
+	if(now_cardNum<=0) now_cardNum=cardMaxNum;
+	if(now_cardNum>=(cardMaxNum+1)) now_cardNum=1;
+	cardName.innerHTML=CARDTYPE[now_cardNum-1][1];
+	cardDemo.innerHTML=CARDTYPE[now_cardNum-1][2] + "，工本费为" + top.pool.get("strCardPrice") + "元。";
+}
+function getChooseImg(){
+    var img1Width=0;
+    var img2Width=0;
+    var img3Width=0;
+	myImg1=document.getElementById("img1");
+	myImg2=document.getElementById("img2");
+	myImg3=document.getElementById("img3");
+    if(myImg1!=null&&myImg1!="")
+     img1Width=myImg1.offsetWidth; else img1Width=0;
+    if(myImg2!=null&&myImg2!="")
+     img2Width=myImg2.offsetWidth; else img2Width=0;
+     if(myImg3!=null&&myImg3!="")
+     img3Width=myImg3.offsetWidth; else img3Width=0;
+    if(img1Width>img3Width&&img1Width>img2Width)
+        return CARDTYPE[0][0] + "," + CARDTYPE[0][1] + "," + CARDTYPE[0][3];
+     if(img2Width>img1Width&&img2Width>img3Width)
+        return CARDTYPE[1][0] + "," + CARDTYPE[1][1] + "," + CARDTYPE[1][3];
+    if(img3Width>img2Width&&img3Width>img1Width)
+        return CARDTYPE[2][0] + "," + CARDTYPE[2][1] + "," + CARDTYPE[2][3];
+}
+function getparaInit(){
+
+	window.parent.initFrame();
+}
+
+getparaInit();
+</script>
+</body></html>

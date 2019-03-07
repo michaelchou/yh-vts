@@ -1,0 +1,218 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>管理员界面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+
+
+  function doMouseDown(){
+	//top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+  }
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  showMenu();
+}
+
+// 初始化维护功能列表
+var mrv = new top.MultiRecordView();
+var strHeadingArr = new Array
+(
+  "用户号",
+  "角色"
+);
+
+// 显示维护功能列表菜单
+function showMenu()
+{
+ //参数
+  var ret = false;//是否成功标识
+  var objectList = new Array();//存储id值的数据
+  var strRecordArr = new Array();//存储当前页数据
+  var idInit ="";//数据id
+  var typeInit ="";//操作员类型
+  var descInit ="";//密码
+  var valueInit ="";//用户名
+  var strUserData="";//用户数据
+  var username=top.pool.get("maintenance_username");
+
+  //取出用户数据,这里一定要等页面完全加载完成以后再赋值，否则报错
+     strUserData = new top.XmlManage().getXmlParamList(top.COLS_USER_XMLPATH,top.NODE_USER,top.NODE_CHILD_USER);
+	 //alert(strUserData);
+	 var array = strUserData.split("|");
+	 if(array.length > 1){//有数据
+	    for(var i=0; i<array.length-1; i++){
+	       var strUserDetailData = array[i];
+		   var arrayDetail = strUserDetailData.split(",");
+		   if(arrayDetail.length > 3){//完整数据
+				 objectList.push(parseInt(arrayDetail[0]));//把id值加入到新的数组中去，方便后面增加的时候取出最大的id值
+				 if(arrayDetail[1]==username) continue;//不能删自己
+				  if(arrayDetail[1]=="00") continue;//不能删00,系统缺省
+				  var level="";
+				   if(arrayDetail[3]=="0") level="管机员";
+				   if(arrayDetail[3]=="1") level="系统管理员";
+			     strRecordArr[strRecordArr.length] =new Array(
+					 //arrayDetail[0],//次序ID
+					arrayDetail[1],//用户名
+					 //arrayDetail[2],//密码
+					 level,//权限
+					arrayDetail[1]
+		        );
+		    }
+			
+		}
+	  }
+  window.operateCtrl.disableInput(true);
+
+  onKey_Cancel = onKey_F8 = function()
+  {
+    top.serviceCtrl.navigate2Maintenance();
+  }
+  deleteUser = function(username)
+  {
+    strUserData = new top.XmlManage().getXmlParamList(top.COLS_USER_XMLPATH,top.NODE_USER,top.NODE_CHILD_USER);
+	// alert(strUserData);
+	 var array = strUserData.split("|");
+		 if(array.length > 1){//有数据
+	    for(var i=0; i<array.length-1; i++){
+	       var strUserDetailData = array[i];
+		   var arrayDetail = strUserDetailData.split(",");
+		   if(arrayDetail.length > 3){//完整数据
+				 objectList.push(parseInt(arrayDetail[0]));//把id值加入到新的数组中去，方便后面增加的时候取出最大的id值
+			  	if ( username == arrayDetail[1] ){           
+                      idInit=arrayDetail[0];	
+                      descInit=arrayDetail[2];		
+					  typeInit=arrayDetail[3];	  
+					 // alert(typeInit);
+					  valueInit= arrayDetail[1];	
+					  break;
+		    }
+		}
+	  }
+	  	if(valueInit!=""){
+     		ret = top.YHAXCommonCtrl.DeleteElem(top.COLS_USER_XMLPATH,valueInit,idInit,typeInit,descInit,top.NODE_USER,top.NODE_CHILD_USER);
+     		 if(ret == true){
+		
+		  //记录流水
+		        var strJrn = new top.StringCtrl("删除用户"+username+"成功 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+          top.journalPrinter.addJournal(strJrn);
+		  
+		
+	  }
+	  else{
+	   
+		   var strJrn = new top.StringCtrl("删除用户失败 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+          top.journalPrinter.addJournal(strJrn);
+	  }
+	  //显示成功信息
+	  Success();
+     		
+     	}
+   }
+  }
+  
+   //显示成功信息
+  function Success()
+  {
+     window.operateCtrl.disableInput(true);
+	 onKey_F7 = function()
+     {
+       top.serviceCtrl.navigate2("/Maintenance/DeleteUser_Maintenance.html");
+     }
+     onKey_Cancel = onKey_F8 = function()
+     {
+        top.serviceCtrl.navigate2Quit();
+     }
+	 if( ret == true){
+	   Tip_Title.innerHTML  = "<span class=\"Tip_Title\">删除用户成功</span>";
+	 }else{
+	   Tip_Title.innerHTML  = "<span class=\"TickCount_Title\">删除用户失败</span>";
+	 }
+	 window.operateCtrl.enableInput();
+	 top.wins.showMain("oLServiceSuccessTip");
+  }
+			   mrv.strClassName_Table_Head             			= "ADMTable_Head";
+			  mrv.strClassName_Table_Record           			= "ADMTable_Record";
+			  mrv.strClassName_Table_Record2         			= "ADMTable_Record2";
+			  mrv.strClassName_Table_RecordSelected    	= "ADMTable_RecordSelected";
+   			  mrv.oTHead = oTHead;
+              mrv.oTBody = oTBody;
+              mrv.oTablePageTip = oTablePageTip;
+              mrv.oMFirstPage  = oMFirstPage;
+              mrv.oMPrevPage = oMPrevPage;
+              mrv.oMNextPage = oMNextPage;
+              mrv.oMEndPage = oMEndPage;
+                mrv.oMSelNext = oMSelNext;
+              mrv.strRecordArr = strRecordArr;
+              mrv.strHeadingArr = strHeadingArr;
+              mrv.iRowsPerPage = 8;
+              onKey_F1 = function(){mrv.onFirstPage();}
+              onKey_F2 = function(){mrv.onPrevPage();}
+              onKey_F3 = function(){mrv.onNextPage();}
+              onKey_F4 = function(){mrv.onEndPage();}
+              onKey_F5 = function(){mrv.onSelNext();}
+  onKey_Enter = onKey_F6 = function()
+  {
+    // try{eval("onKey_" + mrv.getCurSel() + "();");}catch(e){}
+     
+       try{eval("deleteUser" + "("+mrv.getCurSel() + ");");}catch(e){}
+  }
+  onKey_F7 = function()
+  {
+     top.serviceCtrl.navigate2Maintenance();
+  }
+  onKey_Cancel = onKey_F8 = function()
+  {
+     top.serviceCtrl.navigate2Quit();
+  }
+  mrv.show();
+  top.wins.showMain("oLMtnMenu");
+  window.operateCtrl.enableInput();
+}
+</script>
+</head>
+
+<body oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMtnMenu" class="FULLSCR">
+  <div class="FULLSCR">
+    <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine"><td align="center">
+        <span class="Tip_Title">删除用户</span><br/>
+        <br/><table cellpadding="3" cellspacing="1" class="ADMTable_Ob" id="oTable" width="45%" height="60%">
+          <thead class="ADMTable_Head" id="oTHead"></thead>
+          <tbody id="oTBody"></tbody>
+        </table>
+        <span class="Tip_Content" id="oTablePageTip"></span>
+      </td></tr>
+    </table>
+  </div>
+
+     <span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+     <span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+     <span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+     <span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+     <span class="MMENU5" id="oMSelNext"><button onmousedown="doMouseDown();setTimeout(onKey_F5,100);" class="ADMNext" name="oSelNext" id="oSelNext"></button></span>
+  <span class="MMENU6" id="oLMenu6"><button onmousedown="doMouseDown();setTimeout(onKey_F6,100);" class="ADMConfirm" name="oConfirm" id="oConfirm"></button></span>
+  <span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+  <span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>	
+</div>
+ <div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+	  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		   <tr>
+		       <td align="center"> 
+				  <span id="Tip_Title"></span><br/><br/>
+		        </td>
+		   </tr>
+	  </table>
+	</div>
+	<span class="MMENU7" id="oLMenu7"><button onmousedown="doMouseDown();setTimeout(onKey_F7,100);" class="ADMReturn" name="oReturn" id="oReturn"></button></span>
+	<span class="MMENU8" id="oLMenu8"><button onmousedown="doMouseDown();setTimeout(onKey_F8,100);" class="ADMExit" name="oQuitM" id="oQuitM"></button></span>
+   </div>
+</body>
+</html>

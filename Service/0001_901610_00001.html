@@ -1,0 +1,2512 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312">
+<title>综合签约</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+	var indexID = 0;
+	var indexImage =0;
+	//光标最后停留的标签id名称
+	var last = "";
+	// 是否能发Ukey
+	var ukeyStatus = false;
+	var localUkeyFlag = false;
+	// 是否流程跳转
+	var isOpenCard = false;
+	var isActiveCard = false;
+	//短信验证码倒计时
+	var secs = 60;
+	var timeoutBtn = null;//计数器
+	//是否改变阅读协议CheckBox的值
+	var changeCheckBoxFlag = false;
+	//签约数组
+	var strSignArr;
+	// 初始化本次服务流程
+	top.serviceCtrl.prepare4Entrance(document, window, function() {serverEntrance();});
+
+	// 禁止页面其他非输入控件的元素获得焦点
+	document.attachEvent("onclick", checkEvent);
+	document.attachEvent("ondblclick", checkEvent);
+	document.attachEvent("onfocusin", checkEvent);
+	document.attachEvent("onkeypress", checkEvent);
+
+	function checkEvent() {
+		try {
+			//如果光标停留在输入框上,更新last
+			if(document.activeElement.tagName == "INPUT"){
+				last = document.activeElement.id;
+			}
+			//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+			if(event.srcElement.id == "" || event.srcElement.type != "text" || event.srcElement.disabled){
+				top.wins.checkEvent(event.srcElement, last);
+			}else{
+				top.wins.checkEvent(event.srcElement, event.srcElement.id);
+			}
+		}
+		catch (e) {}
+	}
+
+	// 服务流程处理入口
+	function serverEntrance() {
+		top.pool.set("strNavigate2Url", window.location.pathname);
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		if (typeof(top.YHAXIDCardReader) == "undefined")
+		{
+			onServiceFailed(top.langcur.oComSignFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, top.langcur.oNoIDCardReader);
+		}else if(new top.CheckCard().cardSignStatus() != "true")
+		{
+			onServiceFailed(top.langcur.oComSignFailed, top.TERMRETCODE_CARD_NOCARDDISPERSER, new top.CheckCard().cardSignStatus());
+		}else{
+			if (top.cardreader.isCardPresent()) {
+				top.choCard.getUkeylist();
+				//初始化Ukey信息
+				top.pool.set("strUkeyBox", "");
+				top.pool.set("strUkeyType", "");
+				top.pool.set("strUkeyName", "");
+				if(top.pool.get("ukeyListFlag") == "1") {
+					var ukeyType = new Array();
+					var ukeyList = top.pool.get("ukeyList");
+					for (var i = 0; i < ukeyList.length; i++)
+					{
+						var smi = ukeyList[i];
+						ukeyType[i] = new Array();
+						ukeyType[i][0] = smi.strCuNum;
+						ukeyType[i][1] = smi.strUkeyType;
+						ukeyType[i][2] = smi.strUkeyName;
+					}
+					localUkeyFlag = true;
+					top.pool.set("strUkeyBox", ukeyType[0][0]);
+					top.pool.set("strUkeyType", ukeyType[0][1]);
+					top.pool.set("strUkeyName", ukeyType[0][2]);
+				}else {
+					localUkeyFlag = false;
+				}
+				if(top.pool.get("isSign") == "1" || top.pool.get("isSign") == "2") {
+					if(top.pool.get("isSign") == "1") {
+						isOpenCard = true;
+					}
+					if(top.pool.get("isSign") == "2") {
+						isActiveCard = true;
+					}
+					top.pool.set("isSign", "");
+					indexID = 1;
+					//综合签约查询
+					top.wins.showNewProcessingTip("正在查询综合签约状态，请稍候...");
+					top.trans.send901610Async();
+				}else {
+					if(top.pool.get("strCardType") != "1"){
+						InsertCard();//提示插入本行借记卡
+					}else{
+						top.pool.set("strNavigate2Url", "");
+						acceptIDCard();
+					}
+				}
+			}else{
+				top.serviceCtrl.navigate2InsertCard();
+			}
+		}
+	}
+	
+	function InsertCard() {
+		onCardEjected = function() {
+			top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeInvalCardTick);
+			// 播放提示音
+			try {
+				top.soundPlayer.playback("/Sound/TakeCardTip.mp3");
+			} catch (e) {
+			}
+			top.wins.showMain("oLTakeInvalCardTip");
+		}
+		onCardTaken = function() {
+			top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+		}
+		onDeviceError_Idc = function() {
+			if (top.cardreader.isCardPresent()) {
+				top.YHAXCardReader.Capture();
+			}
+			onServiceFailed(top.langcur.oFxPurchaseFailed, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError);
+		}
+		onCardCapturedTipEnd = function() {
+			top.serviceCtrl.navigate2Quit();
+		}
+		onCardCaptured = function() {
+			top.pool.set("printType","3");//选择打印的凭条类型
+	        top.receiptprinter.printAndEject();
+			top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+			top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+		}
+		//退卡前屏蔽安全退出及返回Home的功能 
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.cardreader.eject();
+	}
+	
+	// 允许读取身份证
+	function acceptIDCard() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onDeviceError_ID = onTimeout_ID = onCardInvalid_ID = function() {
+			onServiceFailed(top.langcur.oComSignFailed, top.TERMRETCODE_ID_READFAILED, top.langcur.oIDReaderFailed);
+		}
+		onCardReaded = function() {
+			//退身份证
+			idCardEject();
+		}
+		onCardInserted_ID = function() {
+			top.wins.showNewProcessingTip(top.langcur.oReadingIDCard);
+		}
+		onKey_Cancel = onKey_F98 = function() {
+			top.idCardReader.cancelAccept();
+			if(isOpenCard) {
+				top.pool.set("transName", "借记卡开卡");
+				top.pool.set("printType", "28");//选择打印的凭条类型	
+				top.serviceCtrl.navigate2PrintReceipt();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		}
+		onTimeout = function() {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("插入身份证页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			top.serviceCtrl.navigate2Quit();
+		}
+		
+		//插入身份证页面屏蔽安全退出及返回Home的功能
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oIdCardTick);
+		top.idCardReader.accept();
+		
+		// 播放提示音
+		try {top.soundPlayer.playback("/Sound/PutIDCard.mp3");} catch (e) {}
+		top.serviceCtrl.changeNaviStatus('1');
+		top.wins.showMain("oLIDCardTip");
+	}
+	
+	// 提示取走二代身份证
+	function idCardEject() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("isPersonal","1");//人证合一
+		onDeviceError_ID = onTimeout_ID = function() {
+			onServiceFailed(top.langcur.oComSignFailed, top.TERMRETCODE_ID_EJECTFAILED, top.langcur.oEjectIDFailed);
+		}
+		onCardTaken_ID = function()
+		{
+		}
+		//超时退出
+		onTimeout = function() {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("取走身份证页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			top.idCardReader.IDCardEvents.clearAll();
+			//进行联网核查流程
+	        top.idCardReader.idCardTakenComplete();
+		}
+		top.serviceCtrl.startUserTimeout(onTimeout, 10, oIdCardTakeTick);
+		window.operateCtrl.enableInput();
+		top.idCardReader.eject();
+		// 播放提示音
+		try {
+			top.soundPlayer.playback("/Sound/TakeIDCard.mp3");
+		} catch (e) {
+		}
+		top.wins.showMain("oLIDCardTakeTip");
+	}
+	
+	function onNetworkVirificationSuccessful(){
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		//开始影像文件上传交易  
+		top.pool.set("strImageType", "IDType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_IDPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();	
+    }
+	
+	//影像文件上传成功回调函数
+	function onImageFileSuccessful(){
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		var strBatchId = top.exchxmlasync.msgxmldomResp.getElementValue("strBatchId");//原交易批次号（影像平台专用、后面的交易都用这个）
+		top.pool.set("strBatchId", strBatchId);
+		if(indexID == 0)
+		{
+			//拍照
+			TakePic();
+		}
+		else if(indexID == 1)
+		{	
+			//综合签约查询
+			top.wins.showNewProcessingTip("正在查询综合签约状态，请稍候...");
+			top.trans.send901610Async();
+		}
+		else if(indexID == 2)
+		{
+			//上传业务办理单
+			var htmlstr = infoToPic.innerHTML;
+			top.pool.set("htmlstr",htmlstr);
+			oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+			infoToPic.style.visibility = "hidden";
+			top.wins.showNewProcessingTip(top.langcur.sendBusiness);
+			top.trans.sendBusinessApplicationAsync();
+		}
+	}
+	
+	//拍照
+	function TakePic()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.serviceCtrl.changeNaviStatus('2');
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		onTimeout = function()
+		{
+			top.cameras.display("Person","Destroy");//关闭摄像头
+			top.serviceCtrl.navigate2Quit();
+		}
+		window.operateCtrl.enableInput();
+		window.frames["ifreamPhoto"].CamerasLoad();//加载子页面摄像头相关方法
+		top.wins.showMain("oLTakePicTip");
+	}   
+	
+	function PhotoPrevStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		if(isOpenCard) {
+			top.pool.set("transName", "借记卡开卡");
+			top.pool.set("printType", "28");//选择打印的凭条类型	
+			top.serviceCtrl.navigate2PrintReceipt();
+		}else {
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+		window.operateCtrl.enableInput();
+	}
+	
+	function PhotoNextStep()//TakePhoto页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+	
+	//综合签约查询成功
+	function onSignSuccessful() {
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		//工本费查询
+		top.pool.set("strFeeNum", "");
+		top.pool.set("strAmtFeeFlag", top.pool.get("strUkeyType"));
+		top.pool.set("isInqFee", "");
+		top.wins.showNewProcessingTip("");
+		top.trans.send901117Async();
+	}
+	
+	//工本费查询成功
+	function onInqPriceSuccessful() {
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		top.pool.set("strUkeyPrice", top.pool.get("strCostFee"));
+		//选择卡类型
+		onSignDetail();
+	}
+	
+	
+	//综合签约信息
+	function onSignDetail() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		// 记录终端流水
+        var strJrn = new top.StringCtrl("进入综合签约勾选页面 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+        top.journalPrinter.addJournal(strJrn);
+		top.pool.set("strMessageCode", "");
+		changeCheckBoxFlag = false;
+		checkbox.className = "uncheckBox";
+		ukeyStatus = false;
+		strSignArr = new Array();
+		
+		//初始化
+		document.getElementById("JJKQY").checked = false;
+		document.getElementById("XEMM").checked = false;
+		document.getElementById("DSFKJ").checked = false;
+		document.getElementById("DXTZ").checked = false;
+		document.getElementById("SJYH").checked = false;
+		document.getElementById("WYZSB").checked = false;
+		JJKQYSign.innerHTML = top.langcur.oDisableSign;
+		XEMMSign.innerHTML = top.langcur.oDisableSign;
+		DSFKJSign.innerHTML = top.langcur.oDisableSign;
+		DXTZSign.innerHTML = top.langcur.oDisableSign;
+		SJYHSign.innerHTML = top.langcur.oDisableSign;
+		WYZSBSign.innerHTML = top.langcur.oDisableSign;
+		JJKQYText.style.visibility = "hidden";
+		XEMMText.style.visibility = "hidden";
+		DSFKJText.style.visibility = "hidden";
+		DSFKJBtn.style.visibility = "hidden";
+		DXTZText.style.visibility = "hidden";
+		DXTZBtn.style.visibility = "hidden";
+		SJYHText.style.visibility = "hidden";
+		SJYHBtn.style.visibility = "hidden";
+		WYZSBText.style.visibility = "hidden";
+		WYZSBBtn.style.visibility = "hidden";
+		input_tel1.value = "";
+		input_check.value = "";
+		signPhone.style.visibility = "hidden";
+		dealAgree.style.visibility = "hidden";
+		error_TXTSign.innerHTML = "";
+		document.getElementById("checkPhone").disabled = false;
+		document.getElementById("checkPhone").innerHTML = "发送验证码"; 
+		
+		var strSignStatus = top.pool.get("strSignStatus");
+		if(strSignStatus.indexOf("ATMPZZ") != -1) {
+			document.getElementById("JJKQY").disabled = true;
+			JJKQYSign.innerHTML = top.langcur.oEnableSign;
+		}
+		if(strSignStatus.indexOf("dqpay") != -1) {
+			document.getElementById("XEMM").disabled = true;
+			XEMMSign.innerHTML = top.langcur.oEnableSign;
+		}
+		if(strSignStatus.indexOf("KJZFYL") != -1) {
+			document.getElementById("DSFKJ").disabled = true;
+			DSFKJSign.innerHTML = top.langcur.oEnableSign;
+		}
+		//如果客户级和卡级已签约，则屏蔽按钮
+		if(strSignStatus.indexOf("PSMSP") != -1 ){
+			top.pool.set("strSign","1");	
+		}else{
+			top.pool.set("strSign","0");
+		}
+		if(strSignStatus.indexOf("PSMSP") != -1 && strSignStatus.indexOf("psmsp") != -1) {
+			document.getElementById("DXTZ").disabled = true;
+			DXTZSign.innerHTML = top.langcur.oEnableSign;
+		}
+		if(strSignStatus.indexOf("PMBAS") != -1) {
+			document.getElementById("SJYH").disabled = true;
+			SJYHSign.innerHTML = top.langcur.oEnableSign;
+		}
+		if(strSignStatus.indexOf("PBANK") != -1) {
+			document.getElementById("WYZSB").disabled = true;
+			WYZSBSign.innerHTML = top.langcur.oEnableSign;
+		}
+		document.getElementById("oUkeyPrice").innerHTML = "证书版工本费为" + top.pool.get("strUkeyPrice") + "元。"
+		
+		onKey_F99 = function() {
+			top.inputmethod.Close();
+			if(document.getElementById("DSFKJ").checked
+			|| document.getElementById("DXTZ").checked
+			|| document.getElementById("SJYH").checked
+			|| (document.getElementById("WYZSB").checked && (document.getElementById("GRWYDX").checked || document.getElementById("GRWYZS").checked))) {
+				if(!changeCheckBoxFlag) {
+					error_TXTSign.innerHTML = "请同意协议内容!";
+					return;
+				}
+				var phone = input_tel1.value;
+				var checkCode = input_check.value;
+				if(!new top.StringCtrl(input_tel1.value).checkPhone()) {
+					input_tel1.value = "";
+					error_TXTSign.innerHTML = top.langcur.oInputTel;
+					return;
+				}else if(checkCode == "" || checkCode == null){
+					error_TXTSign.innerHTML = "请输入短信验证码";
+			        input_check.focus();
+			        return;
+		        }else {
+					top.pool.set("strPhone", phone);
+				}
+				if(top.pool.get("strMessageCode") == null || top.pool.get("strMessageCode") == "") {
+					error_TXTSign.innerHTML = "验证码校验失败，请重新发送验证码";
+					input_check.value = "";
+					return;
+				}else {
+					if(checkCode != null && checkCode != "" && checkCode == top.pool.get("strMessageCode") && phone == top.pool.get("strCheckPhone")) {
+						
+					}else {
+						error_TXTSign.innerHTML = "验证码错误，请重新发送验证码";
+						input_check.value = "";
+						top.pool.set("strMessageCode", "999999999");
+						return;
+					}
+				}
+			}
+			
+			if (document.getElementById("WYZSB").checked && document.getElementById("GRWYZS").checked) {
+				ukeyStatus = true;
+			} else {
+				ukeyStatus = false;
+			}
+			//判断checkbox是否改变
+			var strCheckNew = "" + (document.getElementById("JJKQY").checked == true ? 1 : 0)
+	 		 					 + (document.getElementById("XEMM").checked == true ? 1 : 0)
+	 		 					 + (document.getElementById("DSFKJ").checked == true ? 1 : 0)
+	 		 					 + (document.getElementById("DXTZ").checked == true ? 1 : 0)
+	 		 					 + (document.getElementById("SJYH").checked == true ? 1 : 0)
+	 		 					 + ((document.getElementById("WYZSB").checked && (document.getElementById("GRWYDX").checked || document.getElementById("GRWYZS").checked)) == true ? 1 : 0);
+			//无变化则提示勾选签约
+			if("000000" == strCheckNew) {
+				error_TXTSign.innerHTML = top.langcur.oSignChoose;
+				return;
+			}
+			strSignArr = new Array(
+				document.getElementById("JJKQY").checked == true ? 1 : 0,
+				document.getElementById("XEMM").checked == true ? 1 : 0,
+				document.getElementById("DSFKJ").checked == true ? 1 : 0,
+				document.getElementById("DXTZ").checked == true ? 1 : 0,
+				document.getElementById("SJYH").checked == true ? 1 : 0,
+				(document.getElementById("WYZSB").checked && (document.getElementById("GRWYDX").checked || document.getElementById("GRWYZS").checked)) == true ? 1 : 0
+			);
+			input_tel1.value = "";
+			input_check.value = "";
+			stopCurPageTick();
+			//用户签名
+			userSign();
+		}
+		onTimeout = function()
+		{
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("综合签约勾选页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			top.inputmethod.Close();
+			top.serviceCtrl.navigate2Quit();
+		}
+		input_tel1.onkeypress = function()
+		{
+			error_TXTSign.innerHTML = "";
+		}
+		input_check.onkeypress = function()
+		{
+			error_TXTSign.innerHTML = "";
+		}
+		
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iPadCheckTimeout, oSignDetailTick);
+		top.wins.showMain("oLSignDetailTip");
+		if(isOpenCard || isActiveCard) {
+			top.serviceCtrl.changeNaviStatus('1');
+			top.serviceCtrl.changeNaviStatus('2');
+			top.serviceCtrl.changeNaviStatus('3');
+		}else {
+			top.serviceCtrl.changeNaviStatus('3');
+		}
+	}
+	
+	//用户签名
+	function userSign()
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		oSigConfirm.style.visibility = "hidden";//隐藏确定按钮
+		oSigAgain.style.visibility = "hidden";//隐藏重签按钮
+		oSigFinger.style.visibility = "visible";
+		oESign.style.visibility = "visible";
+		text_pid2.innerHTML = top.pool.get("strIDCardNum");
+		text_name2.innerHTML = top.pool.get("strIDName");
+		text_ethnic2.innerHTML = top.pool.get("strIDNation");
+		text_address2.innerHTML = top.pool.get("strIDAddress");
+		var signText = "";
+		var signHtml = "<table><tr><td>&nbsp;&nbsp;综合签约信息:&nbsp;&nbsp;<span id='text_sign'></span></td></tr>";
+		if(strSignArr[0] == 1) {
+			signHtml += "<tr><td>&nbsp;&nbsp;ATM转账:&nbsp;&nbsp;每日累计转出限额50000元&nbsp;&nbsp;</td></tr>";
+			signText += "ATM转账    ";
+		}
+		if(strSignArr[1] == 1) {
+			signHtml += "<tr><td>&nbsp;&nbsp;小额免密支付:&nbsp;&nbsp;单笔免密限额300元&nbsp;&nbsp;单日累计限额1000元</td></tr>";
+			signText += "小额免密支付    ";
+		}
+		if(strSignArr[2] == 1) {
+			signHtml += "<tr><td>&nbsp;&nbsp;第三方快捷支付:&nbsp;&nbsp;手机号" + top.pool.get("strPhone") + "</td></tr>";
+			signText += "第三方快捷支付    ";
+		}
+		if(strSignArr[3] == 1) {
+			signHtml += "<tr><td>&nbsp;&nbsp;短信通:&nbsp;&nbsp;手机号" + top.pool.get("strPhone") + "&nbsp;&nbsp;起点金额0元&nbsp;&nbsp;显示余额</td></tr>";
+			signText += "短信通知    ";
+		}
+		if(strSignArr[4] == 1) {
+			signHtml += "<tr><td>&nbsp;&nbsp;手机银行:&nbsp;&nbsp;手机号" + top.pool.get("strPhone") + "</td></tr>";
+			signText += "手机银行    ";
+		}
+		if(strSignArr[5] == 1) {
+			if(ukeyStatus) {
+				signHtml += "<tr><td>&nbsp;&nbsp;网上银行:&nbsp;&nbsp;手机号" + top.pool.get("strPhone") + "&nbsp;&nbsp;证书版&nbsp;&nbsp;工本费" + top.pool.get("strUkeyPrice") + "元</td></tr>";
+			}else {
+				signHtml += "<tr><td>&nbsp;&nbsp;网上银行:&nbsp;&nbsp;手机号" + top.pool.get("strPhone") + "&nbsp;&nbsp;短信版</td></tr>";
+			}
+			signText += "个人网银    ";
+		}
+		signHtml += "</table>";
+		signDetailMsg.innerHTML = signHtml;
+		text_sign.innerHTML = signText;
+		text_strPan.innerHTML = top.pool.get("strPan");
+	
+		text_date.innerHTML = new top.DateTimeCtrl().getYYYYMMDD2();
+		text_time.innerHTML = new top.DateTimeCtrl().getHHmmSSWithSep();
+		text_term.innerHTML = top.terminal.strTerminalNum;
+		window.frames["ifreamSign"].SignLoad();//加载子页面签名相关方法
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(window.frames['ifreamSign'].onTimeout, top.iUserTimeout,oSigFingerTick);
+		Tip_UserSign.innerHTML = top.langcur.oUserSign;
+		top.serviceCtrl.changeNaviStatus('4');
+		top.wins.showMain("oLUserSignTip");
+	}
+	
+	function SignPrevStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";
+		oSigAgain.style.visibility = "hidden";
+		oSigFinger.style.visibility = "hidden";
+		oESign.style.visibility = "hidden";
+		onSignDetail();
+		window.operateCtrl.enableInput();
+	}
+	
+	function SignNextStep()//ESign页面过度方法
+	{
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		oSigConfirm.style.visibility = "hidden";//签名完影藏确定按钮
+		indexID++;
+		top.pool.set("strImageType", "ZNGYType");//上传类型,后台会根据这个区分送到影像平台哪个接口
+		top.pool.set("strImageFilePath", top.COLS_ZNGYPHOTOS_FILEPATH);//上传的文件存储路劲
+		top.wins.showNewProcessingTip(top.langcur.oSendImage);
+		top.trans.sendImageFileAsync();
+		window.operateCtrl.enableInput();
+	}
+	
+	//业务办理单上传成功
+	function onSuccessful()
+	{
+		top.serviceCtrl.stopUserTimeout();
+		top.wins.stopProcessingTimeout();
+		//身份证图片查询
+		top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+		if(isOpenCard) {
+			top.pool.set("strImageType","ZNGYType");
+		}else {
+			top.pool.set("strImageType","IDType");
+		}
+		top.trans.sendImageFileQueryAsync();
+	}
+	
+	//图片查询结果
+	function onImageFileQuerySuccessful()
+	{ 
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		if(indexImage == 0){
+			top.pool.set("idPhotoBackUrl",top.pool.get("back"));//反
+			top.pool.set("idPhotoUrl",top.pool.get("Front"));//正				
+			//进行查询
+			indexImage ++;
+			top.wins.showNewProcessingTip(top.langcur.oImageFileQuery);
+			top.pool.set("strImageType","ZNGYType");
+			top.trans.sendImageFileQueryAsync();
+		}else if(indexImage == 1){
+			top.pool.set("scenePhotoUrl",top.pool.get("cameras"));//现场		
+	        var Msg = new top.JSONCtrl();			
+			Msg.setJson("customerNum", "卡号：" + top.pool.get("strPan"));
+			if(strSignArr[0] == 1) {
+				Msg.setJson("ATMTransfer", "ATM转账：每日累计转出限额50000元");
+			}
+			if(strSignArr[1] == 1) {
+				Msg.setJson("LittleNoPassword", "小额免密支付：单笔免密限额300元  单日累计限额1000元");
+			}
+			if(strSignArr[2] == 1) {
+				Msg.setJson("ThreeQuickPay", "第三方快捷支付：手机号" + top.pool.get("strPhone"));
+			}
+			if(strSignArr[3] == 1) {
+				Msg.setJson("MessageBank", "短信通：手机号" + top.pool.get("strPhone") + "  起点金额0元  显示余额");
+			}
+			if(strSignArr[4] == 1) {
+				Msg.setJson("MobileBank", "个人手机银行：手机号" + top.pool.get("strPhone"));
+			}
+			if(strSignArr[5] == 1) {
+				if(ukeyStatus) {
+					Msg.setJson("PersonEBank", "个人网上银行：手机号" + top.pool.get("strPhone") + "  版本 证书版  工本费" + top.pool.get("strUkeyPrice") + "元");
+				}else {
+					Msg.setJson("PersonEBank", "个人网上银行：手机号" + top.pool.get("strPhone") + "  版本 短信版");
+				}
+			}
+			top.pool.set("strCheckContent", Msg.jsonStr);
+			top.pool.set("strbusinessCode", "901610");
+			top.pool.set("strbusinessName", top.langcur.oFlowSign);		
+			//进行审核
+			top.wins.showNewProcessingTip(top.langcur.oCheckLoading);
+			top.trans.send910301Async();   		
+		}
+	}
+	
+	//审核超时处理
+	function onProcessingTimeout() {
+		top.serviceCtrl.navigate2Quit();	  
+	}
+	
+	//审核成功
+	function onCheckLoadingSuccessful() 
+	{
+		// 记录终端流水
+        var strJrn = new top.StringCtrl("综合签约Pad审核完成 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+        top.journalPrinter.addJournal(strJrn);
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+		//开始综合签约
+		startSignTrans();
+	}
+
+	//开始综合签约
+	function startSignTrans() {
+		//初始化签约流水号
+		top.pool.set("JJKQYTsn", "");
+		top.pool.set("XEMMTsn", "");
+		top.pool.set("DSFKJTsn", "");
+		top.pool.set("DXTZTsn", "");
+		top.pool.set("SJYHTsn", "");
+		top.pool.set("WYZSBTsn", "");
+		  
+		if(strSignArr[0] == 1) {
+			//ATM转账签约
+			top.pool.set("signFlag", "allSign");
+			top.pool.set("strDayLimitAmount", "50000");
+			top.wins.showNewProcessingTip("正在发起ATM转账签约，请稍候...");
+			top.trans.send901704Async();
+		}else {
+		    top.pool.set("returnCode","none");
+			onJJKQYComplete();
+		}
+	}
+	
+	//ATM转账签约完成
+	function onJJKQYComplete() {
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+	    var ret = top.pool.get("returnCode");
+		if(ret == "success") {
+			top.pool.set("JJKQYRet", "签约成功");
+			top.pool.set("JJKQYDesc", "");
+		}else if(ret == "none"){
+			top.pool.set("JJKQYRet", "未选择");
+			top.pool.set("JJKQYDesc", "");
+		}else {
+			top.pool.set("JJKQYRet", "签约失败");
+			top.pool.set("JJKQYDesc", ret);
+		}
+		if(strSignArr[1] == 1) {
+			//小额免密签约
+			top.pool.set("transLimitAmt", "300");
+			top.pool.set("dayTransLimitAmt", "1000");
+			top.pool.set("signFlag", "allSign");
+			top.wins.showNewProcessingTip("正在发起小额免密签约，请稍候...");
+			top.trans.send901707Async(); 
+		}else {
+		    top.pool.set("returnCode","none");
+			onXEMMComplete();
+		}
+	}
+	
+	//小额免密签约完成
+	function onXEMMComplete() {
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+	    var ret = top.pool.get("returnCode");
+		if(ret == "success") {
+			top.pool.set("XEMMRet", "签约成功");
+			top.pool.set("XEMMDesc", "");
+		}else if(ret == "none"){
+			top.pool.set("XEMMRet", "未选择");
+			top.pool.set("XEMMDesc", "");
+		}else {
+			top.pool.set("XEMMRet", "签约失败");
+			top.pool.set("XEMMDesc", ret);
+		}
+		if(strSignArr[2] == 1) {
+			//第三方支付签约
+			top.pool.set("signFlag", "allSign");
+			top.wins.showNewProcessingTip("正在发起第三方支付签约，请稍候...");
+			top.trans.send901712Async();
+		}else {
+		    top.pool.set("returnCode","none");
+			onDSFKJComplete();
+		}
+	}
+	
+	//第三方支付签约完成
+	function onDSFKJComplete() {
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+	    var ret = top.pool.get("returnCode");
+		if(ret == "success") {
+			top.pool.set("DSFKJRet", "签约成功");
+			top.pool.set("DSFKJDesc", "");
+		}else if(ret == "none"){
+			top.pool.set("DSFKJRet", "未选择");
+			top.pool.set("DSFKJDesc", "");
+		}else {
+			top.pool.set("DSFKJRet", "签约失败");
+			top.pool.set("DSFKJDesc", ret);
+		}
+		if(strSignArr[3] == 1) {
+			//短信通知签约
+			top.pool.set("signFlag", "allSign");
+			top.wins.showNewProcessingTip("正在发起短信通知签约，请稍候...");
+			top.trans.send908304Async();
+		}else {
+		    top.pool.set("returnCode", "none");
+			onDXTZComplete();
+		}
+	}
+	
+	//短信通知签约完成
+	function onDXTZComplete() {
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+	    var ret = top.pool.get("returnCode");
+		if(ret == "success") {
+			top.pool.set("DXTZRet", "签约成功");
+			top.pool.set("DXTZDesc", "");
+		}else if(ret == "none"){
+			top.pool.set("DXTZRet", "未选择");
+			top.pool.set("DXTZDesc", "");
+		}else {
+			top.pool.set("DXTZRet", "签约失败");
+			top.pool.set("DXTZDesc", ret);
+		}
+		if(strSignArr[4] == 1) {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("前续签约完成，开始设置手机银行密码 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			//设置手机银行密码
+			inputPin1();
+		}else {
+		    top.pool.set("returnCode","none");
+			onSJYHComplete();
+		}
+	}
+	
+	//手机银行签约完成
+	function onSJYHComplete() {
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+	    var ret = top.pool.get("returnCode");
+		if(ret == "success") {
+			top.pool.set("SJYHRet", "签约成功");
+			top.pool.set("SJYHDesc", "");
+		}else if(ret == "none"){
+			top.pool.set("SJYHRet", "未选择");
+			top.pool.set("SJYHDesc", "");
+		}else {
+			top.pool.set("SJYHRet", "签约失败");
+			top.pool.set("SJYHDesc", ret);
+		}
+		if(strSignArr[5] == 1) {
+			if(ukeyStatus) {
+				//个人网银签约(发Ukey)
+				ukeydispenser();
+			}else {
+				// 记录终端流水
+		        var strJrn = new top.StringCtrl("前续签约完成，开始设置网银（短信版）密码密码 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+		        top.journalPrinter.addJournal(strJrn);
+				//设置密码
+				inputPinWY1();
+			}
+		}else {
+		    top.pool.set("returnCode","none");
+			onWYZSBComplete();
+		}
+	}
+	
+	//个人网银签约完成
+	function onWYZSBComplete() {
+		top.wins.stopProcessingTimeout();
+		top.serviceCtrl.stopUserTimeout();
+	    var ret = top.pool.get("returnCode");
+		if(ret == "success") {
+			top.pool.set("WYZSBRet", "签约成功");
+			top.pool.set("WYZSBDesc", "");
+			if(ukeyStatus) {
+// 				top.pool.set("strUkeyTsn", top.exchxmlasync.msgxmldomResp.getElementValue("transLogId"));
+				//出Ukey
+				outUkey();
+			}else {
+				onSignComplete();
+			}
+		}else if(ret == "none"){
+			top.pool.set("WYZSBRet", "未选择");
+			top.pool.set("WYZSBDesc", "");
+			onSignComplete();
+		}else {
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", ret);
+			onSignComplete();
+		}
+	}
+	
+	//第一次输入手机银行密码
+	function inputPin1() {
+		top.serviceCtrl.stopUserTimeout();
+		window.operateCtrl.disableInput(true);
+		onPlainCancelled = function() {
+			top.pinpad.bufferPINCustom();
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第一次设置手机银行密码 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			window.operateCtrl.enableInput();
+			// 播放提示音
+			try {top.soundPlayer.playback("/Sound/SetPwd1.mp3");} catch (e) {}
+			Tip_InputPwd1.innerHTML = "请您设置手机银行密码";
+			oLSafeQuit.style.visibility = "hidden";
+			oLGoHome.style.visibility = "hidden";
+			top.wins.showMain("InputPassword1");
+			input_Password1.value = "";
+			input_Password1.focus();
+		}
+		onGetPinBlockOK = function(pinblock) {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第一次设置手机银行密码完成 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			if (input_Password1.value.length < top.pinpad.iMinPinLen) {
+				// 记录终端流水
+		        var strJrn = new top.StringCtrl("第一次设置手机银行密码不足 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+		        top.journalPrinter.addJournal(strJrn);
+				// 密码位数不足，则重新输入
+				error_InputPassword1.innerHTML = top.langcur.oPlsReInputPwd;
+				top.serviceCtrl.startFlowCtrlTimeout(inputPin1, 200);
+				return;
+			}
+			top.pool.set("PinBlock1", pinblock);
+			top.serviceCtrl.startFlowCtrlTimeout(inputPin2, 200);
+		}
+		onDeviceError_Pinpad = function() {
+			top.pool.set("SJYHRet", "签约失败");
+			top.pool.set("SJYHDesc", top.langcur.oPinPadError);
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", top.langcur.oPinPadError);
+			onSignComplete();
+		}
+		onPinCancelled = function() {
+			top.pool.set("SJYHRet", "签约失败");
+			top.pool.set("SJYHDesc", "主动取消");
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", "主动取消");
+			onSignComplete();
+		}
+		onTimeout = function() {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第一次设置手机银行密码页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			// 超时退卡
+			top.serviceCtrl.navigate2Quit();
+		}
+		input_Password1.onkeypress = function() {
+			error_InputPassword1.innerHTML = "&nbsp;";
+		}
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oInputPassword1Tick);
+		top.pinpad.cancelUserEntry();//关闭明文输入
+	}
+
+	// 第二次输入密码
+	function inputPin2() {
+		top.serviceCtrl.stopUserTimeout();
+		window.operateCtrl.disableInput(true);
+		onPlainCancelled = function() {
+			top.pinpad.bufferPINCustom();
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第二次设置手机银行密码 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			window.operateCtrl.enableInput();
+			// 播放提示音
+			try {top.soundPlayer.playback("/Sound/SetPwd2.mp3");} catch (e) {}
+			Tip_InputPwd2.innerHTML = "请您再次设置手机银行密码";
+			top.wins.showMain("InputPassword2");
+			input_Password2.value = "";
+			input_Password2.focus();
+		}
+		onGetPinBlockOK = function(pinblock) {
+			if (top.pool.get("PinBlock1") == pinblock) {
+				top.pool.set("PinBlock2", pinblock);
+				//手机银行签约
+				top.pool.set("signFlag", "allSign");
+	 			top.wins.showNewProcessingTip("正在发起手机银行签约，请稍候...");
+	 			top.trans.send908101Async();
+			} else {
+				// 记录终端流水
+		        var strJrn = new top.StringCtrl("手机银行密码设置不一致 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+		        top.journalPrinter.addJournal(strJrn);
+				error_InputPassword1.innerHTML = top.langcur.oPwd1NotEquaPwd2;
+				top.serviceCtrl.startFlowCtrlTimeout(inputPin1, 200);
+			}
+		}
+		onDeviceError_Pinpad = function() {
+			top.pool.set("SJYHRet", "签约失败");
+			top.pool.set("SJYHDesc", top.langcur.oPinPadError);
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", top.langcur.oPinPadError);
+			onSignComplete();
+		}
+		onPinCancelled = function() {
+			top.pool.set("SJYHRet", "签约失败");
+			top.pool.set("SJYHDesc", "主动取消");
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", "主动取消");
+			onSignComplete();
+		}
+		onTimeout = function() {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第二次设置手机银行密码页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			// 超时退卡
+			top.serviceCtrl.navigate2Quit();
+		}
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oInputPassword2Tick);
+		top.pinpad.cancelUserEntry();//关闭明文输入
+	}
+	
+	//第一次输入个人网银密码
+	function inputPinWY1() {
+		top.serviceCtrl.stopUserTimeout();
+		window.operateCtrl.disableInput(true);
+		onPlainCancelled = function() {
+			top.pinpad.bufferPINCustom();
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第一次设置个人网银密码 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			window.operateCtrl.enableInput();
+			// 播放提示音
+			try {top.soundPlayer.playback("/Sound/SetPwd1.mp3");} catch (e) {}
+			Tip_InputPwd3.innerHTML = "请您设置个人网银密码";
+			oLSafeQuit.style.visibility = "hidden";
+			oLGoHome.style.visibility = "hidden";
+			top.wins.showMain("InputPassword3");
+			input_Password3.value = "";
+			input_Password3.focus();
+		}
+		onGetPinBlockOK = function(pinblock) {
+			if (input_Password3.value.length < top.pinpad.iMinPinLen) {
+				// 密码位数不足，则重新输入
+				error_InputPassword3.innerHTML = top.langcur.oPlsReInputPwd;
+				top.serviceCtrl.startFlowCtrlTimeout(inputPinWY1, 200);
+				return;
+			}
+			top.pool.set("PinBlock3", pinblock);
+			top.serviceCtrl.startFlowCtrlTimeout(inputPinWY2, 200);
+		}
+		onDeviceError_Pinpad = function() {
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", top.langcur.oPinPadError);
+			onSignComplete();
+		}
+		onPinCancelled = function() {
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", "主动取消");
+			onSignComplete();
+		}
+		onTimeout = function() {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第一次设置网银密码页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			// 超时退卡
+			onUpdateTermStatus(top.STATUS_CAPTURE);
+			top.ukeydispenser.sendCaptureStatus();
+			top.serviceCtrl.navigate2Quit();
+		}
+		input_Password3.onkeypress = function() {
+			error_InputPassword3.innerHTML = "&nbsp;";
+		}
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oInputPassword3Tick);
+		top.pinpad.cancelUserEntry();//关闭明文输入
+	}
+
+	// 第二次输入密码
+	function inputPinWY2() {
+		top.serviceCtrl.stopUserTimeout();
+		window.operateCtrl.disableInput(true);
+		onPlainCancelled = function() {
+			top.pinpad.bufferPINCustom();
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第二次设置个人网银密码 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			window.operateCtrl.enableInput();
+			// 播放提示音
+			try {top.soundPlayer.playback("/Sound/SetPwd2.mp3");} catch (e) {}
+			Tip_InputPwd4.innerHTML = "请您再次设置个人网银密码";
+			top.wins.showMain("InputPassword4");
+			input_Password4.value = "";
+			input_Password4.focus();
+		}
+		onGetPinBlockOK = function(pinblock) {
+			if (top.pool.get("PinBlock3") == pinblock) {
+				top.pool.set("PinBlock4", pinblock);
+				//个人网银签约
+				top.pool.set("signFlag", "allSign");
+				top.wins.showNewProcessingTip("正在发起个人网银签约，请稍候...");
+				if(ukeyStatus) {
+		 			top.trans.send908201Async();
+				}else {
+		 			top.trans.send908202Async();
+				}
+			} else {
+				// 记录终端流水
+		        var strJrn = new top.StringCtrl("个人网银密码设置不一致 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+		        top.journalPrinter.addJournal(strJrn);
+				error_InputPassword3.innerHTML = top.langcur.oPwd1NotEquaPwd2;
+				top.serviceCtrl.startFlowCtrlTimeout(inputPinWY1, 200);
+			}
+		}
+		onDeviceError_Pinpad = function() {
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", top.langcur.oPinPadError);
+			onSignComplete();
+		}
+		onPinCancelled = function() {
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", "主动取消");
+			onSignComplete();
+		}
+		onTimeout = function() {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("第二次设置网银密码页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			// 超时退卡
+			onUpdateTermStatus(top.STATUS_CAPTURE);
+			top.ukeydispenser.sendCaptureStatus();
+			top.serviceCtrl.navigate2Quit();
+		}
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oInputPassword4Tick);
+		top.pinpad.cancelUserEntry();//关闭明文输入
+	}
+	
+	//开始发Ukey
+	function ukeydispenser() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		onTimeout = function()
+	    {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("开始发Ukey页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			top.serviceCtrl.navigate2Quit();
+	    }
+		onCardAccepted = function(UkeyBarcode) {
+			//条形码读取完成
+			top.pool.set("LocalUkeyNum", UkeyBarcode);
+			if(UkeyBarcode.length > 8) {
+				UkeyBarcode = UkeyBarcode.substring(UkeyBarcode.length-9, UkeyBarcode.length-1);
+				top.pool.set("UkeyNum", UkeyBarcode);
+			}
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("前续签约完成，开始设置网银（证书版）密码密码 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			//输入个人网银密码
+			inputPinWY1();
+		}
+		onUkeyDispensed = function() {
+			//发ukey成功，开始扫描UKEY条码
+			UkeyDispenser_Tip.innerHTML = top.langcur.oReadingUkey;
+			top.ukeyReader.accept();
+		}
+		onDeviceError_UkeyDispenser = onTimeout_UkeyDispensed = function() {
+			if (top.ukeydispenser.isUkeyPresent()) {
+				onUpdateTermStatus(top.STATUS_CAPTURE);
+				top.ukeydispenser.sendCaptureStatus();
+				top.YHAXUkeyReader.Capture();
+			}
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", top.langcur.oUkeyEmpty);
+			onSignComplete();
+		}
+		onTimeout_ukeyreader = onCardInvalid = onDeviceError4Capture = onResetEnd4DevErr4CaptureRe = function() {
+			if (top.ukeydispenser.isUkeyPresent()) {
+				onUpdateTermStatus(top.STATUS_CAPTURE);
+				top.ukeydispenser.sendCaptureStatus();
+				top.YHAXUkeyReader.Capture();
+			}
+			top.pool.set("WYZSBRet", "签约失败");
+			top.pool.set("WYZSBDesc", top.langcur.oReadUkeyFailed);
+			onSignComplete();
+		}
+		UkeyDispenser_Tip.innerHTML = top.langcur.oUkeyDispenser;
+		// 播放提示音
+// 		try {top.soundPlayer.playback("/Sound/CardDispenser.mp3");} catch (e) {}
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oUkeyDispenTick);
+		top.ukeydispenser.dispenseukey("TRANSPORT", 1);
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("oLUkeyDispenserTip");
+	}
+
+	//发Ukey
+	function outUkey() {
+		onUkeyEjected = function() {
+			top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeUkeyTick);
+			// 播放提示音
+			try {top.soundPlayer.playback("/Sound/TakeUkeyTip.mp3");} catch (e) {}
+			top.wins.showMain("oLTakeUkeyTip");
+		}
+		onDeviceError_UkeyDispenser = function() {
+			if (top.ukeydispenser.isUkeyPresent()) {
+				onUpdateTermStatus(top.STATUS_CAPTURE);
+				top.ukeydispenser.sendCaptureStatus();
+				top.YHAXUkeyDispenser.Capture();
+			}
+			top.pool.set("WYZSBDesc", "因UKEY箱空或故障，Ukey未出成功，请联系大堂经理。")
+			onSignComplete();
+		}
+		onUkeyTaken = function() {
+			onUpdateTermStatus(top.STATUS_PRESENT);
+			onSignComplete();
+		}
+		onUkeyCapturedTipEnd = function() {
+			if (top.ukeydispenser.isUkeyPresent()) {
+				onUpdateTermStatus(top.STATUS_CAPTURE);
+				top.ukeydispenser.sendCaptureStatus();
+				top.YHAXUkeyDispenser.Capture();
+			}
+			top.pool.set("WYZSBDesc", "Ukey被吞，请联系大堂经理。")
+			onSignComplete();
+		}
+		onUkeyCaptured = function() {
+	 	    top.pool.set("printType","3");//选择打印的凭条类型
+	        top.receiptprinter.printAndEject();
+			top.wins.showInfoTip("已吞Ukey，请及时到我行营业网点办理相关领Ukey手续。<br/><br/>上海农商银行&nbsp;&nbsp;&nbsp;客服热线：021-962999");
+			top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+		}
+		top.ukeydispenser.eject();
+	}
+	
+	function onUpdateTermStatus(strTermTxStatus) {
+		top.serviceCtrl.stopUserTimeout();
+		top.pool.set("strMangerVouchNo", top.pool.get("LocalUkeyNum"));
+		top.pool.set("iTransLogId", top.pool.get("strUkeyTsn"));
+		top.pool.set("iTermTxStatus", strTermTxStatus);
+		top.pool.set("strMangerTransType", "2");
+		top.pool.set("strMangerVouchType", top.pool.get("strUkeyType"));
+		top.pool.set("strMangerTransCode", "908201");
+		top.pool.set("strCDSType", "");
+		top.pool.set("strMangerIDCardNum", top.pool.get("strIDCardNum"));
+		// 记录终端流水
+        var strJrn = new top.StringCtrl("更新数据库Ukey箱信息 终端状态:"+strTermTxStatus+" 流水ID:"+top.pool.get("strUkeyTsn")+" 流水号:"+top.pool.get("WYZSBTsn")+" "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+        top.journalPrinter.addJournal(strJrn);
+		top.trans.sendUpdateTermStatusAsync();
+	}
+	
+	//签约完成
+	function onSignComplete() {
+		if(top.pool.get("JJKQYRet") == "签约成功"
+		|| top.pool.get("XEMMRet") == "签约成功"
+		|| top.pool.get("DSFKJRet") == "签约成功"
+		|| top.pool.get("DXTZRet") == "签约成功"
+		|| top.pool.get("SJYHRet") == "签约成功"
+		|| top.pool.get("WYZSBRet") == "签约成功") {
+			onServiceSuccess();
+		}else {
+			onServiceSuccess();
+// 			onServiceFailed(top.langcur.oComSignFailed, "", top.langcur.oComSignFailed);
+		}
+	}
+	
+	// 显示成功信息
+	function onServiceSuccess() {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		//Ukey回收
+		if (typeof (top.YHAXUkeyDispenser) != "undefined" && top.ukeyReader.isCardPresent()) {
+			onUpdateTermStatus(top.STATUS_CAPTURE);
+			top.ukeydispenser.sendCaptureStatus();
+			top.YHAXUkeyReader.Capture();
+		}
+		if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	    {
+			oPrintReceipt.style.visibility = "hidden";	
+		}else
+		{		
+			onKey_F99 = onKey_Enter = function() {
+				top.serviceCtrl.stopUserTimeout();
+				top.wins.showNewProcessingTip("正在打印凭条...");
+				//开始打印凭条
+				onOpenCardReceiptPrinter();
+// 				top.serviceCtrl.navigate2PrintReceipt();
+			}
+		}
+		
+		onKey_Cancel = onKey_F98 = function() {
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		}
+		onTimeout = function()
+		{
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("综合签约成功页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			top.serviceCtrl.navigate2Quit();
+		}
+		viewMultiRecord();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+		oSignListInfo.innerHTML = "综合签约结果明细";
+		window.operateCtrl.enableInput();
+		//交易成功后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+		top.serviceCtrl.changeNaviStatus('5');
+		top.wins.showMain("oLServiceSuccessTip");
+	}
+	
+	function viewMultiRecord() {
+		var strRecordArr = new Array();
+		var mrv = new top.MultiRecordView();
+		var strHeadingArr = new Array("序号", "签约名", "签约结果", "说明");
+		var strAlignArr = new Array("center", "center", "center", "center");
+		
+		if(strSignArr[0] == 1) {
+			strRecordArr[strRecordArr.length] = new Array(strRecordArr.length + 1, "ATM转账", top.pool.get("JJKQYRet"), top.pool.get("JJKQYDesc"));
+		}
+		if(strSignArr[1] == 1) {
+			strRecordArr[strRecordArr.length] = new Array(strRecordArr.length + 1, "小额免密支付", top.pool.get("XEMMRet"), top.pool.get("XEMMDesc"));
+		}
+		if(strSignArr[2] == 1) {
+			strRecordArr[strRecordArr.length] = new Array(strRecordArr.length + 1, "第三方快捷支付", top.pool.get("DSFKJRet"), top.pool.get("DSFKJDesc"));
+		}
+		if(strSignArr[3] == 1) {
+			strRecordArr[strRecordArr.length] = new Array(strRecordArr.length + 1, "短信通知", top.pool.get("DXTZRet"), top.pool.get("DXTZDesc"));
+		}
+		if(strSignArr[4] == 1) {
+			strRecordArr[strRecordArr.length] = new Array(strRecordArr.length + 1, "手机银行", top.pool.get("SJYHRet"), top.pool.get("SJYHDesc"));
+		}
+		if(strSignArr[5] == 1) {
+			strRecordArr[strRecordArr.length] = new Array(strRecordArr.length + 1, "个人网银", top.pool.get("WYZSBRet"), top.pool.get("WYZSBDesc"));
+		}
+		
+		onTimeout = function()
+		{
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("综合签约结果界面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			top.serviceCtrl.navigate2Quit();
+		}
+		
+		mrv.oTHead = oTHead;
+		mrv.oTBody = oTBody;
+		mrv.oMFirstPage = oMFirstPage;
+		mrv.oMPrevPage = oMPrevPage;
+		mrv.oMNextPage = oMNextPage;
+		mrv.oMEndPage = oMEndPage;
+		mrv.strRecordArr = strRecordArr;
+		mrv.strHeadingArr = strHeadingArr;
+		mrv.iRowsPerPage = 6;
+		onKey_F1 = function(){mrv.onFirstPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);}
+		onKey_F2 = function(){mrv.onPrevPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);}
+		onKey_F3 = function(){mrv.onNextPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);}
+		onKey_F4 = function(){mrv.onEndPage();top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);}
+		mrv.show();
+	}
+	
+	function onOpenCardReceiptPrinter()
+	{	
+		onReceiptEjected = function()
+		{
+		}
+		onReceiptCaptured = onReceiptTaken = function(){
+			onActiveCardReceiptPrinter();
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		onQuit = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		} 
+		if(isOpenCard) {
+			top.pool.set("transName", "借记卡开卡");
+			top.pool.set("printType", "28");//选择打印的凭条类型	
+			top.receiptprinter.printAndEject();	
+		}else {
+			onActiveCardReceiptPrinter();
+		}
+	}
+	
+	function onActiveCardReceiptPrinter()
+	{	
+		onReceiptEjected = function()
+		{
+		}
+		onReceiptCaptured = onReceiptTaken = function(){
+			onZHQYReceiptPrinter();
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		onQuit = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		} 
+		if(isActiveCard) {
+			top.pool.set("transName", "借记卡激活");
+			top.pool.set("printType", "29");//选择打印的凭条类型	
+			top.receiptprinter.printAndEject();	
+		}else {
+			//onJJKQYReceiptPrinter();
+			onZHQYReceiptPrinter();
+		}
+	}
+	
+	function onZHQYReceiptPrinter()
+	{	
+		onReceiptEjected = function()
+		{
+		}
+		onReceiptCaptured = onReceiptTaken = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		onQuit = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		} 
+		top.pool.set("multipleSign", strSignArr);
+		top.pool.set("printType", "52");//选择打印的凭条类型	
+		top.receiptprinter.printAndEject();	
+	}
+	
+	
+	function onJJKQYReceiptPrinter()
+	{	
+		onReceiptEjected = function()
+		{
+		}
+		onReceiptCaptured = onReceiptTaken = function(){
+			onXEMMReceiptPrinter();
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		onQuit = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		} 
+		if(strSignArr[0] == 1) {
+			top.pool.set("transName", "ATM转账");
+			top.pool.set("printType", "22");//选择打印的凭条类型	
+			top.receiptprinter.printAndEject();	
+		}else {
+			onXEMMReceiptPrinter();
+		}
+	}
+	
+	function onXEMMReceiptPrinter()
+	{
+		onReceiptEjected = function()
+		{
+		}
+		onReceiptCaptured = onReceiptTaken = function(){
+			onDSFKJReceiptPrinter();
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		onQuit = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		} 
+		if(strSignArr[1] == 1) {
+			top.pool.set("transName", "小额免密支付");
+			top.pool.set("printType", "23");//选择打印的凭条类型	
+			top.receiptprinter.printAndEject();	
+		}else {
+			onDSFKJReceiptPrinter();
+		}
+	}
+	 
+	function onDSFKJReceiptPrinter()
+	{
+		onReceiptEjected = function()
+		{
+		}
+		onReceiptCaptured = onReceiptTaken = function(){
+			onDXTZReceiptPrinter();
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		onQuit = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		} 
+		if(strSignArr[2] == 1) {
+			top.pool.set("transName", "第三方快捷支付");
+			top.pool.set("printType", "24");//选择打印的凭条类型	
+			top.receiptprinter.printAndEject();	
+		}else {
+			onDXTZReceiptPrinter();
+		}
+	}
+		
+	function onDXTZReceiptPrinter()
+	{
+		onReceiptEjected = function()
+		{
+		}
+		onReceiptCaptured = onReceiptTaken = function(){
+			onSJYHReceiptPrinter();
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		onQuit = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		} 
+		if(strSignArr[3] == 1) {
+			top.pool.set("transName", "短信通");
+			top.pool.set("printType", "25");//选择打印的凭条类型	
+			top.receiptprinter.printAndEject();	
+		}else {
+			onSJYHReceiptPrinter();
+		}
+			 
+	}
+	
+	function onSJYHReceiptPrinter()
+	{
+		onReceiptEjected = function()
+		{
+		}
+		onReceiptCaptured = onReceiptTaken = function(){
+			onWYZSBReceiptPrinter();
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		onQuit = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		} 
+		if(strSignArr[4] == 1) {
+			top.pool.set("transName", "手机银行");
+			top.pool.set("printType", "26");//选择打印的凭条类型	
+			top.receiptprinter.printAndEject();	
+		}else {
+			onWYZSBReceiptPrinter();
+		}
+	}
+	
+	function onWYZSBReceiptPrinter()
+	{
+		onReceiptEjected = function()
+		{
+		}
+		onQuit = onReceiptCaptured = onReceiptTaken = function(){
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		}
+		onDeviceError_rpt_Print = onDeviceError_rpt_Eject = onCaptureReceiptFailed = function()
+		{
+			//提示打印失败
+  	        top.wins.showInfoTip("凭条打印故障");
+  	      	top.serviceCtrl.startFlowCtrlTimeout(onQuit, 5 * 1000);
+		}
+		if(strSignArr[5] == 1) {
+			top.pool.set("transName", "个人网银");
+			if(ukeyStatus) {
+				top.pool.set("strVersion", "证书版");
+			}else {
+				top.pool.set("strVersion", "短信版");
+			}
+			top.pool.set("printType", "27");//选择打印的凭条类型	
+			top.receiptprinter.printAndEject();	
+		}else {
+			if(isOpenCard) {
+				top.serviceCtrl.navigate2Quit();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		}
+	}
+	 
+	function onServiceFailed(title, retcode, retdesc) {
+		window.operateCtrl.disableInput(true);
+		top.serviceCtrl.stopUserTimeout();
+		//Ukey回收
+		if (typeof (top.YHAXUkeyDispenser) != "undefined" && top.ukeyReader.isCardPresent()) {
+			onUpdateTermStatus(top.STATUS_CAPTURE);
+			top.ukeydispenser.sendCaptureStatus();
+			top.YHAXUkeyReader.Capture();
+		}
+		onKey_Cancel = onKey_F98 = function() {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("综合签约失败页面超时 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			if(isOpenCard) {
+				top.pool.set("transName", "借记卡开卡");
+				top.pool.set("printType", "28");//选择打印的凭条类型
+				top.pool.set("strNavigate2Url", "");
+				top.serviceCtrl.navigate2PrintReceipt();
+			}else {
+				top.serviceCtrl.navigate2SecondMenu();
+			}
+		}
+		oTitle.innerHTML = title;
+		oFailedRetDesc.innerHTML = retdesc;
+		
+		//交易失败后，显示安全退出功能
+		oLSafeQuit.style.visibility = "visible";
+		oLGoHome.style.visibility = "visible";
+
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onKey_F98, top.iFailedTimeout, oServiceFailedTick);
+		
+		top.wins.showMain("oLServiceFailedTip");
+	}
+
+	//协议选择
+	function selectCheck() {
+		if (!changeCheckBoxFlag) {
+			changeCheckBoxFlag = true;
+			checkbox.className = "checkBox";
+		} else {
+			changeCheckBoxFlag = false;
+			checkbox.className = "uncheckBox";
+		}
+	}
+	
+	//借记卡签约管理   选择
+	function selectJJKQY() {
+		if(!document.getElementById("JJKQY").disabled) {
+			if(document.getElementById("JJKQY").checked) {
+				JJKQYText.style.visibility = "";
+			}else {
+				JJKQYText.style.visibility = "hidden";
+			}
+		}
+	}
+	
+	//小额免密   选择
+	function selectXEMM() {
+		if(!document.getElementById("XEMM").disabled) {
+			if(document.getElementById("XEMM").checked) {
+				XEMMText.style.visibility = "";
+			}else {
+				XEMMText.style.visibility = "hidden";
+			}
+		}
+	}
+	
+	//第三方快捷支付   选择
+	function selectDSFKJ() {
+		if(!document.getElementById("DSFKJ").disabled) {
+			if(document.getElementById("DSFKJ").checked) {
+				DSFKJText.style.visibility = "";
+				DSFKJBtn.style.visibility = "";
+				signPhone.style.visibility = "";
+				dealAgree.style.visibility = "";
+				input_tel1.focus();
+			}else {
+				DSFKJText.style.visibility = "hidden";
+				DSFKJBtn.style.visibility = "hidden";
+				if(document.getElementById("DSFKJ").checked
+				|| document.getElementById("DXTZ").checked
+				|| document.getElementById("SJYH").checked
+				|| document.getElementById("WYZSB").checked) {
+					signPhone.style.visibility = "";
+					dealAgree.style.visibility = "";
+					input_tel1.focus();
+				}else {
+					top.inputmethod.Close();
+					input_tel1.value = "";
+					input_check.value = "";
+					error_TXTSign.innerHTML = "";
+					signPhone.style.visibility = "hidden";
+					dealAgree.style.visibility = "hidden";
+				}
+			}
+		}
+	}
+	
+	//短信通知   选择
+	function selectDXTZ() {
+		if(!document.getElementById("DXTZ").disabled) {
+			if(document.getElementById("DXTZ").checked) {
+				DXTZText.style.visibility = "";
+				DXTZBtn.style.visibility = "";
+				signPhone.style.visibility = "";
+				dealAgree.style.visibility = "";
+				input_tel1.focus();
+			}else {
+				DXTZText.style.visibility = "hidden";
+				DXTZBtn.style.visibility = "hidden";
+				if(document.getElementById("DSFKJ").checked
+				|| document.getElementById("DXTZ").checked
+				|| document.getElementById("SJYH").checked
+				|| document.getElementById("WYZSB").checked) {
+					signPhone.style.visibility = "";
+					dealAgree.style.visibility = "";
+					input_tel1.focus();
+				}else {
+					top.inputmethod.Close();
+					input_tel1.value = "";
+					input_check.value = "";
+					error_TXTSign.innerHTML = "";
+					signPhone.style.visibility = "hidden";
+					dealAgree.style.visibility = "hidden";
+				}
+			}
+		}
+	}
+	
+	//手机银行   选择
+	function selectSJYH() {
+		if(!document.getElementById("SJYH").disabled) {
+			if(document.getElementById("SJYH").checked) {
+				SJYHText.style.visibility = "";
+				SJYHBtn.style.visibility = "";
+				signPhone.style.visibility = "";
+				dealAgree.style.visibility = "";
+				input_tel1.focus();
+			}else {
+				SJYHText.style.visibility = "hidden";
+				SJYHBtn.style.visibility = "hidden";
+				if(document.getElementById("DSFKJ").checked
+				|| document.getElementById("DXTZ").checked
+				|| document.getElementById("SJYH").checked
+				|| document.getElementById("WYZSB").checked) {
+					signPhone.style.visibility = "";
+					dealAgree.style.visibility = "";
+					input_tel1.focus();
+				}else {
+					top.inputmethod.Close();
+					input_tel1.value = "";
+					input_check.value = "";
+					error_TXTSign.innerHTML = "";
+					signPhone.style.visibility = "hidden";
+					dealAgree.style.visibility = "hidden";
+				}
+			}
+		}
+	}
+	
+	//个人网银签约   选择
+	function selectWYZSB() {
+		if(!document.getElementById("WYZSB").disabled) {
+			if(document.getElementById("WYZSB").checked) {
+				WYZSBText.style.visibility = "";
+				WYZSBBtn.style.visibility = "";
+				signPhone.style.visibility = "";
+				dealAgree.style.visibility = "";
+				if (typeof (top.YHAXUkeyDispenser) == "undefined") {
+					document.getElementById("GRWYZS").disabled = true;
+					WYZSBSign.innerHTML = top.langcur.oSignNoUkey;
+				} else {
+					//判断Ukey通道是否有Ukey
+					if (top.ukeydispenser.isUkeyPresent()) {
+						top.YHAXUkeyReader.Capture();
+					}
+					//判断UKEY箱状态
+					if (top.YHAXUkeyDispenser.StDeviceStatus == "HEALTHY" && (top.YHAXUkeyDispenser.StDispenserStatus == "HEALTHY" || top.YHAXUkeyDispenser.StDispenserStatus == "DEGRADED")) {
+						if(localUkeyFlag) {
+							WYZSBSign.innerHTML = top.langcur.oDisableSign;
+						}else {
+							document.getElementById("GRWYZS").disabled = true;
+							WYZSBSign.innerHTML = "(本机未加Ukey)";
+						}
+					} else {
+						document.getElementById("GRWYZS").disabled = true;
+						WYZSBSign.innerHTML = top.langcur.oSignUkeyError;
+					}
+				}
+				input_tel1.focus();
+			}else {
+				WYZSBText.style.visibility = "hidden";
+				WYZSBBtn.style.visibility = "hidden";
+				if(document.getElementById("DSFKJ").checked
+				|| document.getElementById("DXTZ").checked
+				|| document.getElementById("SJYH").checked
+				|| document.getElementById("WYZSB").checked) {
+					signPhone.style.visibility = "";
+					dealAgree.style.visibility = "";
+					input_tel1.focus();
+				}else {
+					top.inputmethod.Close();
+					input_tel1.value = "";
+					input_check.value = "";
+					error_TXTSign.innerHTML = "";
+					signPhone.style.visibility = "hidden";
+					dealAgree.style.visibility = "hidden";
+				}
+			}
+		}
+	}
+	
+	function selectGRWYDX() {
+		return;
+	}
+	
+	function selectGRWYZS() {
+		return;
+	}
+	
+	//校验电话号码
+	function input_checkTel() {
+		if (!new top.StringCtrl(input_tel1.value).isAllDigit()) {
+			error_TXTSign.innerHTML = top.langcur.oInputRightTel;
+			input_tel1.value = "";
+			input_tel1.focus();
+		} else {
+			if ((input_tel1.value).length == 11) {
+				if (!new top.StringCtrl(input_tel1.value).checkPhone()) {
+					error_TXTSign.innerHTML = top.langcur.oInputTel;
+					input_tel1.value = "";
+					input_tel1.focus();
+				}
+			}
+		}
+	}
+	
+	//发送手机验证码
+	function checkPhoneNum() { 
+		error_TXTSign.innerHTML = "";
+		top.inputmethod.Close();
+		var phone = input_tel1.value;
+		if(!new top.StringCtrl(phone).checkPhone()) {
+			input_tel1.value = "";
+			error_TXTSign.innerHTML = top.langcur.oInputTel;
+			return;
+		}else if(document.getElementById("SJYH").checked && !document.getElementById("WYZSB").checked){
+			deadWork();
+			top.pool.set("strCheckTransTypeNum", "1");
+			top.pool.set("strCheckTransType", "综合签约");
+			top.pool.set("strCheckPhone", phone);
+			top.trans.send908215Async();
+		}else if(!document.getElementById("SJYH").checked && document.getElementById("WYZSB").checked){
+			deadWork();
+			top.pool.set("strCheckTransTypeNum", "2");
+			top.pool.set("strCheckTransType", "综合签约");
+			top.pool.set("strCheckPhone", phone);
+			top.trans.send908215Async();
+		}else if(document.getElementById("SJYH").checked && document.getElementById("WYZSB").checked){
+			deadWork();
+			top.pool.set("strCheckTransTypeNum", "3");
+			top.pool.set("strCheckTransType", "综合签约");
+			top.pool.set("strCheckPhone", phone);
+			top.trans.send908215Async();
+		}else {
+			deadWork();
+			top.pool.set("strCheckTransType", "综合签约");
+			top.pool.set("strCheckPhone", phone);
+			top.trans.send908301Async();
+		}
+
+	}
+	//签约判断返回函数。
+	function sends908215Complete(){
+		error_TXTSign.innerHTML = top.pool.get("messageline");
+		top.MainFrame.clearInterval(timeoutBtn);
+		timeoutBtn = null;
+		document.getElementById("checkPhone").disabled = false;
+		document.getElementById("checkPhone").innerHTML = "重新发送";
+	}
+	//公共函数
+	function deadWork(){
+		input_check.focus();
+		timeoutBtn = null;
+	    secs = 60;
+		document.getElementById("checkPhone").disabled = true;
+		timeoutBtn = top.MainFrame.setInterval(updateTime, 1000);
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iPadCheckTimeout, oSignDetailTick);
+	}
+	
+	//10秒倒计时方法
+	function updateTime() { 
+		if(parseInt(secs) == 0) {
+			// 记录终端流水
+	        var strJrn = new top.StringCtrl("短信验证码按钮倒计时结束 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	        top.journalPrinter.addJournal(strJrn);
+			stopCurPageTick();
+			document.getElementById("checkPhone").disabled = false;
+			document.getElementById("checkPhone").innerHTML = "重新发送"; 
+		} 
+		else { 
+			var printnr = parseInt(secs); 
+			document.getElementById("checkPhone").innerHTML = "重新发送" + "(" + printnr +")"; 
+			secs--;
+		}
+	}
+
+	//关闭当前页面的计数器
+	function stopCurPageTick()
+	{
+	   if (timeoutBtn != null)
+	   {
+		   // 记录终端流水
+		   var strJrn = new top.StringCtrl("清除短信验证码计数器 "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+		   top.journalPrinter.addJournal(strJrn);
+		   top.MainFrame.clearInterval(timeoutBtn);
+		   timeoutBtn = null;
+	   }
+	}
+	
+	//用密码键盘输入时输入框校验
+	function CheckValue() {
+	}
+	
+	function ShowKeyboard() {
+		top.inputmethod.ShowDigit(900, 600);
+	}
+	
+	//阅读协议遮罩层方法
+	function dialog(id){
+		top.inputmethod.Close();
+	    //获取页面的高度和宽度
+	    var sWidth = document.documentElement.scrollWidth;
+	    var sHeight = document.documentElement.scrollHeight;
+	    
+	    //遮罩层
+	    var oMask = document.createElement("div");
+		oMask.id = "mask";
+		oMask.style.height = sHeight + "px";
+		oMask.style.width = sWidth + "px";
+		oMask.style.background = "url('../Terminal/Style/Default/Img/Mask.png') center center no-repeat";
+		document.body.appendChild(oMask);
+	      
+	    //协议框
+	    var oDeal = document.createElement("div");
+	    oDeal.id = "deal";
+	    if(id == 1) {
+	    	oDeal.innerHTML = "<div id='bookContent' class='dealCon'><br>"
+	    		+ "<h2 align='center'>上海农商银行借记卡第三方支付客户协议</h2>"
+	    		+ "<p>为明确双方的权利和义务，规范双方业务行为，申办上海农商银行借记卡第三方支付业务的个人客户（以下简称“乙方”）与上海农商银行（以下简称“甲方”）双方达成以下协议：</p>"
+	    		+ "<h4>第一条 上海农商银行借记卡第三方支付业务时上海农商银行与相关第三方支付公司联合为上海农商银行借记卡客户提供的一项因网络商品交易而发生的资金划转的新型支付服务。</h4>"
+	    		+ "<h4>第二条	凡是持有上海农商银行借记卡的客户，均可申请开通、变更及撤销借记卡第三方支付业务。</h4>"
+	    		+ "<h4>第三条 乙方申请开通本业务时，必须先申请手机安全认证功能，并确保其第三方账号与借记卡账户的客户姓名、身份证件类型及身份证号码等信息保存一致，因信息不一致而导致签约不成功的，甲方不承担责任。乙方如需变更手机号码，需重新办理安全认证申请。</h4>"
+	    		+ "<h4>第四条 乙方如进行借记卡换卡、补卡，需重新签约第三方支付功能。</h4>"
+	    		+ "<h4>第五条 签约成功后，即视为乙方同意并授权甲方按照相关第三方支付平台的交易指令及交易金额，从乙方绑定的借记卡账户中自动扣除相应金额，或将交易金额发放至乙方签约的借记卡账户。</h4>"
+	    		+ "<h4>第六条 乙方可以设定、修改单笔支付限额和单日累计支付限额，所设限额应在甲方规定之内。如乙方未设置，则默认认为甲方规定的最大支付限额。乙方当日所支付的商品货款超过设定的支付限额时，甲方有权拒绝支付申请。</h4>"
+	    		+ "<h4>第七条 存在下列情况的，甲方有权撤销乙方申请开通的第三方支付业务：</h4>"
+	    		+ "<p>1、乙方提供的资料、证件失实；</p>"
+	    		+ "<p>2、乙方不遵守本协议条款；</p>"
+	    		+ "<p>3、乙方有损害甲方合法权益行为；</p>"
+	    		+ "<p>4、其他账户异动等行为。</p>"
+	    		+ "<h4>第八条 因以下原因造成甲方无法按时执行乙方提交的交易指令，引起纠纷或经济损失的，甲方不承担任何责任：</h4>"
+	    		+ "<p>1、乙方提交支付指令时，其绑定的借记卡处于非正常状态（如挂失、冻结、销户、补卡及换卡过程中等）或余额不足；</p>"
+	    		+ "<p>2、乙方提交的交易指令为无效指令；</p>"
+	    		+ "<p>3、乙方在甲方或第三方支付平台公告的非正常交易时间内提交的交易指令；</p>"
+	    		+ "<p>4、由于不可抗力因素、通讯故障等非人为因素造成系统无法受理；</p>"
+	    		+ "<p>5、不可归贵甲方的其他原因。</p>"
+	    		+ "<h4>第九条 只有在乙方签约借记卡的条件下，才能在第三方平台完成支付交易；如借记卡账户状态不正常，则无法进行支付交易。</h4>"
+	    		+ "<h4>第十条 甲方对乙方的相关资料及交易记录负有保密义务，除法律法规另行规定的，以及甲方因业务需要必须与第三方支付平台进行交互的除外。</h4>"
+	    		+ "<h4>第十一条 甲方仅为乙方提供通过第三方支付平台发生的购买商品及劳务款项的支付结算服务。乙方因购买商品而产生的一切关于商品质量、服务质量、快递配送、费用扣收等争议均由乙方自行与商户协商解决，概与甲方无关。甲方仅根据第三方支付平台提供的相关交易指令进行支付结算，乙方无权要求甲方终止或暂停执行已提交的交易指令，乙方也无权要求甲方撤销已执行的交易指令。</h4>"
+	    		+ "<h4>第十二条 乙方在第三方支付平台凭借第三方账号及账号密码进行资金划转，乙方承诺妥善保管第三方账号及账号密码，并确保所使用的电脑和网络安全。因密码泄露、网络商品或劳务交易等引起的纠纷及经济损失，概与甲方无关。</h4>"
+	    		+ "<h4>第十三条 甲方有权根据业务发展需要，对本协议内容、业务功能（如最大支付限额、借记卡绑定的第三方账号数量）等进行变更，并通过网站、网点公告等形式进行告知。乙方应及时关注了解，如乙方在变更后继续使用该项业务的，视为同意变更。</h4>"
+	    		+ "</div>";
+	    }else if(id == 2) {
+	    	oDeal.innerHTML = "<div id='bookContent' class='dealCon'><br>"
+	    		+ "<h2 align='center'>上海农商银行短信通知定制业务个人客户服务须知</h2>"		
+	    		+ "<h4>第一条 个人短信通知定制业务是上海农商银行为个人客户提供的，通过手机短信方式及时了解本人名下账户资金变动、账户余额及金融资讯等信息的服务。</h4>"
+	    		+ "<h4>第二条 个人客户可至上海农商银行各营业机构申请短信通知定制业务，或通过本人短信版、证书版网上银行自助开通。</h4>"
+	    		+ "<h4>第三条 个人短信通知定制业务包括账户资金变动通知、账户余额通知、回复短信冻结账户、回复短信冻结网银、特殊业务通知、金融资讯通知及其他短信通知服务项目，客户可以根据需要对开通账户、开通项目进行选择。</h4>"
+	    		+ "<h4>第四条 个人客户定制短信通知业务时，其本人名下不同账户可以对应不同的手机号码，但一个账户开通一项服务项目只能对应一个手机号码。</h4>"
+	    		+ "<h4>第五条 个人短信通知定制业务实行有偿服务，具体要求参照上海农商银行公布的收费标准及收费规则。</h4>"
+	    		+ "<h4>第六条 个人客户开通短信通知定制业务时，可自行选择按3个月或12个月为周期的服务费收取方式。如客户选择了3个月的收费方式，表示自正式计费日起，客户每隔3个月须续缴服务费后方可享受银行提供的短信通知服务；如客户选择了12个月的收费方式，表示自正式计费日起，客户每隔12个月须续缴服务费后方可享受银行提供的短信通知服务。</h4>"
+	    		+ "<h4>第七条 个人客户在此同意并授权上海农商银行在短信通知业务服务费续费时，自动从其账户扣收相应费用，直至客户关闭、注销相应服务为止。</h4>"
+	    		+ "<h4>第八条 服务期限及收费规则：</h4>"
+	    		+ "<p>1、客户在当月任意日期申请短信通知定制业务，则该短信通知服务项目的正式开通日期均为下月6日开始。如：客户申请日为4月1日（或该月任意一天），选择服务费收取方式为3个月，则我行将视客户短信开通日期及计费起始日期为次月的6日，即5月6日；下一计费周期及扣费日期为3个月后的8月5日晚，由系统自动扣收后续3个月的服务费，以此类推。其中4月1日至5月5日期间，我行将免费为客户提供短信通知服务。</p>"
+	    		+ "<p>2、在续费自动扣收时，如因客户账户状态异常或余额不足等原因导致无法正常按时足额扣收相关费用的，系统会在后续6天时间内继续尝试扣费，期间如有一次扣费成功，则继续为客户提供短信服务，直至下次缴费日再次扣费。</p>"
+	    		+ "<p>3、在续费当日自动扣收不成功时，系统将及时向客户发送短信进行提醒。后续的6天尝试扣收中，如系统在第5天仍然扣费失败，将再次发送短信提示客户，当第6天服务费扣收依然失败时，上海农商银行将视为客户主动关闭或注销该短信服务，系统发送短信通知客户其定制的短信通知服务关闭，由此造成的损失及后果由客户自行承担。短信服务费扣收期间，上海农商银行仍向客户提供相应服务。</p>"
+	    		+ "<h4>第九条 个人客户提出关闭或注销短信通知定制业务的，对于已支付的相关短信服务费用，上海农商银行将不予退回。</h4>"
+	    		+ "<h4>第十条 个人客户开通“资金变动通知”和“回复短信冻结账户”短信通知服务后，当账户发生款项支出时，上海农商银行将及时发送短信至客户预留的手机号码，对客户账户发生的资金变动情况进行提示，如客户发现该交易非本人操作，可立即通过回复短信自助冻结该账户（该冻结操作无法对抗国家法律法规规定的有权机关查询、冻结和扣划行为的执行）。 特别提示：此服务为上海农商银行为客户提供的自助紧急冻结账户的应急辅助手段，仅用以协助客户维护资金安全。对于因通讯、设备、系统异常，或客户自身原因等不可预见的客观因素造成客户账户未能及时冻结的，上海农商银行不承担相关责任。客户执行自助冻结操作后，应立即向我行营业机构或客服热线了解账户冻结状况。账户自助冻结后的第6个自然日（包括工作日和节假日）自动解冻。自助冻结期间为避免影响客户账户发生如代扣代缴、个人支票户付款、贷款还款、信用卡关联账户自动还款等款项支出业务（包括但不限于此类业务），客户可持相关证件尽快到我行营业机构办理解冻手续。</h4>"
+	    		+ "<h4>第十一条 个人客户申请短信通知定制服务，应确保预留的手机号码真实准确，如手机号码发生变动，客户应及时到上海农商银行营业机构办理变更手续。因手机号码预留不正确或未及时进行号码变更致使信息失密或无法收到短信服务信息的，上海农商银行不承担相关责任。</h4>"
+	    		+ "<h4>第十二条 个人客户因接收短信通知的手机号码变更但未及时至上海农商银行办理变更手续，从而影响该手机号码后续所有人办理我行相关业务的，视为同意上海农商银行停止该手机号码前一所有人的所有短信通知定制服务。</h4>"
+	    		+ "<h4>第十三条 鉴于短信通知定制业务是上海农商银行通过电信运营商为客户提供的信息服务，上海农商银行将保证信息的即时发出，由于电信运营商通讯和设备故障等原因造成的信息发送延迟、信息发送失败等情况，上海农商银行不承担相关责任。</h4>"
+	    		+ "<h4>第十四条 上海农商银行业务类短信服务号码统一为: 10698000962999；金融资讯类短信服务号码统一为：中国移动1065751962999，中国联通10655021962999，中国电信10659021962999。客户收到短信通知若对短信内容有任何疑问，请立即拨打上海农商银行客服热线电话（021-962999、4006-962999）。</h4>"
+	    		+ "<h4>第十五条 客户须注意保护自身信息安全，防范欺诈，切勿向不明电话、人员等泄露您的卡号、密码及其他个人信息。客户由于使用或操作不当造成本人信息泄漏的，由客户自行承担相关责任。</h4>"
+	    		+ "<h4>第十六条 上海农商银行将保守客户短信信息的秘密。除法律、法规规定外，不向第三方直接或间接泄漏客户短信信息内容。</h4>"
+	    		+ "<h4>第十七条 上海农商银行将根据业务发展需要对短信通知定制服务功能、服务项目、发送方式和收费标准等进行调整，并通过公告等适当方式提前通告。</h4>"
+	    		+ "</div>";
+	    }else if(id == 3 || id == 4) {
+	    	oDeal.innerHTML = "<div id='bookContent' class='dealCon'><br>"
+	    		+ "<h2 align='center'>上海农商银行电子银行个人客户服务协议内容</h2>"
+	    		+ "<p>为明确双方的权利和义务，规范双方业务行为，申办上海农商银行电子银行服务的个人客户（以下简称“甲方”）与上海农商银行（以下简称“乙方”）本着平等互利的原则，就电子银行服务的相关事宜达成本协议，协议双方应予遵守。</p>"
+	    		+ "<h3 align='left'>第一条  定义</h3>"
+	    		+ "<p>如无特别说明，在本协议中下列用语的含义为：</p>"
+	    		+ "<p>一、“电子银行”：是指乙方利用面向社会公众开放的通讯通道或开放型公众网络，以及银行为特定自助服务设施或客户建立的专用网络，向客户提供自助金融服务的系统。利用计算机和互联网开展的电子银行业务称为网上银行，利用电话等声讯设备和电信网络开展的电子银行业务称电话银行，利用移动终端和无线网络开展的电子银行业务称手机银行业务。</p>"
+	    		+ "<p>乙方通过网上银行、电话银行和手机银行等类型电子银行业务为客户提供账户信息查询、支付结算、投资理财、收费缴费、电子商务、个人结售汇、代理销售等金融服务。</p>"
+	    		+ "<p>二、“注册账户”：是指客户已经申请办理电子银行业务的借记卡、贷记卡或其他银行结算账户。</p>"
+	    		+ "<p>三、“移动数字证书”：是指存放客户身份标识，并对客户发送的电子银行交易信息进行电子签名的电子文件。乙方采用中国金融认证中心有限公司发放的证书(简称CFCA证书)。</p>"
+	    		+ "<p>四、“电子交易指令”： 是指客户利用电子银行渠道向银行发出的账户查询、转账支付、购买金融资产、签订相关协议等各类业务要求的统称。</p>"
+	    		+ "<p>五、“密码”：是指客户自行设定的，用于判别客户身份的数字或字符信息。分为自设密码和短信认证密码。自设密码包括查询密码、取款密码、登录密码和移动数字证书密码。短信认证密码是以手机短信方式发送到客户预留手机上的验证码。</p>"
+	    		+ "<h3 align='left'>第二条  甲方权利与义务</h3>"
+	    		+ "<h4>一、权利</h4>"
+	    		+ "<p>（一）甲方自愿申请开通乙方电子银行，经乙方同意后，将根据申请项目的不同享受乙方提供的相应服务。</p>"
+	    		+ "<p>（二）甲方有权在本协议有效期内根据乙方相关业务规则对本协议项下电子银行服务提出变更或终止申请。</p>"
+	    		+ "<p>（三）因网络、通讯故障等原因，甲方不能通过乙方电子银行系统办理业务时，甲方可到乙方营业机构办理相应银行业务。</p>"
+	    		+ "<p>（四）甲方对乙方电子银行服务如有疑问、建议或意见时，可拨打乙方客服热线（021-962999、4006-962999）、登录乙方网站（www.srcb.com）或到乙方各营业机构进行咨询和投诉。</p>"
+	    		+ "<h4>二、义务</h4>"
+	    		+ "<p>（一）甲方办理电子银行业务，应遵守《上海农商银行电子银行章程》和乙方公布的交易规则，并据此正确使用乙方提供的电子银行各项服务，因使用不当所造成的损失应由其自行承担。甲方应密切关注乙方通过其网站等渠道发布的公告、通知和提示，及时阅读其内容，配合乙方的系统管理工作。</p>"
+	    		+ "<p>（二）甲方须本人亲自到乙方营业机构办理电子银行注册、变更等手续，提供相关资料，填写申请表，并签名确认。</p>"
+	    		+ "<p>甲方需要通过乙方在线支付系统在网上商城购买商品或服务时，应在办理电子银行注册手续后，按照乙方相应规则通过电子银行自助开通在线支付功能。</p>"
+	    		+ "<p>（三）甲方向乙方提供的业务申请表是本协议不可分割的组成部分。甲方应保证所填写的申请表和所提供的资料真实、准确、完整、有效，对于因甲方提供信息不真实、不正确、不完整等原因而发生的风险和责任由甲方承担。</p>"
+	    		+ "<p>（四）甲方申请网上银行证书版使用的移动数字证书是乙方提供的CFCA证书，因此，甲方应同时认真阅读并遵守中国金融认证中心有限公司的《CFCA数字证书服务协议》（以上文件公布在http://www.cfca.com.cn上）。若甲方使用CFCA证书进行交易遭受损失，乙方仅在其过错范围内承担相关法律责任。</p>"
+	    		+ "<p>（五）甲方领取移动数字证书的，要对所使用移动数字证书及相应密码的操作负责。</p>"
+	    		+ "<p>（六）甲方办理电子银行业务应直接登录乙方门户网站（www.srcb.com），或拨打客服电话（021-962999、4006-962999）。通过其他网址、号码或链接登录电子银行所产生的不利后果由甲方自行承担。</p>"
+	    		+ "<p>（七）甲方应采取安装防病毒软件、及时安装电脑系统安全补丁等合理措施，确保在安全的环境使用相关电子银行渠道。对于自设密码，甲方应设置安全性较高的密码，避免使用形式简单的密码或容易被他人猜到的密码。</p>"
+	    		+ "<p>（八）甲方使用短信认证密码作为其电子支付业务认证方式的，应承诺和保证该手机号码为本人所用，确保乙方短信认证密码的准确发送。当甲方该手机号码变动时，须及时到银行办理变更手续，确保甲方电子银行支付继续使用和账户资金安全；甲方应对因未及时变更该手机号码而产生的一切影响甲方利益的后果负责。对甲方因不再使用接收短信认证密码的手机号码而未及时办理变更手续，从而影响他人申请乙方电子银行服务的，同意乙方暂时停止甲方电子银行服务。</p>"
+	    		+ "<p>鉴于乙方提供甲方基于短信信息的应用均通过电信运营商发送，乙方将保证信息的即时发出，但由于电信运营商通讯和设备故障等原因造成的信息发送延迟、信息发送失败等情况，乙方不承担相关责任。</p>"
+	    		+ "<p>（九）甲方领取的移动数字证书发生损坏或遗失、密码遗忘或锁定，应及时到乙方营业机构办理更换或重新申领、挂失、密码重置或解锁手续。办妥上述手续之前所产生的一切后果由甲方承担。</p>"
+	    		+ "<p>（十）甲方应对其发出的所有电子交易指令承担全部责任，并对支付款项事由的真实性、合法性负责。</p>"
+	    		+ "<p>（十一）甲方在操作电子银行系统时使用数字证书、密码等电子交易指令即视为法律法规及规章规定的甲方签章行为，第三人使用甲方的数字证书和密码等电子交易指令进行的交易行为均视为甲方所为。</p>"
+	    		+ "<p>（十二）甲方应当按照乙方公布的电子银行服务收费项目及标准支付相关费用。</p>"
+	    		+ "<p>（十三）如甲方发现乙方对其电子银行业务指令的处理确有错误，应及时通知乙方。</p>"
+	    		+ "<p>（十四）甲方不得以与第三方发生纠纷为理由拒绝支付应付乙方的款项。</p>"
+	    		+ "<p>（十五）甲方不得有意诋毁、损害乙方声誉或恶意攻击乙方电子银行系统。</p>"
+	    		+ "<p>（十六）甲方办理电子银行业务时，如其使用的服务功能涉及到乙方其他业务规定或规则的需同时遵守。</p>"
+	    		+ "<p>（十七）甲方长期不使用电子银行，应主动申请办理注销手续。</p>"
+	    		+ "<h3 align='left'>第三条 乙方权利与义务</h3>"
+	    		+ "<h4>一、权利</h4>"
+	    		+ "<p>（一）乙方有权根据甲方在乙方账户性质、账户状态和资信情况等，决定是否接受甲方的电子银行注册申请。</p>"
+	    		+ "<p>（二）为不断改进电子银行服务，提高服务的安全性、可靠性、方便性，乙方有权定期或不定期对电子银行系统进行维护、升级和改造。需要按计划暂时停止电子银行服务的，将提前在网站上予以公告。</p>"
+	    		+ "<p>（三）乙方有权根据业务需要，对电子银行服务功能、服务内容、操作流程等进行调整，并以公告等方式通知。</p>"
+	    		+ "<p>（四）乙方有权制定电子银行业务收费标准，经相关有权部门审核，于正式对外公告后实施。</p>"
+	    		+ "<p>（五）甲方存在未按时支付有关费用、不遵守乙方有关业务规定或存在恶意操作、诋毁、损害乙方声誉等情况的，乙方有权单方终止对甲方提供电子银行服务，并保留追究甲方责任的权利。甲方利用乙方电子银行从事违反国家法律法规活动的，乙方有权按照相关部门的要求停止为其办理电子银行业务。</p>"
+	    		+ "<p>（六）对于因下列原因所导致的电子交易指令无法或不能够正确执行，乙方不承担责任。</p>"
+	    		+ "<p>1.乙方接收到的指令信息不明、存在乱码、不完整等；</p>"
+	    		+ "<p>2.乙方收到的电子交易指令不符合要求或缺乏必要的交易信息；</p>"
+	    		+ "<p>3.甲方账户余额或信用额度不足；</p>"
+	    		+ "<p>4.甲方账户状态不正常（如冻结、挂失、销户等）；</p>"
+	    		+ "<p>5.账户内资金被法定有权机构冻结或扣划；</p>"
+	    		+ "<p>6.甲方的行为出于欺诈等恶意目的；</p>"
+	    		+ "<p>7.甲方未能正确依据电子银行服务的说明操作；</p>"
+	    		+ "<p>8.因战争、自然灾害等不可抗力原因导致乙方不能履行本协议规定义务以及由此造成的损失。另以补充条款形式约定：由于电力供应中断、火灾、系统故障等意外事件或其他不可归因于乙方的原因造成的损失，乙方不承担责任。</p>"
+	    		+ "<p>9.不可归责于乙方的其他原因。</p>"
+	    		+ "<p>（七）协议终止或在服务有效期内中止时，乙方不退还甲方已缴纳的有关费用。</p>"
+	    		+ "<p>（八）如甲方因乙方电子银行系统差错、故障或其他原因获得不当得利的，乙方有权从甲方账户中扣划甲方的不当得利所得或暂停对甲方的电子银行服务。</p>"
+	    		+ "<h4>二、义务</h4>"
+	    		+ "<p>（一）乙方应及时受理甲方相关电子银行服务的申请，经审查符合条件的，应及时为甲方办理相关手续、提供相应服务。</p>"
+	    		+ "<p>（二）乙方负责向甲方提供多渠道的电子银行业务知识咨询。</p>"
+	    		+ "<p>（三）乙方应对甲方提供的申请资料进行保密，但法律法规及金融监管机构另有规定、甲方与乙方另有约定或在乙方内部使用的除外。</p>"
+	    		+ "<p>（四）在乙方系统正常运行的情况下，乙方应向甲方提供甲方所申请并被开通的相应电子银行服务，并有义务及时准确地执行甲方的电子交易指令。</p>"
+	    		+ "<p>（五）乙方为甲方办理支付结算业务，因乙方工作失误导致甲方支付指令处理延误的，乙方按《支付结算办法》的有关规定赔偿。</p>"
+	    		+ "<p>（六）任何情况下，乙方的赔偿责任应仅限于客户的直接经济损失（即银行手续费和本金损失），乙方的赔偿责任不应包括客户的任何间接损失（例如其预期收益、商业利润等）。</p>"
+	    		+ "<p>（七）甲方使用电子银行业务时，如非乙方原因而发生的电子数据信息错误或者对客户指令识别、处理或执行错误时，乙方不负责对于该项错误进行更正，也不承担因该项错误的发生所导致的赔偿责任。但乙方应在处理中对甲方提供必要的协助。</p>"
+	    		+ "<h3 align='left'>第四条  服务中止和终止</h3>"
+	    		+ "<p>一、甲方注册账户因挂失、冻结等原因导致账户不能够使用的，相关电子银行服务自动中止。甲方注册账户状态恢复正常时，乙方重新提供相应服务。</p>"
+	    		+ "<p>二、甲方注册账户销户的，电子银行服务相应终止；甲方注册账户在乙方柜面进行换卡等业务操作的，并不意味着终止电子银行服务。</p>"
+	    		+ "<p>三、甲方电子银行注销手续办理完毕，电子银行服务相应终止。</p>"
+	    		+ "<p>四、如甲方不遵守本协议规定或其他乙方业务规定，或存在其他损害乙方利益的行为时，乙方有权中止或终止电子银行服务。</p>"
+	    		+ "<p>五、服务中止或终止并不意味着甲方此前所发生的未完成电子交易指令的撤销，也不能因中止或终止消除此前的交易甲方所应承担的任何法律后果。</p>"
+	    		+ "<h3 align='left'>第五条 其他约定事项</h3>"
+	    		+ "<p>一、甲方发现自身未按规定操作，或由于自身其他原因造成电子银行业务指令未执行、未适当执行、延迟执行的，应及时通过拨打客服热线“021-962999、4006-962999”或到营业机构通知乙方，乙方应积极调查并告知甲方调查结果。</p>"
+	    		+ "<p>二、乙方不介入甲方与第三方之间的交易纠纷，但可在法律允许的范围内协助甲方查明交易情况。</p>"
+	    		+ "<p>三、除有相反证据证明外，电子银行服务中产生的凭证和银行交易记录是确定交易真实有效和交易具体内容的依据。</p>"
+	    		+ "<p>四、乙方提供特殊的电子银行服务功能，如有附加协议条款，甲方申请注册时需另行签订附加协议，但该协议是本协议的补充，遵守本协议所有规定。</p>"
+	    		+ "<p>五、本协议中未尽事宜应依照国家法律法规、规章、金融惯例以及乙方相关业务规定办理。</p>"
+	    		+ "<h3 align='left'>第六条  适用法律及争议解决</h3>"
+	    		+ "<p>一、本协议适用中华人民共和国法律、行政法规和中国人民银行以及中国银行业监督管理委员会的部门规章与命令。</p>"
+	    		+ "<p>二、在本协议项下发生的以及与之有关的一切争议，各方应首先通过友好协商解决，协商不成的，应向乙方所在地具有管辖权的人民法院提起诉讼。</p>"
+	    		+ "<h3 align='left'>第七条  协议生效</h3>"
+	    		+ "<p>一、本协议自乙方为甲方办妥电子银行服务注册手续之日起生效。</p>"
+	    		+ "<p>二、本协议的任何条款如因任何原因而被确认无效，都不影响本协议其他条款的效力。</p>"
+	    		+ "<h3 align='left'>第八条  甲方确认已全部阅读了本协议，并保证已全部通晓、理解和完全接受本协议。</h3>"
+	    		+ "</div>";
+	    }
+	    document.body.appendChild(oDeal);
+	    
+	    //获取关闭按钮
+// 	    var oClose = document.getElementById("close");
+	    //点击关闭按钮和点击登陆框以外的区域都可以关闭登陆框
+// 	    oClose.onclick = oMask.onclick = function()
+	    oMask.onclick = function()
+	    {
+	        document.body.removeChild(oDeal);
+	        document.body.removeChild(oMask);
+	    };
+	}
+	
+</script>
+</head>
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+	<div class="divFlowPage" id="divFlowPage">
+	   <table border="0" cellpadding="0" cellspacing="0">
+		 <tr>
+		   <td width="38"></td>                                 <td width="34" class="stepStatusIcon" id="node1"></td><td><div class="stepLine" id="nodeline11"></div></td>
+		   <td><div class="stepLine" id="nodeline12"></div></td><td width="34" class="stepStatusIcon" id="node2"></td><td><div class="stepLine" id="nodeline21"></div></td>
+		   <td><div class="stepLine" id="nodeline22"></div></td><td width="34" class="stepStatusIcon" id="node3"></td><td><div class="stepLine" id="nodeline31"></div></td>
+		   <td><div class="stepLine" id="nodeline32"></div></td><td width="34" class="stepStatusIcon" id="node4"></td><td><div class="stepLine" id="nodeline41"></div></td>
+		   <td><div class="stepLine" id="nodeline42"></div></td><td width="34" class="stepStatusIcon" id="node5"></td><td width="38"></td>
+		 </tr>
+		 <tr height="70">
+		   <td class="font25" align="center" colspan="3">读取身份证</td>
+		   <td class="font25" align="center" colspan="3">拍照认证</td>
+		   <td class="font25" align="center" colspan="3">签约列表</td>
+		   <td class="font25" align="center" colspan="3">签名确认</td>
+		   <td class="font25" align="center" colspan="3">完成</td>
+		 </tr>
+	  </table>
+    </div>
+	
+	<div id="oLIDCardTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oIdCardTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br/><br/> 
+						<span class="Tip_Title" id="oInsertID"></span><br/>
+						<img src="../Image/ID_in.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU98"><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	</div>
+	
+	<div id="oLIDCardTakeTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oIdCardTakeTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br/><br/>
+						<span class="Tip_Title" id="oIDCardTake"></span><br/>
+						<img src="../Image/id_out.gif" width="870px" height="520px" />
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+ 	<div id="oLTakePicTip" class="oLTakePicTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<tr height="100%">
+				<td align="center"><iframe id="ifreamPhoto" src="../Service/TakePhoto.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			</tr>
+		</table>
+	</div>
+
+	<div id="oLSignDetailTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oSignDetailTick"></span>		
+			<table width="75%" height="50%" cellpadding="5" cellspacing="0" align="center">
+				<tr>
+					<td colspan="3" align="center" class="Tip_Title" id="oSignInformation"></td>
+				</tr>		
+				<tr height="50px">
+					<td width="400px" align="left" class="Tip_Content">
+						<label for="JJKQY">
+							<input id="JJKQY" name="JJKQY" type="checkBox" style="zoom:150%;" onclick="selectJJKQY()"/>ATM转账
+							<span id="JJKQYSign" style="color:red;font-size:25px"></span>
+						</label>
+					</td>
+					<td colspan="2" id="JJKQYText" align="left" class="Tip_Content">每日转出累计限额为50000元<br>(II类账户遵循账户限额规定)</td>
+				</tr>
+				<tr height="50px">
+					<td width="400px" align="left" class="Tip_Content">
+						<label for="XEMM">
+							<input id="XEMM" name="XEMM" type="checkBox" style="zoom:150%;" onclick="selectXEMM()"/>小额免密支付
+							<span id="XEMMSign" style="color:red;font-size:25px"></span>
+						</label>
+					</td>
+					<td colspan="2" id="XEMMText" align="left" class="Tip_Content">单笔免密限额为300元</br>单日累计限额为1000元</td>
+				</tr>
+				<tr height="50px">
+					<td width="400px" align="left" class="Tip_Content">
+						<label for="DSFKJ">
+							<input id="DSFKJ" name="DSFKJ" type="checkBox" style="zoom:150%;" onclick="selectDSFKJ()"/>第三方快捷支付
+							<span id="DSFKJSign" style="color:red;font-size:25px"></span>
+						</label>
+					</td>
+					<td id="DSFKJText" align="left" class="Tip_Content"></td>
+					<td align="center" class="Tip_Content"><button id="DSFKJBtn" class="Menu_Left1" onclick="dialog(1)"><span id="oWatchBook"></span></button></td>
+				</tr>
+				<tr height="50px">
+					<td width="400px" align="left" class="Tip_Content">
+						<label for="DXTZ">
+							<input id="DXTZ" name="DXTZ" type="checkBox" style="zoom:150%;" onclick="selectDXTZ()"/>个人短信通知
+							<span id="DXTZSign" style="color:red;font-size:25px"></span>
+						</label>
+					</td>
+					<td id="DXTZText" align="left" class="Tip_Content">账户资金变动通知不设起点额，同时显示余额。</td>
+					<td align="center" class="Tip_Content"><button id="DXTZBtn" class="Menu_Left1" onclick="dialog(2)"><span id="oWatchBook"></span></button></td>
+				</tr>
+				<tr height="50px">
+					<td width="400px" align="left" class="Tip_Content">
+						<label for="SJYH">
+							<input id="SJYH" name="SJYH" type="checkBox" style="zoom:150%;" onclick="selectSJYH()"/>个人手机银行
+							<span id="SJYHSign" style="color:red;font-size:25px"></span>
+						</label>
+					</td>
+					<td id="SJYHText" align="left" class="Tip_Content"></td>
+					<td align="center" class="Tip_Content"><button id="SJYHBtn" class="Menu_Left1" onclick="dialog(3)"><span id="oWatchBook"></span></button></td>
+				</tr>
+				<tr height="50px">
+					<td width="400px" align="left" class="Tip_Content">
+						<label for="WYZSB">
+							<input id="WYZSB" name="WYZSB" type="checkBox" style="zoom:150%;" onclick="selectWYZSB()"/>个人网上银行
+							<span id="WYZSBSign" style="color:red;font-size:25px"></span>
+						</label>
+					</td>
+					<td id="WYZSBText" align="left" class="Tip_Content">
+						<label for="GRWYDX">
+							<input id="GRWYDX" name="GRWYSign" type="radio" style="zoom:150%;" onclick="selectGRWYDX()" checked="checked"/>短信版
+						</label>
+						<label for="GRWYZS">
+							<input id="GRWYZS" name="GRWYSign" type="radio" style="zoom:150%;" onclick="selectGRWYZS()"/>证书版
+						</label></br>
+						<span id="oUkeyPrice"></span>
+					</td>
+					<td align="center" class="Tip_Content"><button id="WYZSBBtn" class="Menu_Left1" onclick="dialog(4)"><span id="oWatchBook"></span></button></td>
+				</tr>
+			</table>
+			<table width="75%" height="10%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr id="signPhone">
+					<td colspan="2">
+						<table>
+							<tr>
+								<td align="right" class="Tip_Content"><span id="oRegisterPhone"></span>:&nbsp;&nbsp;</td>
+								<td align="left"><input class="input_long" type="text" name="input_tel1" id="input_tel1" maxlength="11" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkTel()"/></td>
+							</tr>
+							<tr>
+								<td align="right" class="Tip_Content">短信验证码:&nbsp;&nbsp;</td>
+								<td align="left"><input class="input_short2" type="text" name="input_check" id="input_check" maxlength="6" onclick="javascript:ShowKeyboard();"/>&nbsp;&nbsp;<button id="checkPhone" class="Menu_Left1" onclick="checkPhoneNum()">发送验证码</button></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr id="dealAgree">
+					<td align="right" onclick="selectCheck()"><div id="checkbox" class="uncheckBox"></div></td>
+					<td align="left"><div class="Tip_Agree">&nbsp;&nbsp;同意以上所签约协议</div></td>
+				</tr>
+				<tr>
+					<td colspan="2" align="center"><span class="Error_Title" id="error_TXTSign"></span></td>
+				</tr>
+			</table>
+		</div>
+		<span class="MENU99"><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+	</div>
+	
+	<div id="oLUserSignTip" class="FULLSCR" style="visibility:hidden;">
+    	<div class="FULLSCR">
+    	<span class="Tip_Tick" id="oSigFingerTick"></span>
+		<br><br><br><br><br><br><br><br>
+		   <table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+				<tr>
+					<td height="20px" align="center" class="Error_Title" id="Tip_UserSign"></td>
+				</tr>		
+		   </table>
+		   <div id="infoToPic">
+			<table width="75%" height="20%" border="0" bgcolor="#FFFFFF" cellpadding="0" cellspacing="0" align="center">
+			<tr><td height="20px"></td></tr>
+			
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%">
+				<fieldset>
+				<legend><span id="oUserTip1"></span></legend>
+				<table>
+				<tr>
+					<td>&nbsp;&nbsp;<span id="oTextName"></span>&nbsp;&nbsp;<span id="text_name2"></span></td>
+					<td>&nbsp;&nbsp;<span id="oTextEth"></span>&nbsp;&nbsp;<span id="text_ethnic2"></span></td>
+				</tr>
+				<tr>
+					<td colspan="4">&nbsp;&nbsp;<span id="oTextPid"></span>&nbsp;&nbsp;<span id="text_pid2"></span></td>
+				</tr>
+				<tr>
+					<td colspan="4">&nbsp;&nbsp;<span id="oTextAddr"></span>&nbsp;&nbsp;<span id="text_address2"></span></td>
+				</tr>
+				</table>
+				</fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			
+			<tr><td height="20px"></td></tr>
+			
+			<tr>
+			  <td width="3%"></td>
+			  <td width="68%">
+			  <fieldset>
+			  <legend><span id="oUserTip2"></span></legend>
+			   <table>
+				<tr>
+				    <td>&nbsp;&nbsp;<span id="oSignstrPan"></span>&nbsp;&nbsp;<span id="text_strPan"></span></td>
+				</tr>
+			  </table>
+			  <div id="signDetailMsg"></div>
+			  <table>
+				<tr>
+				    <td nowrap>&nbsp;&nbsp;<span id="oTextDate"></span>&nbsp;&nbsp;<span id="text_date"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTime"></span>&nbsp;&nbsp;<span id="text_time"></span></td>
+					<td nowrap>&nbsp;&nbsp;<span id="oTextTerm"></span>&nbsp;&nbsp;<span id="text_term"></span></td>
+				</tr>
+			  </table>
+			  </fieldset>
+			  </td>
+			  <td width="3%"></td>
+			</tr>
+			<tr><td height="20px"></td></tr>
+			</table>
+			</div>
+			<table width="75%" height="5%" border="0" cellpadding="0" cellspacing="0" align="center">
+			<tr>
+		        <td colspan="2" ><iframe id="ifreamSign" src="../Service/ESign.html" width="100%" height="250px" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		    </tr>
+		</table>
+
+	</div>
+	     <span class="MMENU8" id="oSigFinger" style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].finger,100);" class="Menu_Right" name="Menu_Right" >指纹验证</button></span>
+		 <span class="MMENU7" id="oESign"  style="top: 75%;"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(window.frames['ifreamSign'].ESig,100);" class="Menu_RightE" name="Menu_RightE" >电子签名</button></span>
+	     <span class="MMENUMiddle" id="oSigAgain" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F7()" class="Menu_Right" name="oHome" id="oSign"></button></span>
+	     <span class="MENU98" ><button onclick="javascript:window.frames['ifreamSign'].onKey_F98()" class="return" name="return"></button></span>
+	     <span class="MENU99" id="oSigConfirm"><button onclick="javascript:window.frames['ifreamSign'].onKey_F99()" class="confirm" name="confirm"></button></span>
+	</div>
+
+	<div id="InputPassword1" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oInputPassword1Tick"></span><br/><br/><br/><br/>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr><td></td></tr>
+				<tr class="FirstLine">
+					<td align="center">
+						<pre class="Tip_Title" id="Tip_InputPwd1"></pre>
+						<input type="password" id="input_Password1" name="input_Password1" size="10" maxlength=6 class="input_short" /><br/><br/>
+						<img width="600px" height="430px" src="../Image/InputPin.gif" />
+						<table><tr><td class="Error_Title" id="error_InputPassword1"></td></tr></table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="InputPassword2" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oInputPassword2Tick"></span><br/><br/><br/><br/>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr><td></td></tr>
+				<tr class="FirstLine">
+					<td align="center">
+						<pre class="Tip_Title" id="Tip_InputPwd2"></pre>
+						<input type="password" id="input_Password2" name="input_Password2" size="10" maxlength=6 class="input_short" /><br/><br/>
+						<img width="600px" height="430px" src="../Image/InputPin.gif" />
+						<table><tr><td class="Error_Title" id="error_InputPassword2"></td></tr></table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+	<div id="InputPassword3" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oInputPassword3Tick"></span><br/><br/><br/><br/>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr><td></td></tr>
+				<tr class="FirstLine">
+					<td align="center">
+						<pre class="Tip_Title" id="Tip_InputPwd3"></pre>
+						<input type="password" id="input_Password3" name="input_Password3" size="10" maxlength=6 class="input_short" /><br/><br/>
+						<img width="600px" height="430px" src="../Image/InputPin.gif" />
+						<table><tr><td class="Error_Title" id="error_InputPassword3"></td></tr></table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div id="InputPassword4" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oInputPassword4Tick"></span><br/><br/><br/><br/>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr><td></td></tr>
+				<tr class="FirstLine">
+					<td align="center">
+						<pre class="Tip_Title" id="Tip_InputPwd4"></pre>
+						<input type="password" id="input_Password4" name="input_Password4" size="10" maxlength=6 class="input_short" /><br/><br/>
+						<img width="600px" height="430px" src="../Image/InputPin.gif" />
+						<table><tr><td class="Error_Title" id="error_InputPassword4"></td></tr></table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+	<div id="oLUkeyDispenserTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br><br><br><br><br><br>
+			<span class="Tip_Tick" id="oUkeyDispenTick"></span>
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr class="FirstLine" height="100">
+					<td align="center"><br/><br/><br/>
+						<img alt="" src="../Terminal/Style/Default/Img/LOGO2.gif" style="background: transparent;" width="130" height="130" /><br/>
+						<span class="Tip_Title" id="UkeyDispenser_Tip"></span><br/>
+					</td>
+				</tr>
+				<tr>
+					<td>&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+	<div id="oLTakeUkeyTip" class="FULLSCR" style="visibility: hidden;">
+		<span class="Tip_Tick" id="oTakeUkeyTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center">
+					<span class="Tip_Title" id="oTakeUkey"></span><br/><br/>
+					<img src="../Image/Ukey_out.gif" width="790" height="490"/>
+				</td>
+			</tr>
+		</table>
+	</div>
+
+	<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<br/><br/><br/><br/><br/><br/>
+			<span class="Tip_Tick" id="oServiceSuccessTick"></span>
+			<table width="100%" height="80%" border="0" cellpadding="0" cellspacing="0">
+				<tr>
+					<td align="center"><br/><br/>
+					<span class="Tip_Title" width="100%" id="oSignListInfo"></span><br/>
+					<table cellpadding="2" cellspacing="1" class="Table_Ob" id="oTable" width="75%" height="50%">
+						<thead class="Table_Head" id="oTHead"></thead>
+						<tbody id="oTBody">
+						</tbody>
+					</table></td>
+				</tr>
+			</table>
+		</div>
+		<span class="MMENU1" id="oMFirstPage"><button onclick="javascript:onKey_F1()" class="Menu_page" name="oFirstPage" id="oFirstPage"></button></span>
+		<span class="MMENU2" id="oMPrevPage"><button onclick="javascript:onKey_F2()" class="Menu_page" name="oPrevPage" id="oPrevPage"></button></span>
+		<span class="MMENU3" id="oMNextPage"><button onclick="javascript:onKey_F3()" class="Menu_page" name="oNextPage" id="oNextPage"></button></span>
+		<span class="MMENU4" id="oMEndPage"><button onclick="javascript:onKey_F4()"  class="Menu_page" name="oEndPage" id="oEndPage"></button></span>
+		<span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+	    <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" id="oPrintReceipt" name="oPrintReceipt"></button></span>
+	</div>
+
+	<div id="oLServiceFailedTip" class="FULLSCR" style="visibility: hidden;">
+		<div class="FULLSCR">
+			<span class="Tip_Tick" id="oServiceFailedTick"></span> <br />
+			<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+				<tr>
+					<td align="center">
+						<table cellpadding="10" cellspacing="1" class="Table_Ob" width="55%">
+							<tr class="Table_Head">
+								<td colspan="2" class="Error_Title" align="center" id="oTitle"></td>
+							</tr>
+							<tr class="Table_Record">
+								<td id="oDescription"></td>
+								<td><span id="oFailedRetDesc"></span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	
+	<div id="oLTakeInvalCardTip" class="FULLSCR" style="visibility: hidden;">
+		<span class="Tip_Tick" id="oTakeInvalCardTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+			<br/><br/><br/><br/><br/><br/><br/><br/>
+			<tr class="FirstLine">
+				<td align="center"><span id="oReInsertDebCard" class="Tip_Title"></span><br />
+				<br /> <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+				</td>
+			</tr>
+		</table>
+	</div>
+	
+	<!--增加返回主页-->
+	<div id="oLGoHome" class="GoHomeTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+
+	<!--增加滑动安全退出-->
+	<div id="oLSafeQuit" class="SafeQuitTip">
+		<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+			 <tr height="100%">
+			     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+			 </tr>
+	    </table>
+	</div>
+</body>
+</html>

@@ -1,0 +1,678 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>信用卡服务菜单页面</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+function doMouseDown(){
+	top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+// 服务流程处理入口
+function serverEntrance()
+{
+  top.pool.set("strNavigate2Url", window.location.pathname);
+  showMenu();
+}
+
+/*
+  根据当前位置，显示菜单
+ */
+var menus;
+function showMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("信用卡查询", 'showQueryMenu()');
+  menus[menus.length] = new Array("信用卡启用", 'CreditCardActivate()');
+  menus[menus.length] = new Array("信用卡转账", 'CreditCardTransfer()');
+  menus[menus.length] = new Array("信用卡电子现金", 'showICMenu()');
+  menus[menus.length] = new Array("信用卡密码管理", 'CreditCardPWDManage()');
+  menus[menus.length] = new Array("信用卡自动还款约定", 'CreditCardRePayAppointMenu()');
+  
+  var btn = document.all("oLMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+
+  onKey_F98 = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+   
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oMenuTick);
+  top.wins.showMain("oLMenu");
+}
+
+//电子现金菜单
+function showICMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+    
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("电子现金充值", 'CreditCardLoad()');
+  menus[menus.length] = new Array("电子现金余额", 'CreditCardQueryBalanceIC()');
+  menus[menus.length] = new Array("电子现金明细", 'CreditCardQueryLoadDetail()');
+  
+  var btn = document.all("oLICMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  
+  onKey_F98 = function()
+  {
+    showMenu();
+  }
+  
+    //超时退出
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oICMenuTick);
+  top.wins.showMain("oLICMenu");
+}
+
+//查询菜单
+function showQueryMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("账户查询", 'CreditCardAccInfoQuery()');
+  menus[menus.length] = new Array("账单查询", 'showBillQueryMenu()');
+
+  
+  var btn = document.all("oLQueryMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_F98 = function()
+  {
+    showMenu();
+  }
+  
+  //超时退出
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oQueryMenuTick);
+  top.wins.showMain("oLQueryMenu");
+}
+
+//账单查询菜单
+function showBillQueryMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("未出账单", 'CreditCardUnCheckBill()');
+  menus[menus.length] = new Array("已出账单", 'CreditCardCheckBill()');
+
+  
+  var btn = document.all("oLBillQueryMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    showQueryMenu();
+  }
+  
+  //超时退出
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oBillMenuTick);
+  top.wins.showMain("oLBillQueryMenu");
+}
+
+//信用卡启用
+function CreditCardActivate()
+{
+   startService("0004_904102_00001");	 
+}
+
+//信用卡转账
+function CreditCardTransfer()
+{
+   startService("0004_903101_00001");	 
+}
+
+//信用卡自动还款约定子菜单（申请、取消、查询）
+function CreditCardRePayAppointMenu()
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("查询", 'CreditRePayAppointQuery()');
+  menus[menus.length] = new Array("申请", 'CreditRePayAppointApply()');
+  menus[menus.length] = new Array("取消", 'CreditRePayAppointCancel()');
+  
+  var btn = document.all("oLRePayAppointMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() {
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);	  
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    showMenu();
+  }
+  
+  //超时退出
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oRePayAppointMenuTick);
+  top.wins.showMain("oLRePayAppointMenu");
+}
+
+//信用卡自动还款约定查询
+function CreditRePayAppointQuery(){
+	startService("0004_904107_00001");
+}
+//信用卡自动还款约定申请
+function CreditRePayAppointApply(){
+	startService("0004_904105_00001");
+	
+}
+
+//信用卡自动还款约定取消
+function CreditRePayAppointCancel(){
+	startService("0004_904106_00001");
+}
+
+//信用卡密码管理：重置密码、修改密码
+function CreditCardPWDManage()
+{
+window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("重置密码", 'ResetPWDMenu()');
+  menus[menus.length] = new Array("修改密码", 'ModifyPWDMenu()');
+  
+  var btn = document.all("oLPWDManageMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    showMenu();
+  }
+  
+  //超时退出
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oPWDManageTick);
+  top.wins.showMain("oLPWDManageMenu"); 	 
+}
+
+//修改密码：查询密码、交易密码
+function ModifyPWDMenu(){
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("查询密码", 'ModifyQueryPWD()');
+  menus[menus.length] = new Array("交易密码", 'ModifyTransPWD()');
+  
+  var btn = document.all("oLModifyPWDManageMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    CreditCardPWDManage();
+  }
+  
+  //超时退出
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oModifyPWDManageTick);
+  top.wins.showMain("oLModifyPWDManageMenu"); 
+}
+//修改查询密码
+function ModifyQueryPWD()
+{
+	startService("0004_902503_00001");
+}
+//修改交易密码
+function ModifyTransPWD(){
+	startService("0004_902503_00002");
+}
+//信用卡重置密码菜单
+function ResetPWDMenu(){
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  
+  //定义服务菜单数组
+  menus = new Array();
+  menus[menus.length] = new Array("查询密码", 'ResetQueryPWD()');
+  menus[menus.length] = new Array("交易密码", 'ResetTransPWD()');
+  
+  var btn = document.all("oLResetPWDManageMenu").getElementsByTagName("button");
+  //初始化按钮菜单
+  for(var i=0; i<btn.length-2; i++)
+  {
+  	  btn[i].style.visibility = "hidden";
+  	  btn[i].innerHTML = "";
+  	  btn[i].name = "";
+  	  btn[i].onclick = function() { 
+  	  };
+  }
+  for(var i=0; i<menus.length; i++)
+  {
+  	  btn[i].style.visibility = "";
+  	  btn[i].id = menus[i][0];
+  	  btn[i].name = menus[i][1];
+  	  btn[i].onclick = function() { 
+		top.journalPrinter.addJournalWithTime("客户选择 " + this.id);
+  	     eval(this.name);
+  	  };
+  }
+  onKey_Cancel = onKey_F98 = function()
+  {
+    CreditCardPWDManage();
+  }
+  
+  //超时退出
+  onTimeout = function()
+  {
+	top.serviceCtrl.navigate2Quit();
+  }
+  //请选择交易提示音
+  try{top.soundPlayer.playback("/Sound/SelectType.mp3");}catch(e){}
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout,oResetPWDManageTick);
+  top.wins.showMain("oLResetPWDManageMenu");  
+}
+//信用卡重置查询密码
+function ResetQueryPWD()
+{
+   startService("0004_902502_00001");	 
+}
+//信用卡重置交易密码
+function ResetTransPWD()
+{
+   startService("0004_902502_00002");	 
+}
+
+//信用卡电子现金充值
+function CreditCardLoad()
+{
+   startService("0004_902202_00001");	 
+}
+//信用卡电子现金余额
+function CreditCardQueryBalanceIC()
+{
+   startService("0004_000000_00001");	 
+}
+//信用卡电子现金明细
+function CreditCardQueryLoadDetail()
+{
+   startService("0004_000000_00002");	 
+}
+
+//账户信息查询
+function CreditCardAccInfoQuery()
+{
+   startService("0004_904503_00001");	 
+}
+
+//未出账单
+function CreditCardUnCheckBill()
+{
+   startService("0004_904507_00001");	 
+}
+//已出账单
+function CreditCardCheckBill()
+{
+   startService("0004_904508_00001");	 
+}
+
+/*开始运行服务*/
+function startService(strServiceMenuAction)
+{
+	onPrintJudge(strServiceMenuAction);
+}
+
+/*不能打印凭条时友情提醒*/
+function onPrintJudge(strServiceAction)
+{
+  window.operateCtrl.disableInput(true);
+  top.serviceCtrl.stopUserTimeout();
+  onKey_F99 = onKey_Enter = function()
+  {
+	  top.serviceCtrl.navigate2("/Service/" + strServiceAction + ".html");
+  }
+  onKey_F98 = onKey_Cancel = function()
+  {
+  	  top.serviceCtrl.navigate2Quit();
+  }
+  if (top.receiptprinter.ReceiptPrinterStatus()!="true")
+  {
+	  oImpNotice1.innerHTML = top.langcur.oReceiptOffLine; 
+  }
+  else
+  {
+      onKey_F99();
+	  return;	  
+  }
+  window.operateCtrl.enableInput();
+  top.serviceCtrl.startUserTimeout(onKey_F98, top.iUserTimeout,oPrintTick);
+  top.wins.showMain("oLPrint");
+}
+
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu3.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditCardQuery" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditCardActivate" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="CreditCardTransfer" name="oMMenu3" id="oMMenu3"></button></span>
+  <span class="MENU4" id="oLMenu4"><button class="CreditCard" name="oMMenu4" id="oMMenu4"></button></span>
+  <span class="MENU5" id="oLMenu5"><button class="CreditCardPWDManage" name="oMMenu5" id="oMMenu5"></button></span>
+  <span class="MENU6" id="oLMenu6"><button class="CreditCardRePayAppoint" name="oMMenu6" id="oMMenu6"></button></span>
+  
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+
+</div>
+
+<div id="oLICMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oICMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditCardLoad" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditCardQueryBalanceIC" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="CreditCardQueryLoadDetail" name="oMMenu3" id="oMMenu3"></button></span>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+  </div>
+
+<div id="oLQueryMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oQueryMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditCardAccInfoQuery" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditCardBill" name="oMMenu2" id="oMMenu2"></button></span>
+  
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLBillQueryMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oBillMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditCardUnCheckBill" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditCardCheckBill" name="oMMenu2" id="oMMenu2"></button></span>
+  
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLRePayAppointMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oRePayAppointMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditCardMenuQuery" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditCardMenuApply" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="CreditCardMenuCancel" name="oMMenu3" id="oMMenu3"></button></span>
+
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+</div>
+
+<div id="oLPrint" class="FULLSCR" style="visibility: hidden;">
+	<div class="FULLSCR">
+	  <span class="Tip_Tick" id="oPrintTick"></span>
+		<table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+		  <tr>
+            <td align="center">
+				<table cellpadding="10" cellspacing="1" class="Table_Ob" width="100%">
+					<tr><td align="center"><span class="Tip_Alarm" id="oImpNotice1"></span>
+					</td></tr>
+				</table>
+			 </td>
+		   </tr>
+		 </table>
+	  </div>
+  <span class="MENU98" id="oLMenu98"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F98,100);" class="return" name="return"></button></span>
+  <span class="MENU99" id="oLMenu99"><button onmousedown="top.wins.doMouseDown(event.srcElement.name);setTimeout(onKey_F99,100);" class="confirm" name="confirm"></button></span>
+
+  </div>
+
+<div id="oLGHRePayMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oGHRePayMenuTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditCardMenuQuery" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditCardMenuApply" name="oMMenu2" id="oMMenu2"></button></span>
+  <span class="MENU3" id="oLMenu3"><button class="CreditCardMenuCancel" name="oMMenu3" id="oMMenu3"></button></span>
+
+  <span class="MENU98" id="oLMenu98"><button onclick="javascript:onKey_F98();" class="return" name="oReturn"></button></span>
+</div>
+
+<div id="oLResetPWDManageMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oResetPWDManageTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditResetQueryPWD" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditResetTransPWD" name="oMMenu2" id="oMMenu2"></button></span>
+
+  <span class="MENU98" id="oLMenu98"><button onclick="javascript:onKey_F98();" class="return" name="oReturn"></button></span>
+</div>
+
+<div id="oLModifyPWDManageMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oModifyPWDManageTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditResetQueryPWD" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditResetTransPWD" name="oMMenu2" id="oMMenu2"></button></span>
+
+  <span class="MENU98" id="oLMenu98"><button onclick="javascript:onKey_F98();" class="return" name="oReturn"></button></span>
+</div>
+
+<div id="oLPWDManageMenu" class="FULLSCR">
+  <div class="FULLSCR">
+	<span class="Tip_Tick" id="oPWDManageTick"></span>
+    <table width="100%" height="5%" border="0" cellpadding="0" cellspacing="0">
+      <tr class="FirstLine">
+	     <td align="center"><span class="Tip_Title" id="oPlsChooseSvc"></span></td></tr>
+    </table>
+  </div>
+  <span class="MENU1" id="oLMenu1"><button class="CreditPwdReset" name="oMMenu1" id="oMMenu1"></button></span>
+  <span class="MENU2" id="oLMenu2"><button class="CreditPasswordModify" name="oMMenu2" id="oMMenu2"></button></span>
+
+  <span class="MENU98" id="oLMenu98"><button onclick="javascript:onKey_F98();" class="return" name="oReturn"></button></span>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,773 @@
+<html>
+<head>
+<meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=gb2312" />
+<title>活期转定期</title>
+<LINK REL=stylesheet HREF="../Terminal/Style/Default/Style.css" type="text/css" />
+<script type="text/javascript">
+var isAmount = false;
+var last = "";//光标最后停留的标签id名称
+var inputPinFlag = 0;
+function doMouseDown(){
+  top.wins.clickDEvent(top.MainFrame.document,event.srcElement.name,"Menu_Right1");
+}
+// 初始化本次服务流程
+top.serviceCtrl.prepare4Entrance(document, window, function(){serverEntrance();});
+
+// 禁止页面其他非输入控件的元素获得焦点
+document.attachEvent("onclick",checkEvent);
+document.attachEvent("ondblclick",checkEvent);
+document.attachEvent("onfocusin",checkEvent);
+document.attachEvent("onkeypress",checkEvent);
+function checkEvent() {
+	try {
+		//如果光标停留在输入框上,更新last
+		if(document.activeElement.tagName == "INPUT"){
+			last = document.activeElement.id;
+		}
+		//如果点击的不是输入框,光标回到最后停留的标签中.否则切换到对应的输入框标签
+		if(event.srcElement.id == "" || event.srcElement.type != "text"){
+			top.wins.checkEvent(event.srcElement, last);
+		}else{
+			top.wins.checkEvent(event.srcElement, event.srcElement.id);
+		}
+	}
+	catch (e) {}
+}
+
+// 服务流程处理入口
+function serverEntrance()
+{
+  if(new top.CheckCard().cardTransStatus() !="true"){
+	onServiceFailed(top.langcur.oCurrentToFixedFail, top.TERMRETCODE_CARD_NOCARDDISPERSER, new top.CheckCard().cardTransStatus());
+  }else{
+	top.pool.set("strNavigate2Url", window.location.pathname);
+	if (top.cardreader.isCardPresent()){
+		if(top.pool.get("strCardType") != "1"){
+			InsertCreditCard();//提示插入IC卡
+		}else{	
+			top.pool.set("strNavigate2Url","");
+			top.pool.set("strName",top.pool.get("strRespIDName"));
+			top.pool.set("strPwd",top.pool.get("strPinBlock"));
+			fixedInfo();
+		}
+		
+	  }else{
+		top.serviceCtrl.navigate2InsertCard();
+	  }
+  }
+}
+
+//提示插入借记卡
+function InsertCreditCard()
+{
+	onCardEjected = function()
+	  {
+		top.serviceCtrl.startTipTick(top.iUserTimeout, oTakeCardTick);
+		// 播放提示音
+		try{top.soundPlayer.playback("/Sound/TakeCardTip.mp3");}catch(e){}	
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+
+		top.wins.showMain("oLTakeCardTip");
+	  }
+	onCardTaken = function()
+	  {
+		top.serviceCtrl.navigate2(top.pool.get("strNavigate2Url"));
+	  }
+	  onDeviceError_Idc = function()
+	  {
+		if (top.cardreader.isCardPresent()){
+		   top.YHAXCardReader.Capture();
+		} 
+		onServiceFailed(top.langcur.oCurrentToFixedFail, top.TERMRETCODE_CARD_FAILED, top.langcur.oCardReaderError); 
+	  }
+	  onCardCapturedTipEnd = function()
+	  {
+		top.serviceCtrl.navigate2Quit();
+	  }
+	  onCardCaptured = function()
+	  {
+		  top.pool.set("printType","3");//选择打印的凭条类型
+	      top.receiptprinter.printAndEject();
+		  top.wins.showInfoTip(top.langcur.oCardCapturedTip);
+		  top.serviceCtrl.startFlowCtrlTimeout(onCardCapturedTipEnd, 15 * 1000);
+	  }
+	top.cardreader.eject();
+}
+
+//填写定期信息
+function fixedInfo() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	//确定按钮
+	onKey_Enter = onKey_F99 = function() {
+		//判断金额是否合法
+		if (!new top.StringCtrl(input_Amount.value).isValidAmount() || input_Amount.value <= 0) {
+			error_InputAmount.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+		//金额不得小于50
+		} else if (input_Amount.value < 50) {
+			error_InputAmount.innerHTML = top.langcur.oFixAmountMin;
+			input_Amount.value = "";
+			input_Amount.focus();
+		}else if (top.pool.get("F54_ZHYE") != "" && top.pool.get("F54_ZHYE") != null && parseFloat(input_Amount.value) > parseFloat(top.pool.get("F54_ZHYE"))) {
+			error_InputAmount.innerHTML = "余额不足，请重新输入";
+			input_Amount.value = "";
+			input_Amount.focus();
+		}else if(DQtime.value == "0000"){
+			error_InputAmount.innerHTML = "请您输入转入金额,并选择存期...";
+		}else {
+			error_InputAmount.innerHTML = "&nbsp;";
+			top.inputmethod.Close();
+			window.operateCtrl.disableInput(true);
+			top.serviceCtrl.stopUserTimeout();		
+			//交易附加信息域：存期
+			top.pool.set("strProductSubType",DQtime.value);			
+			var strDqTime;
+			if(DQtime.value =="0126"){
+			   strDqTime = top.langcur.oFixThreeMonth;
+			}else if(DQtime.value=="0131"){
+			   strDqTime = top.langcur.oFixSixMonth;
+			}else if(DQtime.value =="0136"){
+			   strDqTime = top.langcur.oFixOneYear;
+			}else if(DQtime.value =="0141"){
+			   strDqTime = top.langcur.oFixTwoYear;
+			}else if(DQtime.value =="0146"){
+			   strDqTime = top.langcur.oFixThreeYear;
+			}else if(DQtime.value =="0151"){
+			   strDqTime = top.langcur.oFixFiveYear;
+			}
+			top.pool.set("Amount", input_Amount.value);
+			top.pool.set("strDqTime",strDqTime);
+			confirmTransInfo();
+		}
+	}
+	
+	//查询利率
+	queryRate = function()
+	{	
+		top.pool.set("Amount", input_Amount.value);
+		if(top.pool.get("Amount") != null && top.pool.get("Amount") != "" && DQtime.value != "0000"){
+			oRate.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;正在查询利率，请稍候...";
+			oRest.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;正在查询利息，请稍候...";
+			error_InputAmount.innerHTML = "&nbsp;";
+			document.getElementById("DQtime").disabled = true;
+			document.getElementById("queryBalance").disabled = true;
+			document.getElementById("AmountQueryButton").disabled = true;
+			document.getElementById("input_Amount").disabled = true;
+			top.inputmethod.Close();
+			top.pool.set("strRateUp","1");
+			top.trans.send905105Async();
+			
+		}else{
+			error_InputAmount.innerHTML = "请您输入转入金额,并选择存期...";
+		}
+	}
+	//利率查询成功回调
+	onRateSuccessful = function()
+	{
+		top.inputmethod.ShowDigit(490,650);  //数字等输入 1
+		document.getElementById("DQtime").disabled = "";
+		document.getElementById("DQtime").removeAttribute("disabled");
+		document.getElementById("queryBalance").disabled = "";
+		document.getElementById("queryBalance").removeAttribute("disabled");
+		document.getElementById("input_Amount").disabled = "";
+		document.getElementById("input_Amount").removeAttribute("disabled");
+		document.getElementById("AmountQueryButton").disabled = false;
+		var strRecordArr;
+		strRecordArr = new Array();
+		var itemCount = top.exchxmlasync.msgxmldomResp.selectNodesCount("/TransMsg/dataList/F59/item");
+		itemCount = parseInt(itemCount,10);
+		for(var i=1; i<=itemCount; i++)
+		{
+			var intRate = top.exchxmlasync.msgxmldomResp.getElementValue("/TransMsg/dataList/F59/item[" + i + "]/depositIntRate1");
+			strRecordArr[strRecordArr.length] = new Array(
+				intRate
+			);
+		}
+		var code;
+		if(DQtime.value =="0126"){
+		   code = "DR01R002";
+		}else if(DQtime.value=="0131"){
+		   code = "DR01R003";
+		}else if(DQtime.value =="0136"){
+		   code = "DR01R004";
+		}else if(DQtime.value =="0141"){
+		   code = "DR01R005";
+		}else if(DQtime.value =="0146"){
+		   code = "DR01R006";
+		}
+		top.pool.set("code",code);
+		if(top.pool.get("code") == "DR01R002"){
+			top.pool.set("strRate",strRecordArr[0]);
+			var rate = 0.25;
+		}else if(top.pool.get("code") == "DR01R003"){
+			top.pool.set("strRate",strRecordArr[1]);
+			var rate = 0.5;
+		}else if(top.pool.get("code") == "DR01R004"){
+			top.pool.set("strRate",strRecordArr[2]);
+			var rate = 1;
+		}else if(top.pool.get("code") == "DR01R005"){
+			top.pool.set("strRate",strRecordArr[3]);
+			var rate = 2;
+		}else if(top.pool.get("code") == "DR01R006"){
+			top.pool.set("strRate",strRecordArr[4]);
+			var rate = 3;
+		}
+		oRate.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;" + new top.StringCtrl(parseFloat(top.pool.get("strRate"))).formatNumber(4) + "%";	
+		oRest.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;" + new top.StringCtrl(parseFloat((top.pool.get("strRate")/100) * top.pool.get("Amount") * rate)).formatNumber(2);
+		top.pool.set("oRate",new top.StringCtrl(parseFloat(top.pool.get("strRate"))).formatNumber(4));
+		top.pool.set("oRest",new top.StringCtrl(parseFloat((top.pool.get("strRate")/100) * top.pool.get("Amount") * rate)).formatNumber(2));
+		input_Amount.focus();
+	}
+	
+	//查询余额
+	onKey_Amount = function()
+	{
+	    top.pool.set("inqFlag","FX");
+		InqBalance.innerHTML = "正在查询余额，请稍候...";
+		document.getElementById("AmountQueryButton").disabled = true;
+		document.getElementById("DQtime").disabled = true;
+		document.getElementById("input_Amount").disabled = true;
+		top.inputmethod.Close();
+		top.trans.send902107Async();//查询余额
+	}
+	
+	//查询余额成功回调
+	onInqBalanceSuccess = function()
+	{
+		top.inputmethod.ShowDigit(490,650);  //数字等输入 1
+		document.getElementById("AmountQueryButton").disabled = false;
+		document.getElementById("DQtime").disabled = "";
+		document.getElementById("DQtime").removeAttribute("disabled");
+		document.getElementById("input_Amount").disabled = "";
+		document.getElementById("input_Amount").removeAttribute("disabled");
+		InqBalance.innerHTML ="RMB:" + top.pool.get("F54_ZHYE") + "元";
+		input_Amount.focus();
+	}
+	
+	onTimeout = function()
+    {
+		error_InputAmount.innerHTML = "&nbsp;";
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2Quit();
+    }
+	//退卡按钮
+	onKey_F98 = function() {
+		error_InputAmount.innerHTML = "&nbsp;";
+		top.inputmethod.Close();
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+	
+	input_Amount.onkeypress = function()
+	{
+		input_checkAmount();
+		error_InputAmount.innerHTML = "&nbsp;";
+		document.getElementById("DQtime").disabled = "";
+		document.getElementById("DQtime").removeAttribute("disabled");
+		DQtime.value = "0000";
+	}
+	window.operateCtrl.enableInput();
+	//超时处理
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oFixedInfoTick);
+	// 播放提示音
+	top.soundPlayer.playback("/Sound/SelectFixedType.mp3");
+	top.inputmethod.ShowDigit(490,650);  //数字等输入 1
+	oRate.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;请先输入金额，并选择存期...";
+	oRest.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;请先输入金额，并选择存期...";
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLFixedInfo");
+	input_Amount.value = "";
+	input_Amount.focus();
+	document.getElementById("DQtime").disabled = true;
+}
+
+//确认待处理的活转定交易信息
+function confirmTransInfo() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+
+	onKey_Enter = onKey_F99 = function() {
+		inputPin();
+	}
+
+	onKey_Cancel = onKey_F98 = function() {
+		fixedInfo();
+	}
+	onTimeout = function()
+    {
+		top.serviceCtrl.navigate2Quit();
+    }
+	var Rate = new top.StringCtrl(parseFloat(top.pool.get("strRate"))).formatNumber(4);
+	var IntRate = new top.StringCtrl(parseFloat(top.pool.get("strRate"))).formatNumber(4);
+	top.pool.set("strFloatingIntRate",Rate);
+	top.pool.set("IntRate",IntRate);
+	//确认交易信息
+	text_Pan.innerHTML = top.pool.get("strPan");
+	text_Time.innerHTML = top.pool.get("strDqTime");
+	text_Amount.innerHTML = new top.StringCtrl(parseFloat(top.pool.get("Amount"))).formatNumber(2);
+	text_InterestRate.innerHTML = top.pool.get("oRate") + "%";
+	text_InteRest.innerHTML = top.pool.get("oRest");
+	text_Name.innerHTML = top.pool.get("strName");
+	window.operateCtrl.enableInput();
+	//超时处理
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oTransConfirmTick);
+	// 播放提示音
+	try {top.soundPlayer.playback("/Sound/confirmTransInfo.mp3");} catch (e) {}
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLTransConfirm");
+}
+
+// 输入密码
+var bQuitSelected = false;
+var bReturnSelected = false;
+
+function inputPin() {
+	window.operateCtrl.disableInput(true);
+	onPlainCancelled = function() {
+		top.pinpad.bufferPIN();
+		//请输入密码提示音
+		top.soundPlayer.playback("/Sound/InputPassword.mp3");
+		window.operateCtrl.enableInput();
+		top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oInpPwdTick);
+
+		oLSafeQuit.style.visibility = "hidden";
+		oLGoHome.style.visibility = "hidden";
+		top.wins.showMain("InputPassword");
+		input_Password.value = "";
+		input_Password.focus();
+	}
+	onKey_F98 = onKey_Cancel = function() {
+		// 用户选择了返回
+		if (input_Password.value.length < top.pinpad.iMaxPinLen){
+			top.pinpad.cancelPINEntry();
+			confirmTransInfo();
+			return;
+		}
+	}
+	onGetPinBlockOK = function(pinblock) {
+		top.pool.set("strPinBlock",pinblock);
+		if (bQuitSelected) {
+			// 用户选择了退卡
+			top.serviceCtrl.navigate2Quit();
+			return;
+		}
+		if (bReturnSelected) {
+			// 用户选择了返回
+			confirmTransInfo();
+			return;
+		}
+		if (input_Password.value.length < top.pinpad.iMinPinLen) {
+			// 密码位数不足，则重新输入
+			error_InputPassword.innerHTML = top.langcur.oPlsReInputPwd;
+			top.serviceCtrl.startFlowCtrlTimeout(inputPin, 200);
+			return;
+		}
+		
+		window.operateCtrl.disableInput(true);
+        top.serviceCtrl.stopUserTimeout();
+		//发送验密交易
+		top.wins.showNewProcessingTip("正在发起验密交易，请稍候...");
+		top.trans.send901606SecondAsync();
+	}
+	onTimeout = onPinInputTimeout = function()
+    {
+		top.serviceCtrl.navigate2Quit();
+    }
+	onDeviceError_Pinpad = function() {
+		
+		onServiceFailed("活期转定期失败", "", "密码键盘故障");
+	}
+	input_Password.onkeypress = function() {
+		error_InputPassword.innerHTML = "&nbsp;";
+	}
+	top.pinpad.cancelUserEntry(); //关闭明文输入
+	bQuitSelected = false;
+	bReturnSelected = false;
+}
+
+//验密成功
+function onVerifyServiceSuccessful()
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	top.wins.stopProcessingTimeout();
+	//发送活期转定期交易
+	top.wins.showNewProcessingTip("正在进行活期转定期交易，请稍候...");
+	top.trans.send903401Async();
+	top.pool.set("TransNum",top.exchxmlasync.msgxmldomResp.getElementValue("F11"));
+	top.pool.set("TransCode",top.trans.convertTransType(top.pool.get("strTransCode")));
+}
+//验密失败
+function onServiceSecondFailed()
+{
+    window.operateCtrl.disableInput(true);
+    top.serviceCtrl.stopUserTimeout();
+	top.wins.stopProcessingTimeout();
+	if(inputPinFlag < 2){
+		inputPinFlag++;
+		error_InputPassword.innerHTML = "密码输入错误，请重新输入密码,3次输错卡将被锁！";
+	    inputPin();
+		
+	}
+	else
+	{
+	   inputPinFlag = 0;
+	   window.operateCtrl.disableInput(true);
+       top.serviceCtrl.stopUserTimeout();
+	   onServiceFailed("活期转定期失败", "9997", "密码错误次数过多");
+	}
+}
+
+function onServiceSuccessful() {
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+	if(top.receiptprinter.ReceiptPrinterStatus()!="true")
+	{
+		oPrintReceipt.style.visibility = "hidden";	
+	}else
+	{
+		onKey_Enter = onKey_F99 = function() {
+			//设置凭条内容
+			top.pool.set("Amount",new top.StringCtrl(parseFloat(top.pool.get("Amount"))).formatNumber(2));
+			top.pool.set("printType","45");//选择打印的凭条类型
+			top.serviceCtrl.navigate2PrintReceipt();
+		}
+	}
+	onTimeout = function()
+    {
+		top.serviceCtrl.navigate2Quit();
+    }
+	onKey_Cancel = onKey_F98 = function() {
+		top.serviceCtrl.navigate2SecondMenu();
+	}
+	
+	//交易成功,显示交易信息
+	text_SuccPan.innerHTML = top.pool.get("strPan");
+	text_SuccTime.innerHTML = top.pool.get("strDqTime");
+	text_SuccAmount.innerHTML = new top.StringCtrl(parseFloat(top.pool.get("Amount"))).formatNumber(2);
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iUserTimeout, oServiceSuccessTick);
+
+	oLSafeQuit.style.visibility = "visible";
+	oLGoHome.style.visibility = "visible";
+	top.wins.showMain("oLServiceSuccessTip");
+}
+
+function onServiceFailed(title, retcode, retdesc)
+{
+	window.operateCtrl.disableInput(true);
+	top.serviceCtrl.stopUserTimeout();
+
+	onTimeout = function()
+	{
+		if(retcode == "9997"){
+			top.serviceCtrl.navigate2Quit();
+		}else{
+			top.serviceCtrl.navigate2SecondMenu();
+		}
+	}
+	oTransferFailed.innerHTML = "活期转定期失败";
+	oFailedRetDesc.innerHTML = retdesc;
+
+	window.operateCtrl.enableInput();
+	top.serviceCtrl.startUserTimeout(onTimeout, top.iFailedTimeout,oServiceFailedTick);
+	if(retcode == "9997"){
+		oLGoHome.style.visibility = "hidden";
+	}else{
+		oLGoHome.style.visibility = "visible";
+	}
+	oLSafeQuit.style.visibility = "visible";
+	top.inputmethod.Close();
+	top.wins.showMain("oLServiceFailedTip");
+}
+
+//显示虚拟键盘
+function ShowKeyboard() {
+	top.inputmethod.ShowDigit(490,650);  //数字等输入 1
+}
+
+//校验金额
+function input_checkAmount()
+{
+	DQtime.value = "0000";
+	oRate.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;请先输入金额，并选择存期...";
+	oRest.innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;请先输入金额，并选择存期...";
+	if((input_Amount.value).indexOf(".") > 0){
+		var str = (input_Amount.value).substr(find_str((input_Amount.value),".",1)+1,(input_Amount.value).length);
+		if (str.indexOf(".") > 0)
+		{
+			error_InputAmount.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+		}else{
+			if(str.length == 0){
+			}else if (str.length >2)
+			{
+				error_InputAmount.innerHTML = "金额只支持两位小数";
+				input_Amount.value = input_Amount.value.substr(0,input_Amount.value.length-1);;
+				input_Amount.focus();
+			}
+			else if (!new top.StringCtrl(input_Amount.value).isValidAmount())
+			{
+				error_InputAmount.innerHTML = top.langcur.oPlsInputRightAmt;
+				input_Amount.value = "";
+				input_Amount.focus();
+			}
+		}
+	}
+	else {
+		if (!new top.StringCtrl(input_Amount.value).isValidAmount())
+		{
+			error_InputAmount.innerHTML = top.langcur.oPlsInputRightAmt;
+			input_Amount.value = "";
+			input_Amount.focus();
+		}
+	}
+}
+
+//用密码键盘输入时输入框校验
+function CheckValue()
+{
+	input_checkAmount();
+	error_InputAmount.innerHTML = "&nbsp;";
+	document.getElementById("queryBalance").disabled = "";
+	document.getElementById("queryBalance").removeAttribute("disabled");
+	document.getElementById("DQtime").disabled = "";
+	document.getElementById("DQtime").removeAttribute("disabled");
+	DQtime.value = "0000";
+}
+
+//根据特定字符查找所在位置
+function find_str(str,f_str,n){
+	var arr_str;
+	var tmp_str=0;
+	var arr_str=str.split(f_str);
+	if(arr_str.length<n){n=arr_str.length}
+	for(i=0;i<n;i++){
+	   tmp_str=arr_str[i].length+tmp_str;
+	}
+	return tmp_str+i-1;
+}
+</script>
+</head>
+
+<body background="../Terminal/Style/Default/Img/Bg_Main_Menu2.jpg" oncontextmenu="return false" ondragstart="return false" onselectstart ="return false" onselect="document.selection.empty()" oncopy="document.selection.empty()" onbeforecopy="return false" onmouseup="document.selection.empty()">
+
+<div id="oLFixedInfo" class="FULLSCR">
+    <div class="FULLSCR">
+        </br>
+        </br>
+        </br>
+        </br>
+        </br>
+        </br>
+        </br>
+        </br>
+        </br>
+        <span class="Tip_Tick" id="oFixedInfoTick"></span>
+        <table width="100%" height="35%" border="0" cellpadding="0" cellspacing="0" align="center">
+            <tr>
+                <td align="center">
+                    <table width="100%" height="50%" border="0" cellpadding="0" cellspacing="0">  
+						<tr>
+							<td width="40%" height="45"></td>
+                            <td height="45" align="left" colspan="4" class="Tip_Title" id="oSelectInfo"></td>
+                        </tr><tr><td>&nbsp;</td></tr>
+						<tr>
+                            <td width="40%" height="25" align="right" class="Tip_Content" id="oCurrentAmount"></td>
+                            <td align="left" class="Tip_Title">&nbsp;
+                                <input name="input_Amount" id="input_Amount" class="input_long" maxlength="12" onclick="javascript:ShowKeyboard();" onkeyup="return input_checkAmount()"/>
+                            </td>
+							<td align="center"><img id="queryBalance" src="../Terminal/Style/Default/Img/InqBalance.png" onclick="javascript:onKey_Amount();"></img></td>
+							<td nowrap align="left" width="300px" height ="25" class="Error_Title" id="InqBalance"></td>
+                        </tr>
+						</tr><tr><td>&nbsp;</td></tr>
+                        <tr>
+                            <td width="40%" height="35" align="right" class="Tip_Content" id="oCurrentTime"></td>
+                            <td align="left">&nbsp;&nbsp;
+                                <select id="DQtime" class="select" onchange="queryRate()">
+									<option value="0000" id="selectCQ">请选择定期存期</option>
+                                    <option value="0126" id="oFixThreeMonth"></option>
+                                    <option value="0131" id="oFixSixMonth"></option>
+                                    <option value="0136" id="oFixOneYear"></option>
+                                    <option value="0141" id="oFixTwoYear"></option>
+                                    <option value="0146" id="oFixThreeYear"></option>
+                                </select>
+                            </td>
+                        </tr>
+						<tr><td>&nbsp;</td></tr>
+						<tr>
+                            <td width="40%" height="25" align="right" class="Tip_Content" id="oInterestRate"></td>
+                            <td align="left">&nbsp;&nbsp;<span id="oRate" class="Tip_Fix"></span></td>
+                        </tr>
+						</tr><tr><td>&nbsp;</td></tr>
+						<tr>
+                            <td width="40%" height="25" align="right" class="Tip_Content" id="oInteRest"></td>
+                            <td align="left">&nbsp;&nbsp;<span id="oRest" class="Tip_Fix"></span></td>
+                        </tr>
+                    </table>
+                    <pre class="Error_Title" id="error_InputAmount">&nbsp;</pre>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+    <span class="MENU99"><button id="AmountQueryButton" onclick="javascript:onKey_F99();" class="confirm" name="confirm"></button></span>
+</div>
+
+<div id="InputPassword" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oInpPwdTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <pre class="Tip_Title" id="oPlsInputPwd4Trans"></pre>
+                    <input type="password" id="input_Password" name="input_Password" size=10 maxlength=6 class="input_short" />
+                    <br/>
+                    <br/>
+                    <img width="600px" height="430px" src="../Image/InputPin.gif" />
+                    <table>
+                        <tr height="52">
+                            <td class="Error_Title" id="error_InputPassword"></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <br/>
+            <br/>
+        </table>
+    </div>
+    <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+</div>
+
+<div id="oLTransConfirm" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oTransConfirmTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+                        <tr class="Table_Head">
+                            <td colspan="2" align="center" id="oAccInfoConfirm"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="oPan"></td>
+                            <td class="Digit_Normal" id="text_Pan"></td>
+                        </tr>
+						<tr class="Table_Record">
+                            <td id="oAccName"></td>
+                            <td class="Digit_Normal" id="text_Name"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="">存期</td>
+                            <td class="Digit_Normal" id="text_Time"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="oAmount"></td>
+                            <td class="Digit_Normal" id="text_Amount"></td>
+                        </tr>
+						<tr class="Table_Record">
+                            <td id="oInterestRate"></td>
+                            <td class="Digit_Normal" id="text_InterestRate"></td>
+                        </tr>
+						<tr class="Table_Record">
+                            <td id="oInteRest"></td>
+                            <td class="Digit_Normal" id="text_InteRest"></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+    <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="confirm" name="oConfirm"></button></span>
+</div>
+
+<div id="oLServiceSuccessTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceSuccessTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+                        <tr class="Table_Head">
+                            <td colspan="2" align="center" id="oCurrentToFixedSuccess"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="oPan"></td>
+                            <td class="Digit_Normal" id="text_SuccPan"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="">存期</td>
+                            <td class="Digit_Normal" id="text_SuccTime"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="oAmount"></td>
+                            <td class="Digit_Normal" id="text_SuccAmount"></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <span class="MENU98" ><button onclick="javascript:onKey_F98()" class="return" name="oReturn"></button></span>
+    <span class="MENU99" ><button onclick="javascript:onKey_F99()" class="Menu_Right" id="oPrintReceipt" name="oConfirm" ></button></span>
+</div>
+
+<div id="oLServiceFailedTip" class="FULLSCR" style="visibility:hidden;">
+    <div class="FULLSCR">
+        <span class="Tip_Tick" id="oServiceFailedTick"></span>
+        <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td align="center">
+                    <table cellpadding="10" cellspacing="1" class="Table_Ob" width="57%">
+                        <tr class="Table_Head">
+                            <td colspan="2" class="Error_Title" align="center" id="oTransferFailed"></td>
+                        </tr>
+                        <tr class="Table_Record">
+                            <td id="oDescription"></td>
+                            <td><span id="oFailedRetDesc"></span></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div id="oLTakeCardTip" class="FULLSCR" style="visibility:hidden;">
+	<span class="Tip_Tick" id="oTakeCardTick"></span>
+  <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+	<tr class="FirstLine"><td align="center">
+	  <span class="Tip_Title" id="oReInsertDebCard"></span><br/><br/>
+      <img src="../Image/TakeCardTip.gif" width="870" height="520" />
+    </td></tr>
+  </table>
+</div>
+
+<!--增加返回主页-->
+<div id="oLGoHome" class="GoHomeTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/GoHome.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+<!--增加滑动安全退出-->
+<div id="oLSafeQuit" class="SafeQuitTip">
+	<table width="100%" align="center" height="100%" border="0" cellpadding="0" cellspacing="0">
+		 <tr height="100%">
+		     <td align="center"><iframe src="../Service/SafeQuit.html" width="100%" height="100%" frameborder="0px" marginheight="0px" marginwidth="0px" allowTransparency="true" scrolling="No"></iframe></td>
+		 </tr>
+    </table>
+</div>
+
+</body>   
+</html>

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping >
+
+  <class name="com.yihuacomputer.cols.entity.Misc" table="Misc" dynamic-insert="true">
+    <id name="id" type="int" column="id">
+      <generator class="identity"/>
+    </id>
+    <property name="strName" column="strName" type="string"/>
+	<property name="strValue" column="strValue" type="string"/>
+	<property name="strDesc" column="strDesc" type="string"/>
+    <property name="strOrgNum" column="strOrgNum" type="string"/>
+	</class>
+</hibernate-mapping>

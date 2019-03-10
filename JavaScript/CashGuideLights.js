@@ -1,14 +1,14 @@
 /*
-  ÏÖ½ğ¸¨¹ñÖ¸Ê¾µÆÀà
+  ç°é‡‘è¾…æŸœæŒ‡ç¤ºç¯ç±»
 SetCustomLight
-ÉèÖÃÓÃ»§×Ô¶¨ÒåµÆ×´Ì¬
-·½·¨Ô­ĞÍ£º
+è®¾ç½®ç”¨æˆ·è‡ªå®šä¹‰ç¯çŠ¶æ€
+æ–¹æ³•åŸå‹ï¼š
 SHORT SetCustomLight(BSTR CustomLightName, BSTR FlashRate);
-CustomLightName   ×Ô¶¨ÒåµÆÃû³Æ
-FlashRate          ÉÁË¸ÆµÂÊ£¬·ÖÎª"OFF", "SLOW", "MEDIUM", "QUICK", "CONTINUOUS"
+CustomLightName   è‡ªå®šä¹‰ç¯åç§°
+FlashRate          é—ªçƒé¢‘ç‡ï¼Œåˆ†ä¸º"OFF", "SLOW", "MEDIUM", "QUICK", "CONTINUOUS"
  */
 function CashGuideLights() {
-	//³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
+	//å‡ºé’å£ç¯&æ‹’é’å£ç¯
 	this.setCashDispenLight = function(state) {
 		try {
 			if (typeof (YHAXCashGuideLights) != "undefined")
@@ -16,7 +16,7 @@ function CashGuideLights() {
 		} catch (e) {
 		}
 	}
-	//½ø³®¿ÚµÆ
+	//è¿›é’å£ç¯
 	this.setCashAcceptorLight = function(state) {
 		try {
 			if (typeof (YHAXCashGuideLights) != "undefined")
@@ -24,7 +24,7 @@ function CashGuideLights() {
 		} catch (e) {
 		}
 	}
-	//Ó²±Ò³ö¿ÚµÆ
+	//ç¡¬å¸å‡ºå£ç¯
 	this.setCoinDispenserLight = function(state) {
 		try {
 			if (typeof (YHAXCashGuideLights) != "undefined")
@@ -32,7 +32,7 @@ function CashGuideLights() {
 		} catch (e) {
 		}
 	}
-	//Ó²±ÒÄÚ²àÕÕÃ÷µÆ
+	//ç¡¬å¸å†…ä¾§ç…§æ˜ç¯
 	this.setCoinAcceptorLight = function(state) {
 		try {
 			if (typeof (YHAXCashGuideLights) != "undefined")
@@ -40,7 +40,7 @@ function CashGuideLights() {
 		} catch (e) {
 		}
 	}
-	//½»Ò×Ö¸Ê¾µÆ
+	//äº¤æ˜“æŒ‡ç¤ºç¯
 	this.setENVDepositoryLight = function(state) {
 		try {
 			if (typeof (YHAXCashGuideLights) != "undefined")

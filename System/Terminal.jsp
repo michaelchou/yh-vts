@@ -1,14 +1,14 @@
 <%
  /**
-  * ÖÕ¶Ë³õÊ¼»¯Ö÷½çÃæ
+  * ç»ˆç«¯åˆå§‹åŒ–ä¸»ç•Œé¢
  */
 %>
 <%@ page contentType="text/html; charset=GBK" %>
 <%@ page language="java" import="java.util.List,com.yihuacomputer.cols.entity.*,com.yihuacomputer.cols.database.*"%>
 <%
-// ÉèÖÃ½Ï´ó»º³åÇø,Ê¹·şÎñÆ÷Íê³ÉÒ³Ãæ¹¹ÔìºóÔÙÒ»´Î·¢ËÍ±ÜÃâ¶à´Î·¢ËÍµÄÍøÂçÒì³£¡£
+// è®¾ç½®è¾ƒå¤§ç¼“å†²åŒº,ä½¿æœåŠ¡å™¨å®Œæˆé¡µé¢æ„é€ åå†ä¸€æ¬¡å‘é€é¿å…å¤šæ¬¡å‘é€çš„ç½‘ç»œå¼‚å¸¸ã€‚
 response.setBufferSize(1024*64);
-// »ñÈ¡ÖÕ¶Ë¿Í»§¶ËIPµØÖ·
+// è·å–ç»ˆç«¯å®¢æˆ·ç«¯IPåœ°å€
 String strClientIP = request.getParameter("Client-IP");
 if(strClientIP == null || strClientIP.length() == 0 || "unknown".equalsIgnoreCase(strClientIP))
   strClientIP = request.getHeader("Proxy-Client-IP");
@@ -19,18 +19,18 @@ if(strClientIP == null || strClientIP.length() == 0 || "unknown".equalsIgnoreCas
 if(strClientIP == null || strClientIP.length() == 0 || "unknown".equalsIgnoreCase(strClientIP))
   strClientIP = request.getRemoteAddr();
  
-//¸ù¾İµ±Ç°ÖÕ¶ËIPµØÖ·²éÑ¯ÆäÏêÏ¸ĞÅÏ¢
+//æ ¹æ®å½“å‰ç»ˆç«¯IPåœ°å€æŸ¥è¯¢å…¶è¯¦ç»†ä¿¡æ¯
 TerminalDB terminaldb = new TerminalDB();
 Terminal terminal = terminaldb.getTerminalByNetAddr(strClientIP);
 
-boolean isValidTerminal = false;     // ÊÇ·ñÊÇºÏ·¨ÖÕ¶Ë±êÊ¶
-int id =-1;                          //ÖÕ¶ËidºÅ
-String strTerminalNum = "";          //ÖÕ¶Ë±àºÅ
-String strOrgNum = "";               //»ú¹¹±àºÅ
-String strTellerNum = "";            //¹ñÔ±±àºÅ
-int status = -1;                     //ÖÕ¶Ë×´Ì¬
-String strTerminalStyle = "Default"; //ÖÕ¶Ë·ç¸ñ
-String strDevModelName = "";         //Éè±¸ĞÍºÅ
+boolean isValidTerminal = false;     // æ˜¯å¦æ˜¯åˆæ³•ç»ˆç«¯æ ‡è¯†
+int id =-1;                          //ç»ˆç«¯idå·
+String strTerminalNum = "";          //ç»ˆç«¯ç¼–å·
+String strOrgNum = "";               //æœºæ„ç¼–å·
+String strTellerNum = "";            //æŸœå‘˜ç¼–å·
+int status = -1;                     //ç»ˆç«¯çŠ¶æ€
+String strTerminalStyle = "Default"; //ç»ˆç«¯é£æ ¼
+String strDevModelName = "";         //è®¾å¤‡å‹å·
 
 if (terminal != null)
 {
@@ -48,69 +48,70 @@ if (terminal != null)
 		strTerminalStyle = "Default";
 	}
 }
-//È¥È¡ÒøĞĞĞÅÏ¢
+//å»å–é“¶è¡Œä¿¡æ¯
 List bankList =  new BankDB().getBankList();
-//È¡Ê¡·İĞÅÏ¢
+//å–çœä»½ä¿¡æ¯
 List provinceList =  new ProvinceDB().getProvinceList();
-//È¡³ÇÊĞĞÅÏ¢
+//å–åŸå¸‚ä¿¡æ¯
 List cityList =  new CityDB().getCityList();
-//»ñÈ¡ÖÕ¶ËÖ§³ÖÄ£¿éÁĞ±í
+//è·å–ç»ˆç«¯æ”¯æŒæ¨¡å—åˆ—è¡¨
 String strObjsHtml = "";
 if (isValidTerminal)
 {
-  //°´ÖÕ¶Ë±àºÅÈ¡³ö¸ÄÉè±¸Ö§³ÖµÄÄ£¿é
+  //æŒ‰ç»ˆç«¯ç¼–å·å–å‡ºæ”¹è®¾å¤‡æ”¯æŒçš„æ¨¡å—
   List modulelist = new TerminalModuleDB().getModuleList(terminal.getId(),terminal.getDevModel());
   for (int i=0; modulelist!=null && i<modulelist.size(); i++)
   {
     Module module = (Module)modulelist.get(i);
-	System.out.println("Éè±¸ÆôÓÃµÄÄ£¿é:"+module.getStrModuleName());
+	System.out.println("è®¾å¤‡å¯ç”¨çš„æ¨¡å—:"+module.getStrModuleName());
     String strObjHtml ="<OBJECT WIDTH=0 HEIGHT=0 " + "ID='" + module.getStrModuleName() + "' " + "CLASSID='CLSID:" + module.getStrModuleClsid() + "'>" +"</OBJECT>";
     strObjsHtml = strObjsHtml + strObjHtml + "\n";
   }
   if(strObjsHtml.indexOf("YHAXJournalPrint")< 0){
-	  //·ÇÏÖ½ğ»úÆ÷Ã»ÓĞÁ÷Ë®´òÓ¡»ú£¬Ê¹ÓÃĞéÄâµÄ£¬ÎŞĞèÅäÖÃÁ÷Ë®´òÓ¡»ú
+	  //éç°é‡‘æœºå™¨æ²¡æœ‰æµæ°´æ‰“å°æœºï¼Œä½¿ç”¨è™šæ‹Ÿçš„ï¼Œæ— éœ€é…ç½®æµæ°´æ‰“å°æœº
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXJournalPrint' " + "CLASSID='CLSID:E09DB6EE-2044-4852-B902-07A04D79DA90'></OBJECT>"+ "\n";
   }
-  //¹«¹²Ö÷¼ş
+  //å…¬å…±ä¸»ä»¶
   if(strObjsHtml.indexOf("YHAXCommonCtrl")< 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXCommonCtrl' " + "CLASSID='CLSID:0232DBFE-F2D4-467C-BAAA-F4F46690306C'></OBJECT>"+ "\n";
   }
-  //¹«¹²Ö÷¼ş,ÊÖĞ´µç×ÓÇ©Ãû¿Ø¼ş
+  //å…¬å…±ä¸»ä»¶,æ‰‹å†™ç”µå­ç­¾åæ§ä»¶
   if(strObjsHtml.indexOf("YHAXHandWriter")< 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXHandWriter' " + "CLASSID='CLSID:BB4FCD33-750A-405A-9FEE-55447EFBDB49'></OBJECT>"+ "\n";
   }
-  //´æµ¥É¨Ãè
+  //å­˜å•æ‰«æ
   if(strObjsHtml.indexOf("YHAXDocumentScanner") >= 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXDocumentScanner2' " + "CLASSID='CLSID:2B883199-12DB-437C-B5F8-D5B426E96F17'></OBJECT>"+ "\n";
   }
-  //¶ÁUKEYĞÅÏ¢
+  //è¯»UKEYä¿¡æ¯
   if(strObjsHtml.indexOf("YHAXUkeyDispenser") >= 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXUkeyReader' " + "CLASSID='CLSID:B5969A07-1FA0-443F-989E-78639EB7BBF1'></OBJECT>"+ "\n";
   }
-  //µç×ÓÃÜÂëÇ©Ãû
+  //ç”µå­å¯†ç ç­¾å
   if(strObjsHtml.indexOf("YHAXSigCameras") >= 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXSigEncryptor' " + "CLASSID='CLSID:5617250B-C20B-4DCD-8601-C60B7F139FFD'></OBJECT>"+ "\n";
   }
-  //ÃÜÔ¿·Ö·¢Æ÷
+  //å¯†é’¥åˆ†å‘å™¨
   if(strObjsHtml.indexOf("YHAXKDMLoadKey")< 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXKDMLoadKey' " + "CLASSID='CLSID:224B573F-6F52-4C31-A15C-B40379A38559'></OBJECT>"+ "\n";
   }
   if(strObjsHtml.indexOf("penConnector")< 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='penConnector' " + "CLASSID='CLSID:B094BC3B-70A1-4862-9592-F36C37C5FCC4'></OBJECT>"+ "\n";
   }
-  //È¡¿îÓ²±ÒÄ£¿é
+  //å–æ¬¾ç¡¬å¸æ¨¡å—
   if(strObjsHtml.indexOf("YHAXCashDispenser")>= 0){
-	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXCashDispenserFen' " + "CLASSID='CLSID:C842A9AC-9948-4B16-B56C-FA77FA93387E'></OBJECT>"+ "\n";
+    strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='
+    ' " + "CLASSID='CLSID:C842A9AC-9948-4B16-B56C-FA77FA93387E'></OBJECT>"+ "\n";
   }
-  //µç×ÓÃÜÂëËø
+  //ç”µå­å¯†ç é”
   if(strObjsHtml.indexOf("SGP1506KM3000D")< 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='SGP1506KM3000D' " + "CLASSID='CLSID:DF8BDE76-7BB2-4546-BF43-44AE96EE90FE'></OBJECT>"+ "\n";
   }
-  //ÏÖ½ğ¸¨¹ñSIU
+  //ç°é‡‘è¾…æŸœSIU
   if(strObjsHtml.indexOf("YHAXGuideLights")>= 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXCashGuideLights' " + "CLASSID='CLSID:BF11FF75-9C28-4334-B660-01BE7501D7AB'></OBJECT>"+ "\n";
   }
-  //Ë¢ÕÛÄ£¿é
+  //åˆ·æŠ˜æ¨¡å—
   if(strObjsHtml.indexOf("YHAXPassbookReader")< 0){
 	  strObjsHtml=strObjsHtml+"<OBJECT WIDTH=0 HEIGHT=0 " + "ID='YHAXPassbookReader' " + "CLASSID='CLSID:B5969A07-1FA0-443F-989E-78639EB7BBF1'></OBJECT>"+ "\n";
   }
@@ -123,32 +124,32 @@ if (isValidTerminal)
 <meta http-equiv="Cache-Control" CONTENT="no-cache">
 <meta http-equiv="Pragma" CONTENT="no-cache">
 <meta http-equiv="X-UA-Compatible" content="IE=8"/>
-<title>âù»¯×ÔÖú¿çÆ½Ì¨ÏµÍ³</title>
+<title>æ€¡åŒ–è‡ªåŠ©è·¨å¹³å°ç³»ç»Ÿ</title>
 <LINK REL=stylesheet HREF="../Terminal/Style/<%=strTerminalStyle%>/Style.css" type="text/css" />
 <script type="text/javascript">
-var cancelCardflag=false;//¶Á¿¨Æ÷¹Ø±Õ±êÊ¶
+var cancelCardflag=false;//è¯»å¡å™¨å…³é—­æ ‡è¯†
 
 function setInfoTipContent(tiphtml)
 {
   document.all.InfoTipContent.innerHTML = tiphtml;
 }
 
-// ³öÏÖ½Å±¾´íÊ²Ã´¶¼²»×öµÄº¯Êı
+// å‡ºç°è„šæœ¬é”™ä»€ä¹ˆéƒ½ä¸åšçš„å‡½æ•°
 function fnErrorTrapNA(sMsg,sUrl,sLine)
 {
   return true;
 }
 
-// ¶¥²ã´°¿Ú³öÏÖ½Å±¾´í
+// é¡¶å±‚çª—å£å‡ºç°è„šæœ¬é”™
 function fnErrorTrapTop(sMsg,sUrl,sLine)
 {
-  // ÕâÊ±Ê²Ã´Ò²×ö²»ÁË£¬Ö»ÄÜÏÔÊ¾Ò»¸öÌáÊ¾£¬ÔÙÖØÏÖ¼ÓÔØÓ¦ÓÃ
-  top.setInfoTipContent("Ó¦ÓÃÊ×Ò³³öÏÖ½Å±¾´íÎó£º<br/>" + sUrl + "´íÎóĞÅÏ¢:" + sMsg + "ĞĞÊı:" + sLine);
+  // è¿™æ—¶ä»€ä¹ˆä¹Ÿåšä¸äº†ï¼Œåªèƒ½æ˜¾ç¤ºä¸€ä¸ªæç¤ºï¼Œå†é‡ç°åŠ è½½åº”ç”¨
+  top.setInfoTipContent("åº”ç”¨é¦–é¡µå‡ºç°è„šæœ¬é”™è¯¯ï¼š<br/>" + sUrl + "é”™è¯¯ä¿¡æ¯:" + sMsg + "è¡Œæ•°:" + sLine);
   setTimeout(function(){top.location.reload(true);}, 5*60*1000);
   return true;
 }
 
-// ·Ç¶¥²ã´°¿Ú³öÏÖ½Å±¾´í
+// éé¡¶å±‚çª—å£å‡ºç°è„šæœ¬é”™
 function fnErrorTrap(sMsg,sUrl,sLine)
 {
   var err = "JSErr:" + sMsg + top.journalPrinter.strNewLine + sUrl + " " + sLine;
@@ -156,17 +157,17 @@ function fnErrorTrap(sMsg,sUrl,sLine)
   return true;
 }
 
-//¹Ø±ÕËùÓĞ
+//å…³é—­æ‰€æœ‰
 function closeAll()
 {
-	top.inputmethod.Close();//Òş²ØĞéÄâ¼üÅÌ
-	//¹Ø±ÕÇ©ÃûÃæ°å
+	top.inputmethod.Close();//éšè—è™šæ‹Ÿé”®ç›˜
+	//å…³é—­ç­¾åé¢æ¿
 	try {
-			top.sigCameras.display("Extra","Destroy");//¹Ø±Õµç×ÓÇ©ÃûÃæ°å
+			top.sigCameras.display("Extra","Destroy");//å…³é—­ç”µå­ç­¾åé¢æ¿
 			top.sigCameras.sigCamerasEvents.clearAll();
 		} 
 		catch (e){}
-    //¹Ø±ÕÉãÏñÍ·
+    //å…³é—­æ‘„åƒå¤´
 	try {
 			top.cameras.display("Person","Destroy");
 			top.cameras.camerasEvents.clearAll();
@@ -174,26 +175,26 @@ function closeAll()
 		catch (e){}
 	
 }
-// ÉèÖÃ½Å±¾´íÎóµÄ´¦Àíº¯Êı
+// è®¾ç½®è„šæœ¬é”™è¯¯çš„å¤„ç†å‡½æ•°
 window.onerror = fnErrorTrapTop;
 
 
-// ¿Õº¯Êı£¬¼´Ê²Ã´¶¼²»×öµÄº¯Êı
+// ç©ºå‡½æ•°ï¼Œå³ä»€ä¹ˆéƒ½ä¸åšçš„å‡½æ•°
 function FUNC_NA(){}
 
-// ·¢ÏÖ·şÎñÆ÷´íÎó»òÒì³££¨Ò³ÃæÇĞ»»Ê±µÈ£©µÄÈ±Ê¡´¦Àí
+// å‘ç°æœåŠ¡å™¨é”™è¯¯æˆ–å¼‚å¸¸ï¼ˆé¡µé¢åˆ‡æ¢æ—¶ç­‰ï¼‰çš„ç¼ºçœå¤„ç†
 function showTakeCardTip4Err()
 {
   closeAll();
   top.serviceCtrl.navigate2("about:blank");
-  top.wins.showInfoTip("¶Ô²»Æğ£¬±¾»úÍ¨Ñ¶ÖĞ¶Ï£¬ÔİÍ£·şÎñ£¡<br/>ÇëÄúÈ¡×ß¿¨...<br/><br/>Sorry, communication error!<br/>Please take your card...");
+  top.wins.showInfoTip("å¯¹ä¸èµ·ï¼Œæœ¬æœºé€šè®¯ä¸­æ–­ï¼Œæš‚åœæœåŠ¡ï¼<br/>è¯·æ‚¨å–èµ°å¡...<br/><br/>Sorry, communication error!<br/>Please take your card...");
   top.serviceCtrl.startFlowCtrlTimeout(function(){top.serviceCtrl.CommErrAfter2Idle();}, 30*1000);
 }
 
-// ·¢ÏÖ·şÎñÆ÷´íÎó»òÒì³££¨Ò³ÃæÇĞ»»Ê±µÈ£©µÄÈ±Ê¡´¦Àí
+// å‘ç°æœåŠ¡å™¨é”™è¯¯æˆ–å¼‚å¸¸ï¼ˆé¡µé¢åˆ‡æ¢æ—¶ç­‰ï¼‰çš„ç¼ºçœå¤„ç†
 function onServerErr_Def(frmname, err)
 {
-  // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+  // è®°å½•ç»ˆç«¯æµæ°´
   var strJrn = new top.StringCtrl("Exception "+new top.DateTimeCtrl().getHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) +
   top.journalPrinter.strNewLine + err + top.journalPrinter.strNewLine;
   top.journalPrinter.addJournal(strJrn);
@@ -204,7 +205,7 @@ function onServerErr_Def(frmname, err)
     {
 	  closeAll();
 	  top.serviceCtrl.navigate2("about:blank");
-      top.wins.showInfoTip("¶Ô²»Æğ£¬±¾»úÍ¨Ñ¶ÖĞ¶Ï£¬ÔİÍ£·şÎñ£¡<br/><br/>Sorry, communication error!");
+      top.wins.showInfoTip("å¯¹ä¸èµ·ï¼Œæœ¬æœºé€šè®¯ä¸­æ–­ï¼Œæš‚åœæœåŠ¡ï¼<br/><br/>Sorry, communication error!");
       top.serviceCtrl.startFlowCtrlTimeout(function(){top.serviceCtrl.CommErrAfter2Idle();}, 60*1000);
     }
     top.cardreader.eject();
@@ -213,11 +214,11 @@ function onServerErr_Def(frmname, err)
   else
   {
 	closeAll();
-    // Ç¿ĞĞÖĞÖ¹Ô­À´µÄÒ³Ãæ
+    // å¼ºè¡Œä¸­æ­¢åŸæ¥çš„é¡µé¢
     top.serviceCtrl.navigate2("about:blank");
     top.cardreader.cancelAccept();
     top.serviceCtrl.startFlowCtrlTimeout(function(){top.serviceCtrl.setSvcStatus(top.TTSTATUS_COMMERR); top.serviceCtrl.CommErrAfter2Idle();}, 10*1000);
-    top.wins.showInfoTip("¶Ô²»Æğ£¬±¾»úÍ¨Ñ¶ÖĞ¶Ï£¬ÔİÍ£·şÎñ£¡<br/><br/>Sorry, communication error!");
+    top.wins.showInfoTip("å¯¹ä¸èµ·ï¼Œæœ¬æœºé€šè®¯ä¸­æ–­ï¼Œæš‚åœæœåŠ¡ï¼<br/><br/>Sorry, communication error!");
   }
 }
 </script>
@@ -265,7 +266,7 @@ function onServerErr_Def(frmname, err)
 <script type="text/javascript" src="../JavaScript/CashBoxCheck.js"></script>
 <script type="text/javascript" src="../JavaScript/CashGuideLights.js"></script>
 <script type="text/javascript">
-var threadFlag = false;//Ïß³ÌÊÇ·ñÆô¶¯±êÊ¶·û
+var threadFlag = false;//çº¿ç¨‹æ˜¯å¦å¯åŠ¨æ ‡è¯†ç¬¦
 var isValidTerminal = <%=isValidTerminal%>;
 var id = <%=id%>;
 var strTerminalNum = "<%=strTerminalNum%>";
@@ -273,11 +274,11 @@ var strOrgNum = "<%=strOrgNum%>";
 var strTellerNum="<%=strTellerNum%>";
 var status = "<%=status%>";
 var strTerminalStyle = "<%=strTerminalStyle%>";
-var bankList = new Array();//ÒøĞĞĞÅÏ¢
-var provinceList = new Array();//Ê¡·İĞÅÏ¢
-var cityList = new Array();//³ÇÊĞĞÅÏ¢
-var strDevModelName = "<%=strDevModelName%>"; //Éè±¸ĞÍºÅ
-//·Ö½âÒøĞĞĞÅÏ¢
+var bankList = new Array();//é“¶è¡Œä¿¡æ¯
+var provinceList = new Array();//çœä»½ä¿¡æ¯
+var cityList = new Array();//åŸå¸‚ä¿¡æ¯
+var strDevModelName = "<%=strDevModelName%>"; //è®¾å¤‡å‹å·
+//åˆ†è§£é“¶è¡Œä¿¡æ¯
 <%
 int bankCount=0;
 for (int i=0; bankList!=null && i<bankList.size(); i++)
@@ -290,7 +291,7 @@ for (int i=0; bankList!=null && i<bankList.size(); i++)
 }
 %>
 
-//·Ö½âÊ¡·İĞÅÏ¢
+//åˆ†è§£çœä»½ä¿¡æ¯
 <%
 int provinceCount=0;
 for (int i=0; provinceList!=null && i<provinceList.size(); i++)
@@ -303,7 +304,7 @@ for (int i=0; provinceList!=null && i<provinceList.size(); i++)
 }
 %>
 
-//·Ö½â³ÇÊĞĞÅÏ¢
+//åˆ†è§£åŸå¸‚ä¿¡æ¯
 <%
 int cityCount=0;
 for (int i=0; cityList!=null && i<cityList.size(); i++)
@@ -316,40 +317,40 @@ for (int i=0; cityList!=null && i<cityList.size(); i++)
 }
 %>
 
-<%/*½ûÖ¹ËùÓĞÊäÈë*/%>
+<%/*ç¦æ­¢æ‰€æœ‰è¾“å…¥*/%>
 document.onkeydown = function(){try{window.event.keyCode=0; window.event.returnValue=false;}catch(e){}}
 document.ondblclick = function (){window.event.returnValue = false;}
 document.onclick = function (){window.event.returnValue = false;}
 
-// ÏìÓ¦ÎÄµµ×´Ì¬±ä»¯ÊÂ¼ş
+// å“åº”æ–‡æ¡£çŠ¶æ€å˜åŒ–äº‹ä»¶
 document.onreadystatechange = function()
 {
   if (document.readyState == "complete")
   {
-    // ÎÄµµ×´Ì¬ÎªÍê³É£¬¿ªÊ¼Ö´ĞĞÏàÓ¦´¦Àí
+    // æ–‡æ¡£çŠ¶æ€ä¸ºå®Œæˆï¼Œå¼€å§‹æ‰§è¡Œç›¸åº”å¤„ç†
     onDocumentCompleted();
   }
 }
 
-// ÎÄµµ×´Ì¬ÎªÍê³ÉºóµÄ´¦Àíº¯Êı£¨¸ÃÒ³ÃæÓ¦ÓÃµÄ´¦ÀíÈë¿Ú£©
+// æ–‡æ¡£çŠ¶æ€ä¸ºå®Œæˆåçš„å¤„ç†å‡½æ•°ï¼ˆè¯¥é¡µé¢åº”ç”¨çš„å¤„ç†å…¥å£ï¼‰
 function onDocumentCompleted()
 {
-  // Òş²ØÊó±ê
+  // éšè—é¼ æ ‡
   try{window.external.SetCursorOn(false);}catch(e){}
   
-  // »º´æ±³¾°Í¼Æ¬£¬±ÜÃâÆµ·±·ÃÎÊ·şÎñÆ÷
+  // ç¼“å­˜èƒŒæ™¯å›¾ç‰‡ï¼Œé¿å…é¢‘ç¹è®¿é—®æœåŠ¡å™¨
   try{document.execCommand("BackgroundImageCache", false, true);}catch(e){}
   
   wins = new Windows();
-  //³õÊ¼»¯ÈÕÖ¾´òÓ¡
+  //åˆå§‹åŒ–æ—¥å¿—æ‰“å°
   journalPrinter = new JournalPrinter();
   if (!isValidTerminal)
   {
-    wins.showErrInfoTip("ÖÕ¶Ë³õÊ¼»¯Ê§°Ü£¨ÎŞĞ§ÖÕ¶Ë£©£¡");
+    wins.showErrInfoTip("ç»ˆç«¯åˆå§‹åŒ–å¤±è´¥ï¼ˆæ— æ•ˆç»ˆç«¯ï¼‰ï¼");
     setTimeout(function(){top.location.reload(true);}, 5*60*1000);
     return;
   }
-  //´ò¿ªÖÕ¶ËÖ§³ÖµÄÄ£¿é
+  //æ‰“å¼€ç»ˆç«¯æ”¯æŒçš„æ¨¡å—
   if (typeof(YHAXUkeyDispenser) != "undefined")
   {
 	 YHAXUkeyDispenser.OpenConnection();
@@ -358,7 +359,7 @@ function onDocumentCompleted()
   }
   if (typeof(YHAXCardReader) == "undefined")
   {
-	 wins.showErrInfoTip("ÖÕ¶Ë³õÊ¼»¯Ê§°Ü£¨ÖÕ¶ËÎŞÅäÖÃ¶Á¿¨Æ÷£©£¡");
+	 wins.showErrInfoTip("ç»ˆç«¯åˆå§‹åŒ–å¤±è´¥ï¼ˆç»ˆç«¯æ— é…ç½®è¯»å¡å™¨ï¼‰ï¼");
      setTimeout(function(){top.location.reload(true);}, 5*60*1000);
      return;
   } 
@@ -368,7 +369,7 @@ function onDocumentCompleted()
   }  
   if (typeof(YHAXPinPad) == "undefined")
   {
-    wins.showErrInfoTip("ÖÕ¶Ë³õÊ¼»¯Ê§°Ü£¨ÖÕ¶ËÎŞÅäÖÃÃÜÂë¼üÅÌ£©£¡");
+    wins.showErrInfoTip("ç»ˆç«¯åˆå§‹åŒ–å¤±è´¥ï¼ˆç»ˆç«¯æ— é…ç½®å¯†ç é”®ç›˜ï¼‰ï¼");
     setTimeout(function(){top.location.reload(true);}, 5*60*1000);
     return;
   }
@@ -415,39 +416,39 @@ function onDocumentCompleted()
   }
   if (typeof(YHAXDocumentPrinter) != "undefined")
   {
-	 YHAXDocumentPrinter.ServiceName = "CheckPrinter";//ĞŞ¸Ä´æµ¥´òÓ¡Âß¼­Ãû
+	 YHAXDocumentPrinter.ServiceName = "CheckPrinter";//ä¿®æ”¹å­˜å•æ‰“å°é€»è¾‘å
 	 YHAXDocumentPrinter.OpenConnection();
   }
   if (typeof(YHAXDocumentScanner) != "undefined")
   {
-	 YHAXDocumentScanner.ServiceName = "CheckPrinter2";//ĞŞ¸Ä´æµ¥¿ª»§Âß¼­Ãû
+	 YHAXDocumentScanner.ServiceName = "CheckPrinter2";//ä¿®æ”¹å­˜å•å¼€æˆ·é€»è¾‘å
 	 YHAXDocumentScanner.OpenConnection();
-	 YHAXDocumentScanner2.ServiceName = "CheckScanner";//ĞŞ¸Ä´æµ¥ÊÜÀíÂß¼­Ãû
+	 YHAXDocumentScanner2.ServiceName = "CheckScanner";//ä¿®æ”¹å­˜å•å—ç†é€»è¾‘å
 	 YHAXDocumentScanner2.OpenConnection();
   }
-  if (typeof(YHAXCameras) != "undefined")//µç×ÓÉãÏñÍ·
+  if (typeof(YHAXCameras) != "undefined")//ç”µå­æ‘„åƒå¤´
   {
-	 YHAXCameras.ServiceName = "Camera";//ĞŞ¸Äµç×ÓÉãÏñÍ·Âß¼­Ãû
+	 YHAXCameras.ServiceName = "Camera";//ä¿®æ”¹ç”µå­æ‘„åƒå¤´é€»è¾‘å
 	 YHAXCameras.OpenConnection();
   }
-  if (typeof(YHAXSigCameras) != "undefined")//µç×ÓÃÜÂëÇ©Ãû
+  if (typeof(YHAXSigCameras) != "undefined")//ç”µå­å¯†ç ç­¾å
   {
-	 YHAXSigCameras.ServiceName = "SigCamera";//ĞŞ¸Äµç×ÓÃÜÂëÇ©ÃûÂß¼­Ãû
+	 YHAXSigCameras.ServiceName = "SigCamera";//ä¿®æ”¹ç”µå­å¯†ç ç­¾åé€»è¾‘å
 	 YHAXSigCameras.OpenConnection();
-	 YHAXSigEncryptor.ServiceName = "SigEncryptor";//ĞŞ¸Äµç×ÓÃÜÂëÇ©ÃûÂß¼­Ãû(ÃÜÂë¼üÅÌ)
+	 YHAXSigEncryptor.ServiceName = "SigEncryptor";//ä¿®æ”¹ç”µå­å¯†ç ç­¾åé€»è¾‘å(å¯†ç é”®ç›˜)
 	 YHAXSigEncryptor.OpenConnection();
   }
   if (typeof(YHAXDocumentA4Printer) != "undefined")
   {
-	 YHAXDocumentA4Printer.ServiceName = "A4Printer";//ĞŞ¸ÄA4Âß¼­Ãû 
+	 YHAXDocumentA4Printer.ServiceName = "A4Printer";//ä¿®æ”¹A4é€»è¾‘å 
 	 YHAXDocumentA4Printer.OpenConnection();
   }
-  //ÏÖ½ğ
+  //ç°é‡‘
   if(typeof(YHAXCashDispenser) != "undefined")
   {
 	 YHAXCashDispenser.ServiceName="CashDispenser"; 
 	 YHAXCashDispenser.OpenConnection();
-	 YHAXCashDispenserFen.ServiceName = "CoinDispenser";//Ó²±ÒÂß¼­Ãû
+	 YHAXCashDispenserFen.ServiceName = "CoinDispenser";//ç¡¬å¸é€»è¾‘å
 	 YHAXCashDispenserFen.OpenConnection();
   }
   if(typeof(YHAXCashAcceptor) != "undefined")
@@ -456,49 +457,49 @@ function onDocumentCompleted()
 	 YHAXCashAcceptor.OpenConnection();
   }
 
-  top.journalPrinter.addJournalWithTime("µç×ÓÃÜÂëËøÀàĞÍ£º" + typeof(SGP1506KM3000D));
-  top.journalPrinter.addJournalWithTime("µç×ÓÃÜÂëËø×´Ì¬£º" + document.getElementById("SGP1506KM3000D").readyState);
-  if (typeof(SGP1506KM3000D) != "undefined")//µç×ÓÃÜÂëËø
+  top.journalPrinter.addJournalWithTime("ç”µå­å¯†ç é”ç±»å‹ï¼š" + typeof(SGP1506KM3000D));
+  top.journalPrinter.addJournalWithTime("ç”µå­å¯†ç é”çŠ¶æ€ï¼š" + document.getElementById("SGP1506KM3000D").readyState);
+  if (typeof(SGP1506KM3000D) != "undefined")//ç”µå­å¯†ç é”
   {
 	 try{
-		 SGP1506KM3000D.SetUsedType(true);//³õÊ¼»¯µç×ÓÃÜÂëËø¿Ø¼ş
+		 SGP1506KM3000D.SetUsedType(true);//åˆå§‹åŒ–ç”µå­å¯†ç é”æ§ä»¶
 	 }catch(e){
 		 top.journalPrinter.addJournalWithTime("SGP1506KM3000D.SetUsedType(true) error info:" + e );
 	 }
   }
-  if (typeof(YHAXCashGuideLights) != "undefined")//ÏÖ½ğµÄSIU
+  if (typeof(YHAXCashGuideLights) != "undefined")//ç°é‡‘çš„SIU
   {
 	 YHAXCashGuideLights.ServiceName="SIUCash"; 
 	 YHAXCashGuideLights.OpenConnection();
   } 
-  //ÏÈÆô¶¯Socket½ÓÊÕÏûÏ¢Ïß³Ì
+  //å…ˆå¯åŠ¨Socketæ¥æ”¶æ¶ˆæ¯çº¿ç¨‹
   if(!threadFlag){
     threadFlag = true;
-    //´ò¿ª½ÓÊÕ¼à¿Ø¿Í»§¶ËÏß³Ì
+    //æ‰“å¼€æ¥æ”¶ç›‘æ§å®¢æˆ·ç«¯çº¿ç¨‹
     YHAXCommonCtrl.ReceiveBufferedData();
   }
-  // »ñÈ¡×´Ì¬£¬ÓÃÓÚ¸÷Ä£¿éµÄµÚÒ»´Î³õÊ¼»¯ Çå³ıÊÕ¿¨Êı
+  // è·å–çŠ¶æ€ï¼Œç”¨äºå„æ¨¡å—çš„ç¬¬ä¸€æ¬¡åˆå§‹åŒ– æ¸…é™¤æ”¶å¡æ•°
   setTimeout(function(){try{YHAXPinPad.StDeviceStatus;}catch(e){}}, 1*1000);
   setTimeout(function(){try{YHAXCardReader.StDeviceStatus;}catch(e){}}, 3*1000);
   setTimeout(function(){try{YHAXCardReader.ResetBinCountSync;}catch(e){}}, 8*1000);
   setTimeout(startSvc, 10*1000);
 }
 
-// ¿ªÊ¼·şÎñ
+// å¼€å§‹æœåŠ¡
 function startSvc()
 {
-  // Ò»°ã¶ÔÏó³õÊ¼»¯
+  // ä¸€èˆ¬å¯¹è±¡åˆå§‹åŒ–
   sysinfo = new SysInfo();
-  serviceCtrl = new ServiceControl(); //jsÁ÷³Ì¿ØÖÆÀà
+  serviceCtrl = new ServiceControl(); //jsæµç¨‹æ§åˆ¶ç±»
   langdef = new LanguageDef();
   langen = new LanguageEn();
   langcur = langdef;
-  pool = new DataPool();              //jsÊı¾İ³ØÀà
-  soundPlayer = new SoundPlayer();    //±³¾°ÒôÀÖ²¥·ÅÆ÷Àà
-  menu = new ServiceMenu();           //·şÎñ²Ëµ¥´¦ÀíÀà
-  choCard = new MyChooseCard();       //Ñ¡Ôñ¿¨ÀàĞÍ´¦ÀíÀà
-  eleLock=new EleLock();			  //ÃÜÂëËø´¦ÀíÀà
-  // ÖÕ¶ËĞÅÏ¢
+  pool = new DataPool();              //jsæ•°æ®æ± ç±»
+  soundPlayer = new SoundPlayer();    //èƒŒæ™¯éŸ³ä¹æ’­æ”¾å™¨ç±»
+  menu = new ServiceMenu();           //æœåŠ¡èœå•å¤„ç†ç±»
+  choCard = new MyChooseCard();       //é€‰æ‹©å¡ç±»å‹å¤„ç†ç±»
+  eleLock=new EleLock();			  //å¯†ç é”å¤„ç†ç±»
+  // ç»ˆç«¯ä¿¡æ¯
   terminal = new Terminal();
   terminal.id = id;
   terminal.strTerminalNum = strTerminalNum;
@@ -516,11 +517,11 @@ function startSvc()
 
   try{guidelights = new GuideLights();}catch(e){}
   try{cashguidelights = new CashGuideLights();}catch(e){}
-  try{if(typeof(YHAXGuideLights) != "undefined"){guidelights.setPinPadLight("OFF");}}catch(e){} //ÃÜÂë¼üÅÌµÆ
-  try{if(typeof(YHAXGuideLights) != "undefined"){guidelights.setNCICLight("CONTINUOUS");}}catch(e){} //Ó­±öµÆ
-  //ÏÖ½ğ¸¨¹ñ¹Ø±ÕµÆ
-  try{if(typeof(YHAXCashGuideLights) != "undefined"){cashguidelights.setENVDepositoryLight("OFF");}}catch(e){} //Ó­±öµÆ
-  //ÖÕ¶ËÄ£¿é¿ØÖÆ
+  try{if(typeof(YHAXGuideLights) != "undefined"){guidelights.setPinPadLight("OFF");}}catch(e){} //å¯†ç é”®ç›˜ç¯
+  try{if(typeof(YHAXGuideLights) != "undefined"){guidelights.setNCICLight("CONTINUOUS");}}catch(e){} //è¿å®¾ç¯
+  //ç°é‡‘è¾…æŸœå…³é—­ç¯
+  try{if(typeof(YHAXCashGuideLights) != "undefined"){cashguidelights.setENVDepositoryLight("OFF");}}catch(e){} //è¿å®¾ç¯
+  //ç»ˆç«¯æ¨¡å—æ§åˆ¶
   if (typeof(YHAXUkeyDispenser) != "undefined")
   { 
     ukeydispenser = new UkeyDispenser();
@@ -530,7 +531,7 @@ function startSvc()
   {
      cardreader = new CardReader();
   }
-  //Ïà¹Ø´òÓ¡
+  //ç›¸å…³æ‰“å°
   if (typeof(YHAXReceiptPrint) != "undefined")
   {
     receiptprinter = new ReceiptPrinter();
@@ -574,11 +575,11 @@ function startSvc()
     documentscanner = new DocumentScanner();
 	documentscanner2 = new DocumentScanner2();
   }
-  if (typeof(YHAXCameras) != "undefined")//µç×ÓÉãÏñÍ·
+  if (typeof(YHAXCameras) != "undefined")//ç”µå­æ‘„åƒå¤´
   {
     cameras = new Cameras();
   }
-  if (typeof(YHAXSigCameras) != "undefined")//µç×ÓÃÜÂëÇ©Ãû
+  if (typeof(YHAXSigCameras) != "undefined")//ç”µå­å¯†ç ç­¾å
   {
     sigCameras = new SigCameras();
 	sigEncryptor = new SigEncryptor();
@@ -601,44 +602,44 @@ function startSvc()
   }  
   if (typeof(penConnector) == "undefined")
   {
-	var strJrn = new top.StringCtrl("»ú¾ßÎ´°²×°ººÍõÊäÈë·¨ "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	var strJrn = new top.StringCtrl("æœºå…·æœªå®‰è£…æ±‰ç‹è¾“å…¥æ³• "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
 	top.journalPrinter.addJournal(strJrn);
   }
   if (typeof(SGP1506KM3000D) != "undefined")
   {
-	 setTimeout(top.eleLock.getEleLockStatus,10*60*1000);//10·ÖÖÓºó²éÑ¯µç×ÓÃÜÂëËø×´Ì¬
+	 setTimeout(top.eleLock.getEleLockStatus,10*60*1000);//10åˆ†é’ŸåæŸ¥è¯¢ç”µå­å¯†ç é”çŠ¶æ€
   }
   inputmethod = new InputMethod();
-  // ·şÎñÓë½»Ò×Ïà¹Ø¶ÔÏó
+  // æœåŠ¡ä¸äº¤æ˜“ç›¸å…³å¯¹è±¡
   idle = new Idle();
   misc = new Misc();
-  trans = new Trans();//½»Ò×´¦ÀíÀà
-  top.pinpad.userEntry();//´ò¿ªÃ÷ÎÄÊäÈë
+  trans = new Trans();//äº¤æ˜“å¤„ç†ç±»
+  top.pinpad.userEntry();//æ‰“å¼€æ˜æ–‡è¾“å…¥
   resetCardReader();
 }
 
 /*
-  ¸´Î»¶Á¿¨Æ÷
+  å¤ä½è¯»å¡å™¨
  */
 function resetCardReader()
 {
   onResetComplete_Idc = onDeviceError_Idc = function()
   {
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
-    var strJrn = new top.StringCtrl("Ó¦ÓÃÕıÔÚ¼ÓÔØ "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) +
+    // è®°å½•ç»ˆç«¯æµæ°´
+    var strJrn = new top.StringCtrl("åº”ç”¨æ­£åœ¨åŠ è½½ "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) +
     top.journalPrinter.strNewLine + "TELLER:" + top.terminal.strTellerNum + " TERMINAL:"+top.terminal.strTerminalNum + top.journalPrinter.strNewLine;
 	top.journalPrinter.addJournal(strJrn);
-    // ÌøÖÁ·şÎñ¿ÕÏĞ
+    // è·³è‡³æœåŠ¡ç©ºé—²
     setTimeout(function(){top.serviceCtrl.navigate2Idle();}, 500);
-    // Ê×Ò³²»ÔÙ´¦Àí½Å±¾Òì³££¬·ÀÖ¹ºóĞø×Ó´°¿ÚµÄÒì³£µ¼ÖÂÔÙ´Îµ÷ÓÃ
+    // é¦–é¡µä¸å†å¤„ç†è„šæœ¬å¼‚å¸¸ï¼Œé˜²æ­¢åç»­å­çª—å£çš„å¼‚å¸¸å¯¼è‡´å†æ¬¡è°ƒç”¨
     window.onerror = fnErrorTrapNA;
  }
   cardreader.reset();
 }
 </script>
 <script type="text/javascript" for="SGP1506KM3000D" event="MessageReceived(report)">
-	//¼àÌıµç×ÓÃÜÂëËøÉÏËÍµÄÊı¾İ
-	top.eleLock.MessageReceived(report);//ÉÏĞĞÊı¾İ´¦Àí
+	//ç›‘å¬ç”µå­å¯†ç é”ä¸Šé€çš„æ•°æ®
+	top.eleLock.MessageReceived(report);//ä¸Šè¡Œæ•°æ®å¤„ç†
 </script>
 </head>
 
@@ -654,7 +655,7 @@ function resetCardReader()
   <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
     <tr><td align="center">
 	  <br/>
-      <span class="Tip_Title" ID="InfoTipContent">ÖÕ¶ËÕıÔÚ³õÊ¼»¯,ÇëÉÔºò......</span><br/><br/>
+      <span class="Tip_Title" ID="InfoTipContent">ç»ˆç«¯æ­£åœ¨åˆå§‹åŒ–,è¯·ç¨å€™......</span><br/><br/>
     </td></tr>
   </table>
 </div>
@@ -671,7 +672,7 @@ function resetCardReader()
   </table>
 </div>
 
-<!-- ·¢ËÍ½»Ò×Ê±¹ı¶ÉÒ³Ãæ -->
+<!-- å‘é€äº¤æ˜“æ—¶è¿‡æ¸¡é¡µé¢ -->
 <div id="oLNewProcessingTip" class="FULLSCR2" style="visibility:hidden;">
   <span class="Tip_Tick" id="oInpNewProcessTick"></span>
   <table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">

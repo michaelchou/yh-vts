@@ -1,23 +1,23 @@
 /*
- * ³®Ïä²éÑ¯Àà
+ * é’ç®±æŸ¥è¯¢ç±»
  */
 function CashBoxCheck()
 {
-	//»ñÈ¡³®ÏäĞÅÏ¢(³®Ïä±ä¶¯µ÷ÓÃ)
+	//è·å–é’ç®±ä¿¡æ¯(é’ç®±å˜åŠ¨è°ƒç”¨)
 	this.getCashBoxInfo = function(){
-		var cashBoxInfoArr = new Array();	//³®ÏäĞÅÏ¢Êı×é
+		var cashBoxInfoArr = new Array();	//é’ç®±ä¿¡æ¯æ•°ç»„
 		if(typeof(top.YHAXCashDispenser) != "undefined"){
 			var logicalunitsCDM = top.YHAXCashDispenser.LogicalUnits;
 			for(var i=0; i<logicalunitsCDM.Count;i++){
-				//È¡¿î³®Ïä
+				//å–æ¬¾é’ç®±
 				var logicalunitCDM = logicalunitsCDM.Item(i);
 				cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
-						logicalunitCDM.Number,						//±àºÅ
-						converStatus(logicalunitCDM.Status),		//×´Ì¬
-						parseInt(logicalunitCDM.NoteValue) * 100,	//ÃæÖµ£¬ÒÔ·ÖÎªµ¥Î»
-						logicalunitCDM.InitialCount,				//³õÊ¼ÕÅÊı
-						logicalunitCDM.CurrentCount,				//µ±Ç°ÕÅÊı
-						"0"				//Ö½±Ò³®Ïä£¬ÀàĞÍÎª"0"
+						logicalunitCDM.Number,						//ç¼–å·
+						converStatus(logicalunitCDM.Status),		//çŠ¶æ€
+						parseInt(logicalunitCDM.NoteValue) * 100,	//é¢å€¼ï¼Œä»¥åˆ†ä¸ºå•ä½
+						logicalunitCDM.InitialCount,				//åˆå§‹å¼ æ•°
+						logicalunitCDM.CurrentCount,				//å½“å‰å¼ æ•°
+						"0"				//çº¸å¸é’ç®±ï¼Œç±»å‹ä¸º"0"
 					);
 			}
 		}
@@ -26,10 +26,10 @@ function CashBoxCheck()
 			var logicalunitsCIM = top.YHAXCashAcceptor.LogicalUnits;
 			for(var j=0; j<logicalunitsCIM.Count;j++){
 				var isExit = false;
-				//´æ¿î³®Ïä
+				//å­˜æ¬¾é’ç®±
 				var logicalunitCIM = logicalunitsCIM.Item(j);
 				for(var l=0;l<logicalunitsCDM.Count;l++){
-					//±È½Ï´æÈ¡¿î³®ÏäµÄNumber£¬ÖØ¸´Ôò¹ıÂË
+					//æ¯”è¾ƒå­˜å–æ¬¾é’ç®±çš„Numberï¼Œé‡å¤åˆ™è¿‡æ»¤
 					if(logicalunitCIM.Number == logicalunitsCDM.Item(l).Number){
 						isExit = true;
 						break;
@@ -39,12 +39,12 @@ function CashBoxCheck()
 					continue;
 				}
 				cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
-						logicalunitCIM.Number,							//±àºÅ
-						converStatus(logicalunitCIM.Status),			//×´Ì¬
-						parseInt(logicalunitCIM.Denomination) * 100,	//ÃæÖµ£¬ÒÔ·ÖÎªµ¥Î»
-						logicalunitCIM.InitialCount,					//³õÊ¼ÕÅÊı
-						logicalunitCIM.CurrentCount,					//µ±Ç°ÕÅÊı
-						"0"			//Ö½±Ò³®ÏäÀàĞÍÎª0
+						logicalunitCIM.Number,							//ç¼–å·
+						converStatus(logicalunitCIM.Status),			//çŠ¶æ€
+						parseInt(logicalunitCIM.Denomination) * 100,	//é¢å€¼ï¼Œä»¥åˆ†ä¸ºå•ä½
+						logicalunitCIM.InitialCount,					//åˆå§‹å¼ æ•°
+						logicalunitCIM.CurrentCount,					//å½“å‰å¼ æ•°
+						"0"			//çº¸å¸é’ç®±ç±»å‹ä¸º0
 					);
 			}
 		}
@@ -52,15 +52,15 @@ function CashBoxCheck()
 		if(typeof(top.YHAXCashDispenserFen) != "undefined"){
 			var logicalunitsFen = top.YHAXCashDispenserFen.LogicalUnits;
 			for(var k=0; k<logicalunitsFen.Count;k++){
-				//Ó²±Ò³®Ïä
+				//ç¡¬å¸é’ç®±
 				var logicalunitFen = logicalunitsFen.Item(k);
 				cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
-						logicalunitFen.Number,					//±àºÅ
-						converStatus(logicalunitFen.Status),	//×´Ì¬
-						logicalunitFen.NoteValue,				//ÃæÖµ£¬ÒÔ·ÖÎªµ¥Î»
-						logicalunitFen.InitialCount,			//³õÊ¼ÕÅÊı
-						logicalunitFen.CurrentCount,			//µ±Ç°ÕÅÊı
-						"1"			//Ó²±Ò³®ÏäÀàĞÍÎª1
+						logicalunitFen.Number,					//ç¼–å·
+						converStatus(logicalunitFen.Status),	//çŠ¶æ€
+						logicalunitFen.NoteValue,				//é¢å€¼ï¼Œä»¥åˆ†ä¸ºå•ä½
+						logicalunitFen.InitialCount,			//åˆå§‹å¼ æ•°
+						logicalunitFen.CurrentCount,			//å½“å‰å¼ æ•°
+						"1"			//ç¡¬å¸é’ç®±ç±»å‹ä¸º1
 					);
 			}
 		}
@@ -70,39 +70,39 @@ function CashBoxCheck()
 		var msgDatas = "";
 		for(var i=0;i<len;i++){
 			msgData = "";
-			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][0],"box_no");	//³®ÏäNumber
-			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][1],"status"); 	//³®Ïä×´Ì¬
-			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][2],"denom"); 	//³®ÏäÃæÖµ
-			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][3],"cash_count0");//³õÊ¼ÕÅÊı
-			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][4],"cash_count");//½á´æÕÅÊı
-			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][5],"box_type"); 	//³®ÏäÀàĞÍ
-			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr("","remark"); 						//±¸×¢ËµÃ÷
+			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][0],"box_no");	//é’ç®±Number
+			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][1],"status"); 	//é’ç®±çŠ¶æ€
+			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][2],"denom"); 	//é’ç®±é¢å€¼
+			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][3],"cash_count0");//åˆå§‹å¼ æ•°
+			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][4],"cash_count");//ç»“å­˜å¼ æ•°
+			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr(cashBoxInfoArr[i][5],"box_type"); 	//é’ç®±ç±»å‹
+			msgData += top.exchxmlasync.msgxmldomResp.SetNodeStr("","remark"); 						//å¤‡æ³¨è¯´æ˜
 			msgDatas += top.exchxmlasync.msgxmldomResp.SetNodeStr(msgData,"item");
 		}
 		return msgDatas;
 	}
 
 	/*
-	 * ×÷ÓÃ£º»ñÈ¡³®ÏäĞÅÏ¢
-	 * ²ÎÊı£ºÎŞ
-	 * ·µ»Ø£º³®ÏäĞÅÏ¢×Ö·û´®£¨³®ÏäÊôĞÔÖ®¼äÓÃ','·Ö¸ô£¬¶à¸ö³®ÏäÊ¹ÓÃ¡®|¡¯·Ö¸ô£©
+	 * ä½œç”¨ï¼šè·å–é’ç®±ä¿¡æ¯
+	 * å‚æ•°ï¼šæ— 
+	 * è¿”å›ï¼šé’ç®±ä¿¡æ¯å­—ç¬¦ä¸²ï¼ˆé’ç®±å±æ€§ä¹‹é—´ç”¨','åˆ†éš”ï¼Œå¤šä¸ªé’ç®±ä½¿ç”¨â€˜|â€™åˆ†éš”ï¼‰
 	 */
 	this.getCashBoxInfoStr = function(){
-		var cashBoxInfoArr = new Array();	//³®ÏäĞÅÏ¢Êı×é
+		var cashBoxInfoArr = new Array();	//é’ç®±ä¿¡æ¯æ•°ç»„
 		if(typeof(top.YHAXCashDispenser) != "undefined"){
 			var logicalunitsCDM = top.YHAXCashDispenser.LogicalUnits;
 			for(var i=0; i<logicalunitsCDM.Count;i++){
-				//È¡¿î³®Ïä
+				//å–æ¬¾é’ç®±
 				var logicalunitCDM = logicalunitsCDM.Item(i);
 				cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
 						logicalunitCDM.Id,							//ID
-						logicalunitCDM.Number,						//±àºÅ
-						converType(logicalunitCDM.Type),			//ÀàĞÍ
-						converStatus(logicalunitCDM.Status),		//×´Ì¬
-						parseInt(logicalunitCDM.NoteValue),			//ÃæÖµ£¬ÒÔ·ÖÎªµ¥Î»
-						logicalunitCDM.InitialCount,				//³õÊ¼ÕÅÊı
-						logicalunitCDM.CurrentCount,				//µ±Ç°ÕÅÊı
-						"0"				//Ö½±Ò³®Ïä£¬ÀàĞÍÎª"0"
+						logicalunitCDM.Number,						//ç¼–å·
+						converType(logicalunitCDM.Type),			//ç±»å‹
+						converStatus(logicalunitCDM.Status),		//çŠ¶æ€
+						parseInt(logicalunitCDM.NoteValue),			//é¢å€¼ï¼Œä»¥åˆ†ä¸ºå•ä½
+						logicalunitCDM.InitialCount,				//åˆå§‹å¼ æ•°
+						logicalunitCDM.CurrentCount,				//å½“å‰å¼ æ•°
+						"0"				//çº¸å¸é’ç®±ï¼Œç±»å‹ä¸º"0"
 					);
 			}
 		}
@@ -111,10 +111,10 @@ function CashBoxCheck()
 			var logicalunitsCIM = top.YHAXCashAcceptor.LogicalUnits;
 			for(var j=0; j<logicalunitsCIM.Count;j++){
 				var isExit = false;
-				//´æ¿î³®Ïä
+				//å­˜æ¬¾é’ç®±
 				var logicalunitCIM = logicalunitsCIM.Item(j);
 				for(var l=0;l<logicalunitsCDM.Count;l++){
-					//±È½Ï´æÈ¡¿î³®ÏäµÄNumber£¬ÖØ¸´Ôò¹ıÂË
+					//æ¯”è¾ƒå­˜å–æ¬¾é’ç®±çš„Numberï¼Œé‡å¤åˆ™è¿‡æ»¤
 					if(logicalunitCIM.Number == logicalunitsCDM.Item(l).Number){
 						isExit = true;
 						break;
@@ -125,13 +125,13 @@ function CashBoxCheck()
 				}
 				cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
 						logicalunitCIM.Id,								//ID
-						logicalunitCIM.Number,							//±àºÅ
-						converType(logicalunitCIM.Type),				//ÀàĞÍ
-						converStatus(logicalunitCIM.Status),			//×´Ì¬
-						parseInt(logicalunitCIM.Denomination),			//ÃæÖµ
-						logicalunitCIM.InitialCount,					//³õÊ¼ÕÅÊı
-						logicalunitCIM.CurrentCount,					//µ±Ç°ÕÅÊı
-						"0"			//Ö½±Ò³®ÏäÀàĞÍÎª0
+						logicalunitCIM.Number,							//ç¼–å·
+						converType(logicalunitCIM.Type),				//ç±»å‹
+						converStatus(logicalunitCIM.Status),			//çŠ¶æ€
+						parseInt(logicalunitCIM.Denomination),			//é¢å€¼
+						logicalunitCIM.InitialCount,					//åˆå§‹å¼ æ•°
+						logicalunitCIM.CurrentCount,					//å½“å‰å¼ æ•°
+						"0"			//çº¸å¸é’ç®±ç±»å‹ä¸º0
 					);
 			}
 		}
@@ -139,17 +139,17 @@ function CashBoxCheck()
 		if(typeof(top.YHAXCashDispenserFen) != "undefined"){
 			var logicalunitsFen = top.YHAXCashDispenserFen.LogicalUnits;
 			for(var k=0; k<logicalunitsFen.Count;k++){
-				//Ó²±Ò³®Ïä
+				//ç¡¬å¸é’ç®±
 				var logicalunitFen = logicalunitsFen.Item(k);
 				cashBoxInfoArr[cashBoxInfoArr.length] = new Array(
 						logicalunitFen.Id,						//ID
-						logicalunitFen.Number,					//±àºÅ
-						converType(logicalunitFen.Type),		//ÀàĞÍ
-						converStatus(logicalunitFen.Status),	//×´Ì¬
-						logicalunitFen.NoteValue,				//ÃæÖµ£¬ÒÔ·ÖÎªµ¥Î»
-						logicalunitFen.InitialCount,			//³õÊ¼ÕÅÊı
-						logicalunitFen.CurrentCount,			//µ±Ç°ÕÅÊı
-						"1"			//Ó²±Ò³®ÏäÀàĞÍÎª1
+						logicalunitFen.Number,					//ç¼–å·
+						converType(logicalunitFen.Type),		//ç±»å‹
+						converStatus(logicalunitFen.Status),	//çŠ¶æ€
+						logicalunitFen.NoteValue,				//é¢å€¼ï¼Œä»¥åˆ†ä¸ºå•ä½
+						logicalunitFen.InitialCount,			//åˆå§‹å¼ æ•°
+						logicalunitFen.CurrentCount,			//å½“å‰å¼ æ•°
+						"1"			//ç¡¬å¸é’ç®±ç±»å‹ä¸º1
 					);
 			}
 		}
@@ -162,19 +162,19 @@ function CashBoxCheck()
 				retStr += cashBoxInfoArr[i].join(",");
 			
 		}
-		return retStr;		//·µ»Ø³®ÏäĞÅÏ¢×Ö·û´®
+		return retStr;		//è¿”å›é’ç®±ä¿¡æ¯å­—ç¬¦ä¸²
 	}
 	
 	/*
-	 * »ñÈ¡³®ÏäĞÅÏ¢£º³®Ïä±ä¶¯¼ÇÈÕÖ¾Ê±µ÷ÓÃ
-	 * ·µ»Ø£º×Ö·û´®
-	 * ¸ñÊ½ËµÃ÷£ºID_ÃæÖµ+µ¥Î»:ÕÅÊı | ID_ÃæÖµ+µ¥Î»:ÕÅÊı | ID_ÃæÖµ+µ¥Î»:ÕÅÊı |¡¤¡¤¡¤
+	 * è·å–é’ç®±ä¿¡æ¯ï¼šé’ç®±å˜åŠ¨è®°æ—¥å¿—æ—¶è°ƒç”¨
+	 * è¿”å›ï¼šå­—ç¬¦ä¸²
+	 * æ ¼å¼è¯´æ˜ï¼šID_é¢å€¼+å•ä½:å¼ æ•° | ID_é¢å€¼+å•ä½:å¼ æ•° | ID_é¢å€¼+å•ä½:å¼ æ•° |Â·Â·Â·
 	 */
 	this.getCashBoxRecord = function(){
 	   try{
 		   var CashBoxInfoArr = new Array();
 		   var CashBoxInfosArr = new Array();
-		   var CashBoxInfoStr = new top.CashBoxCheck().getCashBoxInfoStr();		//»ñÈ¡±¾µØ³®ÏäĞÅÏ¢ 
+		   var CashBoxInfoStr = new top.CashBoxCheck().getCashBoxInfoStr();		//è·å–æœ¬åœ°é’ç®±ä¿¡æ¯ 
 		   var strTemp = "";
 		   var strUnit = "";
 			CashBoxInfosArr = CashBoxInfoStr.split('|');
@@ -182,51 +182,51 @@ function CashBoxCheck()
 			for(var i=0;i<len;i++){
 				CashBoxInfoArr[i] = CashBoxInfosArr[i].split(',');
 				if(CashBoxInfoArr[i][7] == "1"){
-					strUnit = "·Ö";
+					strUnit = "åˆ†";
 				}else if(CashBoxInfoArr[i][7] == "0"){
-					strUnit = "Ôª";
+					strUnit = "å…ƒ";
 				}
 				strTemp += CashBoxInfoArr[i][0] + "_" + CashBoxInfoArr[i][4] + strUnit + ":" + CashBoxInfoArr[i][6] + "|";
 			}
 			return strTemp;
 	   }catch(e){
-			top.journalPrinter.addJournalWithTime("getCashBoxRecord·½·¨·µ»ØÒì³£  " + e);
+			top.journalPrinter.addJournalWithTime("getCashBoxRecordæ–¹æ³•è¿”å›å¼‚å¸¸  " + e);
 			return "";
 		}
 	}
 	/*
-	 * ³®Ïä×´Ì¬×ªÒå
+	 * é’ç®±çŠ¶æ€è½¬ä¹‰
 	 */
 	function converStatus(uStatus){
 		switch(uStatus) {
-			case "HEALTHY" : return "0";	//Õı³£
-			case "LOW" : return "1";		//½«¿Õ
-			case "HIGH" : return "2";		//½«Âú
-			case "FULL" : return "3";		//³®Âú
-			case "EMPTY" :return "4";		//³®¿Õ
-			case "MISSING" :return "5";		//È±Ê§
-			case "UNKNOWN" :return "5";		//Î´Öª
-			case "INOPERATIVE" :return "6";	//ÎŞĞ§
+			case "HEALTHY" : return "0";	//æ­£å¸¸
+			case "LOW" : return "1";		//å°†ç©º
+			case "HIGH" : return "2";		//å°†æ»¡
+			case "FULL" : return "3";		//é’æ»¡
+			case "EMPTY" :return "4";		//é’ç©º
+			case "MISSING" :return "5";		//ç¼ºå¤±
+			case "UNKNOWN" :return "5";		//æœªçŸ¥
+			case "INOPERATIVE" :return "6";	//æ— æ•ˆ
 			
 		}
 		return uStatus;
 	}
 	/*
-	 * ³®ÏäÀàĞÍ×ªÒå
+	 * é’ç®±ç±»å‹è½¬ä¹‰
 	 */
 	function converType(uType){
 		switch(uType) {
-			case "REJECTCASSETTE" : return "¾Ü³®Ïä"; 
-			case "BILLCASSETTE" : return "È¡¿îÏä";
-			case "RETRACTCASSETTE" : return "»ØÊÕÏä";
-			case "COINCYLINDER" : return "Ó²±ÒÏä";
-			case "COINDISPENSER" : return "Ó²±ÒÏä";
-			case "RECYCLINGCASSETTE" :return "Ñ­»·Ïä";
-			case "CASHIN" :return "´æ¿îÏä";
-			case "RECYCLER" :return "Ñ­»·Ïä";
-			case "RETRACT" :return "»ØÊÕÏä";
-			case "REJECT" :return "¾Ü³®Ïä";
-			default : return "ÆäËû"
+			case "REJECTCASSETTE" : return "æ‹’é’ç®±"; 
+			case "BILLCASSETTE" : return "å–æ¬¾ç®±";
+			case "RETRACTCASSETTE" : return "å›æ”¶ç®±";
+			case "COINCYLINDER" : return "ç¡¬å¸ç®±";
+			case "COINDISPENSER" : return "ç¡¬å¸ç®±";
+			case "RECYCLINGCASSETTE" :return "å¾ªç¯ç®±";
+			case "CASHIN" :return "å­˜æ¬¾ç®±";
+			case "RECYCLER" :return "å¾ªç¯ç®±";
+			case "RETRACT" :return "å›æ”¶ç®±";
+			case "REJECT" :return "æ‹’é’ç®±";
+			default : return "å…¶ä»–"
 		}
 		return uType;
 	}

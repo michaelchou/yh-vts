@@ -1,16 +1,16 @@
 /*
-  ·¢¿¨Æ÷²Ù×÷Àà
+  å‘å¡å™¨æ“ä½œç±»
  */
 function CardDispenser()
 {
-  // ¶Á¿¨Æ÷ĞéÄ£¿éÊÂ¼şÏìÓ¦¶ÔÏó
+  // è¯»å¡å™¨è™šæ¨¡å—äº‹ä»¶å“åº”å¯¹è±¡
   this.CardDispenserEvents = new top.EventHandling(top.YHAXCardDispenser);
-  //------------------------- ·¢¿¨Æ÷²Ù×÷ÀàË½ÓĞÊôĞÔ -------------------------//
-  /* ÍË³ö¿¨ºóµÈ´ıÓÃ»§È¡¿¨Ê±¼ä µ¥Î»£¨Ãë£©*/
+  //------------------------- å‘å¡å™¨æ“ä½œç±»ç§æœ‰å±æ€§ -------------------------//
+  /* é€€å‡ºå¡åç­‰å¾…ç”¨æˆ·å–å¡æ—¶é—´ å•ä½ï¼ˆç§’ï¼‰*/
   this.EjectTimeout = 120;
-  //------------------------- ·¢¿¨Æ÷Ö´ĞĞµÄ·½·¨ -------------------------//
+  //------------------------- å‘å¡å™¨æ‰§è¡Œçš„æ–¹æ³• -------------------------//
 
-  /*ÔÊĞí·¢¿¨*/
+  /*å…è®¸å‘å¡*/
   this.dispensecard = function(strPresentPosition,id)
   {
     top.carddispenser.CardDispenserEvents.clearAll();
@@ -21,40 +21,40 @@ function CardDispenser()
     top.carddispenser.CardDispenserEvents.appendEvent("DeviceError", top.carddispenser.onDeviceError);
 	top.carddispenser.CardDispenserEvents.appendEvent("FatalError", top.carddispenser.onDeviceError);
     top.carddispenser.CardDispenserEvents.appendEvent("CardUnitError", top.carddispenser.onDeviceError);
-    top.journalPrinter.addJournalWithTime("ÔÊĞí·¢¿¨ CardDispenser command DispenseCard" + top.journalPrinter.strNewLine);
+    top.journalPrinter.addJournalWithTime("å…è®¸å‘å¡ CardDispenser command DispenseCard" + top.journalPrinter.strNewLine);
     top.YHAXCardDispenser.DispenseCard(strPresentPosition,id,this.EjectTimeout*1000);
-	// ¿ØÖÆÖ¸Ê¾µÆ
+	// æ§åˆ¶æŒ‡ç¤ºç¯
     try{top.guidelights.setCardReaderLight("MEDIUM");}catch(e){}
   }
 
-  /*²»ÔÊĞí·¢¿¨*/
+  /*ä¸å…è®¸å‘å¡*/
   this.cancelDispense = function()
   {
-	 top.journalPrinter.addJournalWithTime("²»ÔÊĞí·¢¿¨ CardDispenser command CancelDispense" + top.journalPrinter.strNewLine);
+	 top.journalPrinter.addJournalWithTime("ä¸å…è®¸å‘å¡ CardDispenser command CancelDispense" + top.journalPrinter.strNewLine);
      top.YHAXCardDispenser.CancelDispense();
-	 // ¿ØÖÆÖ¸Ê¾µÆ
+	 // æ§åˆ¶æŒ‡ç¤ºç¯
      try{top.guidelights.setCardReaderLight("OFF");}catch(e){}
   }
 
-  /*·¢¿¨Æ÷¸´Î»*/
+  /*å‘å¡å™¨å¤ä½*/
   this.reset = function ()
   {
 	top.carddispenser.CardDispenserEvents.clearAll();
 	top.carddispenser.CardDispenserEvents.appendEvent("ResetComplete", top.carddispenser.onResetComplete);
 	top.carddispenser.CardDispenserEvents.appendEvent("DeviceError", top.carddispenser.onDeviceError);
 	top.carddispenser.CardDispenserEvents.appendEvent("FatalError", top.carddispenser.onDeviceError);
-	//ÓĞ½éÖÊ¸´Î»Ê±£¬·¢ÍÌ¿¨ÀıÍâ±¨¸æ
+	//æœ‰ä»‹è´¨å¤ä½æ—¶ï¼Œå‘åå¡ä¾‹å¤–æŠ¥å‘Š
 	if(isCardPresent()==true){
 		sendCaptureStatus();
 	}
-	top.journalPrinter.addJournalWithTime("·¢¿¨Æ÷¸´Î» CardDispenser command Reset" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å‘å¡å™¨å¤ä½ CardDispenser command Reset" + top.journalPrinter.strNewLine);
     top.YHAXCardDispenser.Reset("RETRACT");
   }
 
-  /*³õÊ¼»¯¿¨ÏäÅäÖÃĞÅÏ¢*/
+  /*åˆå§‹åŒ–å¡ç®±é…ç½®ä¿¡æ¯*/
   this.InitiateCardUnitConfiguration = function (CardUnitsToConfiguration)
   {
-	top.journalPrinter.addJournalWithTime("¿¨ÏäÅäÖÃ³õÊ¼»¯ CardDispenser command InitiateCardUnitConfiguration" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å¡ç®±é…ç½®åˆå§‹åŒ– CardDispenser command InitiateCardUnitConfiguration" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
     top.carddispenser.CardDispenserEvents.appendEvent("ConfigurationInitiated",top.carddispenser.onConfigurationInitiated);
     top.carddispenser.CardDispenserEvents.appendEvent("ConfigurationFailed",top.carddispenser.onConfigurationFailed);
@@ -64,9 +64,9 @@ function CardDispenser()
 
 
 
-  /*Íê³É¿¨ÏäÅäÖÃĞÅÏ¢*/
+  /*å®Œæˆå¡ç®±é…ç½®ä¿¡æ¯*/
   this.CompletedCardUnitConfiguration = function(){
-	top.journalPrinter.addJournalWithTime("¿¨ÏäÅäÖÃÍê³É CardDispenser command CompletedCardUnitConfiguration" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å¡ç®±é…ç½®å®Œæˆ CardDispenser command CompletedCardUnitConfiguration" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
     top.carddispenser.CardDispenserEvents.appendEvent("ConfigurationCompleted", top.carddispenser.onConfigurationCompleted);
     top.carddispenser.CardDispenserEvents.appendEvent("ConfigurationFailed", top.carddispenser.onConfigurationFailed);
@@ -75,47 +75,47 @@ function CardDispenser()
     top.YHAXCardDispenser.CompletedCardUnitConfiguration();
   }
 
-  /*¿¨ÏäãĞĞÅÏ¢¸Ä±äÊÂ¼şÏìÓ¦*/
+  /*å¡ç®±é˜ˆä¿¡æ¯æ”¹å˜äº‹ä»¶å“åº”*/
   this.onCardUnitThresholdCrossed = function()
   {
-	top.journalPrinter.addJournalWithTime("¿¨ÏäãĞÖµ CardDispenser Event onCardUnitThresholdCrossed" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å¡ç®±é˜ˆå€¼ CardDispenser Event onCardUnitThresholdCrossed" + top.journalPrinter.strNewLine);
 	top.carddispenser.CardDispenserEvents.clearAll();
     if (typeof(top.MainFrame.onCardUnitThresholdCrossed) == "function"){
       top.MainFrame.onCardUnitThresholdCrossed();
 	}
   }
 
-  /*·¢¿¨³¬Ê±µÄÊÂ¼şÏìÓ¦*/
+  /*å‘å¡è¶…æ—¶çš„äº‹ä»¶å“åº”*/
   this.onTimeout = function()
   {
-	top.journalPrinter.addJournalWithTime("·¢¿¨³¬Ê± CardDispenser Event onTimeout" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å‘å¡è¶…æ—¶ CardDispenser Event onTimeout" + top.journalPrinter.strNewLine);
 	top.carddispenser.CardDispenserEvents.clearAll();
-	// ¿ØÖÆÖ¸Ê¾µÆ
+	// æ§åˆ¶æŒ‡ç¤ºç¯
     try{top.guidelights.setCardReaderLight("OFF");}catch(e){}
     if (typeof(top.MainFrame.onTimeout) == "function")
       top.MainFrame.onTimeout();
   }
 
-  /*·¢¿¨Æ÷¿¨³É¹¦µÄÊÂ¼şÏìÓ¦*/
+  /*å‘å¡å™¨å¡æˆåŠŸçš„äº‹ä»¶å“åº”*/
   this.onCardDispensed = function()
   {
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
-	top.journalPrinter.addJournalWithTime("¿¨ÒÑ¾­·¢³ö CardDispenser Event onCardDispensed" + top.journalPrinter.strNewLine);
+    // è®°å½•ç»ˆç«¯æµæ°´
+	top.journalPrinter.addJournalWithTime("å¡å·²ç»å‘å‡º CardDispenser Event onCardDispensed" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
-	// ¿ØÖÆÖ¸Ê¾µÆ
+	// æ§åˆ¶æŒ‡ç¤ºç¯
     try{top.guidelights.setCardReaderLight("QUICK");}catch(e){}
     if (typeof(top.MainFrame.onCardDispensed) == "function"){
       top.MainFrame.onCardDispensed();
 	}
   }
 
-  /*·¢¿¨Æ÷¿¨ÒÑ¾­±»¿Í»§È¡×ßµÄÊÂ¼şÏìÓ¦*/
+  /*å‘å¡å™¨å¡å·²ç»è¢«å®¢æˆ·å–èµ°çš„äº‹ä»¶å“åº”*/
   this.onCardTaken = function()
   {
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
-	top.journalPrinter.addJournalWithTime("¿¨±»È¡×ß CardDispenser Event onCardTaken" + top.journalPrinter.strNewLine);
+    // è®°å½•ç»ˆç«¯æµæ°´
+	top.journalPrinter.addJournalWithTime("å¡è¢«å–èµ° CardDispenser Event onCardTaken" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
-    // ¿ØÖÆÖ¸Ê¾µÆ
+    // æ§åˆ¶æŒ‡ç¤ºç¯
     try{top.guidelights.setCardReaderLight("OFF");}catch(e){}
     if (typeof(top.MainFrame.onCardTaken) == "function")
       top.MainFrame.onCardTaken();
@@ -123,10 +123,10 @@ function CardDispenser()
       top.onCardTaken();
   }
 
-  /*·¢¿¨Æ÷Ó²¼ş¹ÊÕÏµÄÊÂ¼şÏìÓ¦*/
+  /*å‘å¡å™¨ç¡¬ä»¶æ•…éšœçš„äº‹ä»¶å“åº”*/
   this.onDeviceError = function()
   {
-	top.journalPrinter.addJournalWithTime("·¢¿¨Æ÷¹ÊÕÏ CardDispenser Event onDeviceError" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å‘å¡å™¨æ•…éšœ CardDispenser Event onDeviceError" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
     if (typeof(top.MainFrame.onDeviceError_CardDispenser) == "function")
     {
@@ -137,10 +137,10 @@ function CardDispenser()
     }else{}
   };
 
-  /*¶Á¿¨Æ÷¸´Î»³É¹¦µÄÊÂ¼şÏìÓ¦*/
+  /*è¯»å¡å™¨å¤ä½æˆåŠŸçš„äº‹ä»¶å“åº”*/
   this.onResetComplete = function()
   {
-	top.journalPrinter.addJournalWithTime("·¢¿¨Æ÷¸´Î»³É¹¦ CardDispenser Event onResetComplete" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å‘å¡å™¨å¤ä½æˆåŠŸ CardDispenser Event onResetComplete" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
     if (typeof(top.MainFrame.onResetComplete_CardDispenser) == "function")
     {
@@ -151,9 +151,9 @@ function CardDispenser()
     }else{}
   };
 
-  /*³õÊ¼»¯¿¨ÏäÅäÖÃĞÅÏ¢³É¹¦µÄÊÂ¼şÏìÓ¦*/
+  /*åˆå§‹åŒ–å¡ç®±é…ç½®ä¿¡æ¯æˆåŠŸçš„äº‹ä»¶å“åº”*/
   this.onConfigurationInitiated = function(){
-	top.journalPrinter.addJournalWithTime("³õÊ¼»¯¿¨ÏäÅäÖÃĞÅÏ¢³É¹¦ CardDispenser Event onConfigurationInitiated" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("åˆå§‹åŒ–å¡ç®±é…ç½®ä¿¡æ¯æˆåŠŸ CardDispenser Event onConfigurationInitiated" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
     if (typeof(top.MainFrame.onConfigurationInitiated) == "function")
     {
@@ -163,9 +163,9 @@ function CardDispenser()
       top.onConfigurationInitiated();
     }else{}
   }
-  /*Íê³É¿¨ÏäÅäÖÃĞÅÏ¢µÄÊÂ¼şÏìÓ¦*/
+  /*å®Œæˆå¡ç®±é…ç½®ä¿¡æ¯çš„äº‹ä»¶å“åº”*/
   this.onConfigurationCompleted = function(){
-	top.journalPrinter.addJournalWithTime("Íê³É¿¨ÏäÅäÖÃĞÅÏ¢³É¹¦ CardDispenser Event onConfigurationCompleted" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å®Œæˆå¡ç®±é…ç½®ä¿¡æ¯æˆåŠŸ CardDispenser Event onConfigurationCompleted" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
     if (typeof(top.MainFrame.onConfigurationCompleted) == "function")
     {
@@ -175,10 +175,10 @@ function CardDispenser()
       top.onConfigurationCompleted();
     }else{}
   }
-  /*³õÊ¼»¯¿¨ÏäÅäÖÃĞÅÏ¢Ê§°ÜµÄÊÂ¼şÏìÓ¦*/
+  /*åˆå§‹åŒ–å¡ç®±é…ç½®ä¿¡æ¯å¤±è´¥çš„äº‹ä»¶å“åº”*/
   this.onConfigurationFailed = function ()
   {
-	top.journalPrinter.addJournalWithTime("³õÊ¼»¯²ÎÊıÊ§°Ü CardDispenser Event onConfigurationFailed" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("åˆå§‹åŒ–å‚æ•°å¤±è´¥ CardDispenser Event onConfigurationFailed" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
     if (typeof(top.MainFrame.onConfigurationFailed) == "function")
     {
@@ -188,9 +188,9 @@ function CardDispenser()
       top.onConfigurationFailed();
     }else{}
   }
-  /*²»Ö§³ÖÅäÖÃ¿¨ÏäÅäÖÃĞÅÏ¢µÄÊÂ¼şÏìÓ¦*/
+  /*ä¸æ”¯æŒé…ç½®å¡ç®±é…ç½®ä¿¡æ¯çš„äº‹ä»¶å“åº”*/
   this.onNotSupported = function(){
-	top.journalPrinter.addJournalWithTime("²»Ö§³ÖÅäÖÃ¿¨ÏäÅäÖÃĞÅÏ¢ CardDispenser Event onNotSupported" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("ä¸æ”¯æŒé…ç½®å¡ç®±é…ç½®ä¿¡æ¯ CardDispenser Event onNotSupported" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
     if (typeof(top.MainFrame.onNotSupported) == "function")
     {
@@ -200,8 +200,8 @@ function CardDispenser()
       top.onNotSupported();
     }else{}
   }
-  //-------------»»¿¨------------------//
-  /*»»¿¨-·¢¿¨*/
+  //-------------æ¢å¡------------------//
+  /*æ¢å¡-å‘å¡*/
   this.exdispensecard = function(strPresentPosition,id)
   {
     top.carddispenser.CardDispenserEvents.clearAll();
@@ -212,59 +212,59 @@ function CardDispenser()
     top.carddispenser.CardDispenserEvents.appendEvent("DeviceError", top.carddispenser.onDeviceError);
 	top.carddispenser.CardDispenserEvents.appendEvent("FatalError", top.carddispenser.onDeviceError);
     top.carddispenser.CardDispenserEvents.appendEvent("CardUnitError", top.carddispenser.onDeviceError);
-    top.journalPrinter.addJournalWithTime("ÔÊĞí·¢¿¨(»»¿¨) CardDispenser command DispenseCard" + top.journalPrinter.strNewLine);
+    top.journalPrinter.addJournalWithTime("å…è®¸å‘å¡(æ¢å¡) CardDispenser command DispenseCard" + top.journalPrinter.strNewLine);
     top.YHAXCardDispenser.DispenseCard(strPresentPosition,id,this.EjectTimeout*1000);
-	// ¿ØÖÆÖ¸Ê¾µÆ
+	// æ§åˆ¶æŒ‡ç¤ºç¯
     try{top.guidelights.setCardReaderLight("MEDIUM");}catch(e){}
   }
 
-    /*·¢¿¨Æ÷-»»¿¨-¿¨³É¹¦µÄÊÂ¼şÏìÓ¦*/
+    /*å‘å¡å™¨-æ¢å¡-å¡æˆåŠŸçš„äº‹ä»¶å“åº”*/
   this.onExCardDispensed = function()
   {
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
-	top.journalPrinter.addJournalWithTime("»»¿¨ÒÑ¾­·¢³ö CardDispenser Event onExCardDispensed" + top.journalPrinter.strNewLine);
+    // è®°å½•ç»ˆç«¯æµæ°´
+	top.journalPrinter.addJournalWithTime("æ¢å¡å·²ç»å‘å‡º CardDispenser Event onExCardDispensed" + top.journalPrinter.strNewLine);
     top.carddispenser.CardDispenserEvents.clearAll();
-	// ¿ØÖÆÖ¸Ê¾µÆ
+	// æ§åˆ¶æŒ‡ç¤ºç¯
     try{top.guidelights.setCardReaderLight("QUICK");}catch(e){}
     if (typeof(top.MainFrame.onExCardDispensed) == "function"){
       top.MainFrame.onExCardDispensed();
 	}
   }
 
-   /*·¢¿¨Æ÷-»»¿¨-¿¨ÒÑ¾­±»¿Í»§È¡×ßµÄÊÂ¼şÏìÓ¦*/
+   /*å‘å¡å™¨-æ¢å¡-å¡å·²ç»è¢«å®¢æˆ·å–èµ°çš„äº‹ä»¶å“åº”*/
   this.onExCardTaken = function()
   {
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
-	top.journalPrinter.addJournalWithTime("»»¿¨±»È¡×ß CardDispenser Event onExCardTaken" + top.journalPrinter.strNewLine);
-    // ¿ØÖÆÖ¸Ê¾µÆ
+    // è®°å½•ç»ˆç«¯æµæ°´
+	top.journalPrinter.addJournalWithTime("æ¢å¡è¢«å–èµ° CardDispenser Event onExCardTaken" + top.journalPrinter.strNewLine);
+    // æ§åˆ¶æŒ‡ç¤ºç¯
     try{top.guidelights.setCardReaderLight("OFF");}catch(e){}
     if (typeof(top.MainFrame.onExCardTaken) == "function")
       top.MainFrame.onExCardTaken();
     else if (typeof(top.onExCardTaken) == "function")
       top.onExCardTaken();
   }
-  /*¿¨ÏäãĞĞÅÏ¢¸Ä±äÊÂ¼şÏìÓ¦*/
+  /*å¡ç®±é˜ˆä¿¡æ¯æ”¹å˜äº‹ä»¶å“åº”*/
   this.onExCardUnitThresholdCrossed = function()
   {
-	top.journalPrinter.addJournalWithTime("¿¨ÏäãĞÖµ CardDispenser Event onExCardUnitThresholdCrossed" + top.journalPrinter.strNewLine);
+	top.journalPrinter.addJournalWithTime("å¡ç®±é˜ˆå€¼ CardDispenser Event onExCardUnitThresholdCrossed" + top.journalPrinter.strNewLine);
     if (typeof(top.MainFrame.onExCardUnitThresholdCrossed) == "function"){
       top.MainFrame.onExCardUnitThresholdCrossed();
 	}
   }
 
-  //------------------------- ÆäËü¸¨Öú·½·¨ -------------------------//
+  //------------------------- å…¶å®ƒè¾…åŠ©æ–¹æ³• -------------------------//
 
-  /*ÅĞ¶Ï·¢¿¨Æ÷ÖĞÊÇ·ñ´æÔÚ¿¨*/
+  /*åˆ¤æ–­å‘å¡å™¨ä¸­æ˜¯å¦å­˜åœ¨å¡*/
   this.isCardPresent = function()
   {
     return (top.YHAXCardDispenser.StMediaStatus == "PRESENT");
   }
      /*
-¡¡¡¡ »ñÈ¡¿¨ÏäĞÅÏ¢
+ã€€ã€€ è·å–å¡ç®±ä¿¡æ¯
    */
   this.getCardUnitInfo = function()
   {
-	//»ñÈ¡¿¨ÏäĞÅÏ¢µÄÊ±ºò£¬ÏÈÈ¡ÏÂ×´Ì¬£¬·ÀÖ¹È¡³öSP»º´æĞÅÏ¢
+	//è·å–å¡ç®±ä¿¡æ¯çš„æ—¶å€™ï¼Œå…ˆå–ä¸‹çŠ¶æ€ï¼Œé˜²æ­¢å–å‡ºSPç¼“å­˜ä¿¡æ¯
 	top.YHAXCardDispenser.StDeviceStatus;
 	top.YHAXCardDispenser.StMediaStatus;
 	top.YHAXCardDispenser.StDispenserStatus;
@@ -284,16 +284,16 @@ function CardDispenser()
 				logicalunit.Threshold,
 				logicalunit.RetainCount);
 	}
-	var strJrn = new top.StringCtrl("¿¨ÏäĞÅÏ¢: "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
+	var strJrn = new top.StringCtrl("å¡ç®±ä¿¡æ¯: "+new top.DateTimeCtrl().getYYYYMMDDHHmmSSWithSep()).preandsufStr('=', top.journalPrinter.TITLEWIDTH) + top.journalPrinter.strNewLine;
 	strJrn = strJrn + str + top.journalPrinter.strNewLine;
 	top.journalPrinter.addJournal(strJrn);
     return strRecordArr;
   }
 
   /*
-¡¡ Ë½ÓĞº¯Êı£ºÏò·şÎñÆ÷±¨¸æ¿¨±»»ØÊÕµÄĞÅÏ¢
-    ·µ»Ø£º
-    ±¨¸æÖÕ¶Ë¶¯×÷×´Ì¬µÄ½á¹û£¬°üÀ¨
+ã€€ ç§æœ‰å‡½æ•°ï¼šå‘æœåŠ¡å™¨æŠ¥å‘Šå¡è¢«å›æ”¶çš„ä¿¡æ¯
+    è¿”å›ï¼š
+    æŠ¥å‘Šç»ˆç«¯åŠ¨ä½œçŠ¶æ€çš„ç»“æœï¼ŒåŒ…æ‹¬
     RESULT_SUCCESSFUL
     RESULT_FAILED
     RESULT_UNCERTAIN
@@ -304,8 +304,8 @@ function CardDispenser()
 	  var reqMsg = new ColsMsgXmlText();
      reqMsg.appendNode(XMLNODENAME_PROCESSORNAME, "AppendExpLog");
      reqMsg.appendNode("strExpCode", top.EXPCODE_CARDDISPENSER);
-	  reqMsg.appendNode("strPan", top.pool.get("strPan"));         //¿¨ºÅ
-     reqMsg.appendNode("strMemo", "·¢¿¨»ØÊÕ");
+	  reqMsg.appendNode("strPan", top.pool.get("strPan"));         //å¡å·
+     reqMsg.appendNode("strMemo", "å‘å¡å›æ”¶");
      var iRet = top.exchxmlasync.doExchange(SERVICEPROCESSOR_URL, reqMsg);
      return iRet;
   }

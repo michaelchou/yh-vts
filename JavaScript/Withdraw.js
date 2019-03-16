@@ -1,41 +1,41 @@
 /*
-  È¡¿î
+  å–æ¬¾
   UUID:1685AF26-9FCF-4E3C-8EC0-F57248800B14
  */
 function Withdraw()
 {
-  // ³ö³®ĞéÄ£¿éÊÂ¼şÏìÓ¦¶ÔÏó
+  // å‡ºé’è™šæ¨¡å—äº‹ä»¶å“åº”å¯¹è±¡
   this.CdmEnr = new top.EventHandling(top.YHAXCashDispenser);
   this.CdmEnrFen = new top.EventHandling(top.YHAXCashDispenserFen);
-  // ËÍ³®ºó¿Í»§È¡³®³¬Ê±Ê±¼ä
+  // é€é’åå®¢æˆ·å–é’è¶…æ—¶æ—¶é—´
   this.iCashPresentTimeout = 120;
-  // È¡¿î±ÒÖÖ
+  // å–æ¬¾å¸ç§
   this.strCurrency_Conf = "CNY";
   this.strCurrency = this.strCurrency_Conf;
-  // Åä³®Ëã·¨
+  // é…é’ç®—æ³•
   this.strMixAlgorithm = "1";
   
-  // È¡¿î½ğ¶î
+  // å–æ¬¾é‡‘é¢
   this.iAmount = -1;
-  // ¼ì²éÈ¡¿îÄ£¿éÊÇ·ñ¿ÉÓÃÊ±£¬ÊÇ·ñ¼ì²éStTransportStatus×´Ì¬
+  // æ£€æŸ¥å–æ¬¾æ¨¡å—æ˜¯å¦å¯ç”¨æ—¶ï¼Œæ˜¯å¦æ£€æŸ¥StTransportStatusçŠ¶æ€
   this.bCheckTransportStatus = false;
  
-  // ¼ì²éÈ¡¿îÄ£¿éÊÇ·ñ¿ÉÓÃÊ±£¬ÊÇ·ñ¼ì²éStSafeDoorStatus×´Ì¬
+  // æ£€æŸ¥å–æ¬¾æ¨¡å—æ˜¯å¦å¯ç”¨æ—¶ï¼Œæ˜¯å¦æ£€æŸ¥StSafeDoorStatusçŠ¶æ€
   this.bCheckSafeDoorStatus = false;
 
   /*
-    ¼ì²éÖ½±ÒÈ¡¿î¹¦ÄÜÊÇ·ñ¿ÉÓÃ
-    ·µ»Ø£º
-      VM_AVAIL_OK       Õı³£¿ÉÓÃ
-      VM_AVAIL_LOCKED   ±»Ëø¶¨
-      VM_AVAIL_DEVERR   Ó²¼ş¹ÊÕÏ
+    æ£€æŸ¥çº¸å¸å–æ¬¾åŠŸèƒ½æ˜¯å¦å¯ç”¨
+    è¿”å›ï¼š
+      VM_AVAIL_OK       æ­£å¸¸å¯ç”¨
+      VM_AVAIL_LOCKED   è¢«é”å®š
+      VM_AVAIL_DEVERR   ç¡¬ä»¶æ•…éšœ
    */
    
   /*this.checkAvai = function()
   {
-    // Îª±ÜÃâ´íÎóÉèÖÃÁËÃæ¶îµÄ³®Ïä´æÔÚ£¬½øĞĞ¼ì²é²¢Ëø¶¨
+    // ä¸ºé¿å…é”™è¯¯è®¾ç½®äº†é¢é¢çš„é’ç®±å­˜åœ¨ï¼Œè¿›è¡Œæ£€æŸ¥å¹¶é”å®š
     //var minval = this.getCuMinNoteValue();
-    // Ö½±ÒĞéÄ£¿é×´Ì¬ÊÇ·ñÕı³£
+    // çº¸å¸è™šæ¨¡å—çŠ¶æ€æ˜¯å¦æ­£å¸¸
     var StDeviceStatus = top.YHAXCashDispenser.StDeviceStatus;
     var StDispenserStatus = top.YHAXCashDispenser.StDispenserStatus;
     var StTransportStatus = top.YHAXCashDispenser.StTransportStatus;
@@ -43,7 +43,7 @@ function Withdraw()
     var StInputOutputStatus = top.YHAXCashDispenser.StInputOutputStatus;
 	var StShutterStatus     = top.YHAXCashDispenser.StShutterStatus;
     if ( (StDeviceStatus != "HEALTHY")
-      || (StDispenserStatus != "HEALTHY" && StDispenserStatus != "DEGRADED")//2018-1-10 È¥³ı  StDispenserStatus NODISPENSE UNKNOWN
+      || (StDispenserStatus != "HEALTHY" && StDispenserStatus != "DEGRADED")//2018-1-10 å»é™¤  StDispenserStatus NODISPENSE UNKNOWN
       || (StInputOutputStatus != "EMPTY" && StInputOutputStatus != "UNKNOWN" && StInputOutputStatus != "NOTSUPPORTED")
       || (StTransportStatus != "HEALTHY" && StTransportStatus != "UNKNOWN" && StTransportStatus != "NOTSUPPORTED")
       || StSafeDoorStatus != "CLOSED"
@@ -54,12 +54,12 @@ function Withdraw()
 	  return true;
 	}
   }*/
-  //2018-1-12 ×´Ì¬ÅĞ¶ÏÏ¸»¯
+  //2018-1-12 çŠ¶æ€åˆ¤æ–­ç»†åŒ–
   this.checkAvai = function()
   {
-    // Îª±ÜÃâ´íÎóÉèÖÃÁËÃæ¶îµÄ³®Ïä´æÔÚ£¬½øĞĞ¼ì²é²¢Ëø¶¨
+    // ä¸ºé¿å…é”™è¯¯è®¾ç½®äº†é¢é¢çš„é’ç®±å­˜åœ¨ï¼Œè¿›è¡Œæ£€æŸ¥å¹¶é”å®š
     //var minval = this.getCuMinNoteValue();
-    // Ö½±ÒĞéÄ£¿é×´Ì¬ÊÇ·ñÕı³£
+    // çº¸å¸è™šæ¨¡å—çŠ¶æ€æ˜¯å¦æ­£å¸¸
     var StDeviceStatus = top.YHAXCashDispenser.StDeviceStatus;
     var StDispenserStatus = top.YHAXCashDispenser.StDispenserStatus;
     var StTransportStatus = top.YHAXCashDispenser.StTransportStatus;
@@ -67,45 +67,45 @@ function Withdraw()
     var StInputOutputStatus = top.YHAXCashDispenser.StInputOutputStatus;
 	var StShutterStatus     = top.YHAXCashDispenser.StShutterStatus;
     if(StDeviceStatus != "HEALTHY"){
-		return "Ó²¼ş¹ÊÕÏ";
+		return "ç¡¬ä»¶æ•…éšœ";
 	}
 	if(StDispenserStatus != "HEALTHY" && StDispenserStatus != "DEGRADED"){
-		return "³ö³®Ä£¿é×´Ì¬²»ÕıÈ·";
+		return "å‡ºé’æ¨¡å—çŠ¶æ€ä¸æ­£ç¡®";
 	}
 	if((StInputOutputStatus != "EMPTY" && StInputOutputStatus != "UNKNOWN" && StInputOutputStatus != "NOTSUPPORTED")
 	  || (StTransportStatus != "HEALTHY" && StTransportStatus != "UNKNOWN" && StTransportStatus != "NOTSUPPORTED")){
-		return "³®¿Ú»òÍ¨µÀ×´Ì¬²»ÕıÈ·";
+		return "é’å£æˆ–é€šé“çŠ¶æ€ä¸æ­£ç¡®";
 	}
 	if(StSafeDoorStatus != "CLOSED"){
-		return "°²È«ÃÅ×´Ì¬²»ÕıÈ·";
+		return "å®‰å…¨é—¨çŠ¶æ€ä¸æ­£ç¡®";
 	}
 	if(StShutterStatus != "CLOSED"){
-		return "³®ÃÅ×´Ì¬²»ÕıÈ·";
+		return "é’é—¨çŠ¶æ€ä¸æ­£ç¡®";
 	}
     return "true";
 	
   }
   
   /*
-  Ó²±ÒµÄ×´Ì¬¼ì²é£¬ĞèµÈSP
+  ç¡¬å¸çš„çŠ¶æ€æ£€æŸ¥ï¼Œéœ€ç­‰SP
   */
  this.checkAvaiFen = function()
   {
 	var StDeviceStatus = top.YHAXCashDispenserFen.StDeviceStatus;
     var StDispenserStatus = top.YHAXCashDispenserFen.StDispenserStatus;
     if(StDeviceStatus != "HEALTHY"){
-    	return "Ó²±ÒÄ£¿éÓ²¼ş¹ÊÕÏ";
+    	return "ç¡¬å¸æ¨¡å—ç¡¬ä»¶æ•…éšœ";
     }
     if(StDispenserStatus != "HEALTHY" && StDispenserStatus != "DEGRADED" && StDispenserStatus != "NODISPENSE" && StDispenserStatus != "UNKNOWN")
     {
-    	return "Ó²±ÒÄ£¿é³ö±Ò×´Ì¬²»ÕıÈ·";
+    	return "ç¡¬å¸æ¨¡å—å‡ºå¸çŠ¶æ€ä¸æ­£ç¡®";
     }
     return "true";
  }
   /*
-    »ñÈ¡È¡¿îÊ±È±Ê¡µÄ±ÒÖÖ
-    ·µ»Ø£º
-      CNY¡¢RMBµÈ±ÒÖÖ
+    è·å–å–æ¬¾æ—¶ç¼ºçœçš„å¸ç§
+    è¿”å›ï¼š
+      CNYã€RMBç­‰å¸ç§
    */
   this.getCurrency = function()
   {
@@ -113,9 +113,9 @@ function Withdraw()
   }
   
   /*
-¡¡ »ñÈ¡³®ÏäĞÅÏ¢µÄÃèÊö£¨ÓÃÓÚÁ÷Ë®¼ÇÂ¼£©
-   ·µ»Ø£º
-     ³®ÏäĞÅÏ¢µÄÃèÊö×Ö·û´®
+ã€€ è·å–é’ç®±ä¿¡æ¯çš„æè¿°ï¼ˆç”¨äºæµæ°´è®°å½•ï¼‰
+   è¿”å›ï¼š
+     é’ç®±ä¿¡æ¯çš„æè¿°å­—ç¬¦ä¸²
   */
   this.getCassUnitInfo = function()
   {
@@ -143,147 +143,147 @@ function Withdraw()
   }
   
      /*
-    Ö½±ÒÅä³®
-    ²ÎÊı£º
-       strAmount    È¡¿î½ğ¶î£¬ÒÔÔªÎªµ¥Î»
-       currency  ±ÒÖÖ
-    MainFrameÌá¹©»Øµ÷º¯Êı£º
+    çº¸å¸é…é’
+    å‚æ•°ï¼š
+       strAmount    å–æ¬¾é‡‘é¢ï¼Œä»¥å…ƒä¸ºå•ä½
+       currency  å¸ç§
+    MainFrameæä¾›å›è°ƒå‡½æ•°ï¼š
 	  onMixComplete
       onMixFailed();
    */
   this.Mix = function(strAmount, currency)
   {
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
-	// ±£´æ²ÎÊı±äÁ¿
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
+	// ä¿å­˜å‚æ•°å˜é‡
     //this.iAmount = new top.DataConversion().str2Int(strAmount, -1);
 	top.withdraw.CdmEnr.clearAll();
     top.withdraw.CdmEnr.appendEvent("MixComplete", top.withdraw.onMixComplete);
     top.withdraw.CdmEnr.appendEvent("NotDispensable", top.withdraw.onNotDispensable_Mix);
 	top.withdraw.CdmEnr.appendEvent("FatalError", top.withdraw.onFatalError_Mix);
     top.YHAXCashDispenser.Mix(strAmount, currency, top.withdraw.strMixAlgorithm);
-	top.journalPrinter.addCashJournalWithTime("Ö½±ÒÅä³® Withdraw command Mix(" + strAmount + ")",false);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é…é’ Withdraw command Mix(" + strAmount + ")",false);
   }
   
-    // Ö½±ÒÅä³®³É¹¦
+    // çº¸å¸é…é’æˆåŠŸ
   this.onMixComplete = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ö½±ÒÅä³®³É¹¦ Withdraw Event onMixComplete",false);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é…é’æˆåŠŸ Withdraw Event onMixComplete",false);
     top.withdraw.CdmEnr.clearAll();
 	if (typeof(top.MainFrame.onMixComplete) == "function")
       top.MainFrame.onMixComplete();			
   } 
   
-    // Ö½±ÒÅä³®Ê§°Ü
+    // çº¸å¸é…é’å¤±è´¥
   this.onNotDispensable_Mix = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ö½±ÒÅä³®Ê§°Ü Withdraw Event onNotDispensable_Mix",true);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é…é’å¤±è´¥ Withdraw Event onNotDispensable_Mix",true);
     top.withdraw.CdmEnr.clearAll();
     if (typeof(top.MainFrame.onMixFailed) == "function")
       top.MainFrame.onMixFailed();
   }
-      // Ö½±ÒÅä³®Ó²¼ş¹ÊÕÏ
+      // çº¸å¸é…é’ç¡¬ä»¶æ•…éšœ
   this.onFatalError_Mix = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ö½±ÒÅä³®Ó²¼ş¹ÊÕÏ Withdraw Event onFatalError_Mix",true);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é…é’ç¡¬ä»¶æ•…éšœ Withdraw Event onFatalError_Mix",true);
     top.withdraw.CdmEnr.clearAll();
     if (typeof(top.MainFrame.onFatalError_Mix) == "function")
       top.MainFrame.onFatalError_Mix();
   }
   
      /*
-    Ó²±ÒÅä³® 
-    ²ÎÊı£º
-       strAmount    È¡¿î½ğ¶î£¬ÒÔÔªÎªµ¥Î»
-       currency  ±ÒÖÖ
-    MainFrameÌá¹©»Øµ÷º¯Êı£º
+    ç¡¬å¸é…é’ 
+    å‚æ•°ï¼š
+       strAmount    å–æ¬¾é‡‘é¢ï¼Œä»¥å…ƒä¸ºå•ä½
+       currency  å¸ç§
+    MainFrameæä¾›å›è°ƒå‡½æ•°ï¼š
 	  onMixComplete
       onMixFailed();
    */ 
   this.MixFen = function(strAmount, currency)
   {
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
 	top.withdraw.CdmEnrFen.clearAll();
     top.withdraw.CdmEnrFen.appendEvent("MixComplete", top.withdraw.onMixFenComplete);
     top.withdraw.CdmEnrFen.appendEvent("NotDispensable", top.withdraw.onNotDispensable_MixFen);
 	top.withdraw.CdmEnrFen.appendEvent("FatalError", top.withdraw.onFatalError_MixFen);
     top.YHAXCashDispenserFen.Mix(strAmount, currency, top.withdraw.strMixAlgorithm);	
-	top.journalPrinter.addCashJournalWithTime("Ó²±ÒÅä³® Withdraw command Mix(" + strAmount + ")",false);	
+	top.journalPrinter.addCashJournalWithTime("ç¡¬å¸é…é’ Withdraw command Mix(" + strAmount + ")",false);	
   }
-   // Ó²±ÒÅä³®³É¹¦
+   // ç¡¬å¸é…é’æˆåŠŸ
   this.onMixFenComplete = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ó²±ÒÅä³®³É¹¦ Withdraw Event onMixComplete",false);
+	top.journalPrinter.addCashJournalWithTime("ç¡¬å¸é…é’æˆåŠŸ Withdraw Event onMixComplete",false);
     top.withdraw.CdmEnrFen.clearAll();
 	if (typeof(top.MainFrame.onMixFenComplete) == "function")
       top.MainFrame.onMixFenComplete();	
   }
-  // Ó²±ÒÅä³®Ê§°Ü
+  // ç¡¬å¸é…é’å¤±è´¥
   this.onNotDispensable_MixFen = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ó²±ÒÅä³®Ê§°Ü Withdraw Event onNotDispensable_MixFen",true);
+	top.journalPrinter.addCashJournalWithTime("ç¡¬å¸é…é’å¤±è´¥ Withdraw Event onNotDispensable_MixFen",true);
     top.withdraw.CdmEnrFen.clearAll();
     if (typeof(top.MainFrame.onMixFailedFen) == "function")
       top.MainFrame.onMixFailedFen();
   }
-  // Ó²±ÒÅä³®Ó²¼ş¹ÊÕÏ
+  // ç¡¬å¸é…é’ç¡¬ä»¶æ•…éšœ
   this.onFatalError_MixFen = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ó²±ÒÅä³®Ó²¼ş¹ÊÕÏ Withdraw Event onFatalError_MixFen",true);
+	top.journalPrinter.addCashJournalWithTime("ç¡¬å¸é…é’ç¡¬ä»¶æ•…éšœ Withdraw Event onFatalError_MixFen",true);
     top.withdraw.CdmEnrFen.clearAll();
     if (typeof(top.MainFrame.onFatalError_MixFen) == "function")
       top.MainFrame.onFatalError_MixFen();
   } 
   /*
-          Ö¸¶¨³®Ïä³ö³®
-	ËÄ¸öÊÂ¼şNotDispensable £¬CashDispensed £¬CashUnitError £¬DeviceError
-  MainFrameÌá¹©»Øµ÷º¯Êı£º
+          æŒ‡å®šé’ç®±å‡ºé’
+	å››ä¸ªäº‹ä»¶NotDispensable ï¼ŒCashDispensed ï¼ŒCashUnitError ï¼ŒDeviceError
+  MainFrameæä¾›å›è°ƒå‡½æ•°ï¼š
 	  onCashDispensed
     onMixDispFailed();
    */
   this.Dispense = function(strAmount,strcount)
   {
 	var strNewArray = new Array(0,0,0,0,strcount);
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
-	try{top.cashguidelights.setCashDispenLight("MEDIUM");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
+	try{top.cashguidelights.setCashDispenLight("MEDIUM");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯
 	top.withdraw.CdmEnr.clearAll();
 	top.withdraw.CdmEnr.appendEvent("CashDispensed", top.withdraw.onCashDispensed);
 	top.withdraw.CdmEnr.appendEvent("NotDispensable", top.withdraw.onNotDispensable_MixDisp);
 	top.withdraw.CdmEnr.appendEvent("CashUnitError", top.withdraw.CashUnitError_MixDisp);
 	top.withdraw.CdmEnr.appendEvent("DeviceError", top.withdraw.onDeviceError_MixDisp);
 	top.YHAXCashDispenser.Dispense(strAmount,strNewArray,top.withdraw.strCurrency, "0");
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò³ö³® Withdraw Dispense(" + strAmount + ")",false); 
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸å‡ºé’ Withdraw Dispense(" + strAmount + ")",false); 
   }
     /*
-    Ö½±Ò³ö³®
-	ËÄ¸öÊÂ¼şNotDispensable £¬CashDispensed £¬CashUnitError £¬DeviceError
-    MainFrameÌá¹©»Øµ÷º¯Êı£º
+    çº¸å¸å‡ºé’
+	å››ä¸ªäº‹ä»¶NotDispensable ï¼ŒCashDispensed ï¼ŒCashUnitError ï¼ŒDeviceError
+    MainFrameæä¾›å›è°ƒå‡½æ•°ï¼š
 	  onCashDispensed
       onMixDispFailed();
   */
   this.MixAndDispense = function(strAmount)
   {	
-    top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
-	try{top.cashguidelights.setCashDispenLight("MEDIUM");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
+    top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
+	try{top.cashguidelights.setCashDispenLight("MEDIUM");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯
     top.withdraw.CdmEnr.clearAll();
     top.withdraw.CdmEnr.appendEvent("CashDispensed", top.withdraw.onCashDispensed);
     top.withdraw.CdmEnr.appendEvent("NotDispensable", top.withdraw.onNotDispensable_MixDisp);
     top.withdraw.CdmEnr.appendEvent("CashUnitError", top.withdraw.CashUnitError_MixDisp);
     top.withdraw.CdmEnr.appendEvent("DeviceError", top.withdraw.onDeviceError_MixDisp);
     top.YHAXCashDispenser.MixAndDispense(strAmount, top.withdraw.strCurrency, top.withdraw.strMixAlgorithm);
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò³ö³® Withdraw command MixAndDispense(" + strAmount + ")",false);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸å‡ºé’ Withdraw command MixAndDispense(" + strAmount + ")",false);
   }
   
-      // Ö½±Ò³ö³®³É¹¦
+      // çº¸å¸å‡ºé’æˆåŠŸ
   this.onCashDispensed = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò³ö³®³É¹¦ Withdraw Event onCashDispensed",false);
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸å‡ºé’æˆåŠŸ Withdraw Event onCashDispensed",false);
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
 	top.withdraw.CdmEnr.clearAll();
 	if (typeof(top.MainFrame.onCashDispensed) == "function")
 	  top.MainFrame.onCashDispensed();	 
 
   }
-   // Ö½±Ò³ö³®Ê§°ÜÔ¤ÁôÕâ¸öÊÂ¼ş,Èı¸ö´íÎó¶¼µ÷ÓÃÏàÍ¬µÄ·µ»ØÒ³ÃæµÄ´¦Àí·½·¨
+   // çº¸å¸å‡ºé’å¤±è´¥é¢„ç•™è¿™ä¸ªäº‹ä»¶,ä¸‰ä¸ªé”™è¯¯éƒ½è°ƒç”¨ç›¸åŒçš„è¿”å›é¡µé¢çš„å¤„ç†æ–¹æ³•
   this.onNotDispensable_MixDisp = function()
   {
     top.withdraw.CdmEnr.clearAll();
@@ -304,44 +304,44 @@ function Withdraw()
 
   this.onMixDispFailed = function()
   {
-	try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò³ö³®Ê§°Ü Withdraw Event onMixDispFailed",true);
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
+	try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸å‡ºé’å¤±è´¥ Withdraw Event onMixDispFailed",true);
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
 	top.withdraw.CdmEnr.clearAll();
     if (typeof(top.MainFrame.onMixDispFailed) == "function")
       top.MainFrame.onMixDispFailed();
   } 
 
     /*
-    Ó²±Ò³ö³®
-	ËÄ¸öÊÂ¼şNotDispensable £¬CashDispensed £¬CashUnitError £¬DeviceError
-    MainFrameÌá¹©»Øµ÷º¯Êı£º
+    ç¡¬å¸å‡ºé’
+	å››ä¸ªäº‹ä»¶NotDispensable ï¼ŒCashDispensed ï¼ŒCashUnitError ï¼ŒDeviceError
+    MainFrameæä¾›å›è°ƒå‡½æ•°ï¼š
 	  onCashDispensedFen
       onMixDispFailedFen
   */
   this.MixAndDispenseFen = function(strAmount)
   {
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
-	try{top.cashguidelights.setCoinDispenserLight("MEDIUM");}catch(e){} //Ó²±Ò³ö¿ÚµÆ
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
+	try{top.cashguidelights.setCoinDispenserLight("MEDIUM");}catch(e){} //ç¡¬å¸å‡ºå£ç¯
     top.withdraw.CdmEnrFen.clearAll();
     top.withdraw.CdmEnrFen.appendEvent("CashDispensed", top.withdraw.onCashDispensedFen);
     top.withdraw.CdmEnrFen.appendEvent("NotDispensable", top.withdraw.onNotDispensable_MixDispFen);
     top.withdraw.CdmEnrFen.appendEvent("CashUnitError", top.withdraw.CashUnitError_MixDispFen);
     top.withdraw.CdmEnrFen.appendEvent("DeviceError", top.withdraw.onDeviceError_MixDispFen);
     top.YHAXCashDispenserFen.MixAndDispense(strAmount, top.withdraw.strCurrency, top.withdraw.strMixAlgorithm);	
-	top.journalPrinter.addCashJournalWithTime("Ó²±Ò³ö³® Withdraw command MixAndDispense(" + strAmount + ")",false);
+	top.journalPrinter.addCashJournalWithTime("ç¡¬å¸å‡ºé’ Withdraw command MixAndDispense(" + strAmount + ")",false);
 	
   }
   this.onCashDispensedFen = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ó²±Ò³ö³®³É¹¦ Withdraw Event onCashDispensedFen",false);
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
+	top.journalPrinter.addCashJournalWithTime("ç¡¬å¸å‡ºé’æˆåŠŸ Withdraw Event onCashDispensedFen",false);
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
     top.withdraw.CdmEnrFen.clearAll();
 	if (typeof(top.MainFrame.onCashDispensedFen) == "function")
 		top.MainFrame.onCashDispensedFen();	
   }  
   
-  // Ó²±Ò³ö³®Ê§°ÜÔ¤ÁôÕâ¸öÊÂ¼ş,´ó¼Ò¶¼ÊÇµ½onMixDispFailedFenµ÷ÓÃ
+  // ç¡¬å¸å‡ºé’å¤±è´¥é¢„ç•™è¿™ä¸ªäº‹ä»¶,å¤§å®¶éƒ½æ˜¯åˆ°onMixDispFailedFenè°ƒç”¨
   this.onNotDispensable_MixDispFen = function()
   {
     top.withdraw.CdmEnrFen.clearAll();
@@ -361,12 +361,12 @@ function Withdraw()
   
   this.onMixDispFailedFen = function()
   {
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
     if (typeof(top.MainFrame.onMixDispFailedFen) == "function")
       top.MainFrame.onMixDispFailedFen();
   }  
   /*
-    Ö½±ÒËÍ³®¶¯×÷
+    çº¸å¸é€é’åŠ¨ä½œ
    */
   this.Present = function()
   {
@@ -376,36 +376,36 @@ function Withdraw()
     top.withdraw.CdmEnr.appendEvent("Timeout", top.withdraw.onTimeout_Present);
     top.withdraw.CdmEnr.appendEvent("DeviceError", top.withdraw.onDeviceError_Present);
     top.YHAXCashDispenser.Present(top.withdraw.iCashPresentTimeout*1000);
-	top.journalPrinter.addCashJournalWithTime("Ö½±ÒËÍ³® Withdraw command Present",false);
-    // È¡¿îËÍ³®³¬Ê±±£»¤
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é€é’ Withdraw command Present",false);
+    // å–æ¬¾é€é’è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.startFlowCtrlTimeout(function(){top.withdraw.onDeviceError_Present();}, 120*1000);
   }
   
-  // ËÍ³®³É¹¦
+  // é€é’æˆåŠŸ
   this.onCashPresented = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ö½±ÒËÍ³®³É¹¦ Withdraw Event Present",false);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é€é’æˆåŠŸ Withdraw Event Present",false);
     if (typeof(top.MainFrame.onCashPresented) == "function")
       top.MainFrame.onCashPresented();
   }
  
-  // ³®Æ±È¡×ß
+  // é’ç¥¨å–èµ°
   this.onCashTaken = function()
   {
-    try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ	
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò³®Æ±È¡×ß Withdraw Event onCashTaken",false);
+    try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯	
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é’ç¥¨å–èµ° Withdraw Event onCashTaken",false);
 	top.serviceCtrl.stopFlowCtrlTimeout();
 	top.withdraw.CdmEnr.clearAll();
 	top.withdraw.closeShutter();
 
   }
   
-  // ËÍ³®ºóÓÃ»§³¬Ê±Î´È¡×ß³®Æ±µÄÊÂ¼ş
+  // é€é’åç”¨æˆ·è¶…æ—¶æœªå–èµ°é’ç¥¨çš„äº‹ä»¶
   this.onTimeout_Present = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò³®Æ±³¬Ê±Î´È¡ Withdraw Event onTimeout_Present",true);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é’ç¥¨è¶…æ—¶æœªå– Withdraw Event onTimeout_Present",true);
 	top.withdraw.CdmEnr.clearAll();
-	try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
+	try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯
 	if (typeof(top.MainFrame.onTimeout_Present) == "function")
       top.MainFrame.onTimeout_Present();
   }
@@ -413,10 +413,10 @@ function Withdraw()
   this.onDeviceError_Present = function()
   {
 	top.withdraw.CdmEnr.clearAll();
-	try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
-    // È¡ÏûÈ¡¿îËÍ³®³¬Ê±±£»¤
+	try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯
+    // å–æ¶ˆå–æ¬¾é€é’è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò³®Æ±ËÍ³®Ê§°Ü Withdraw Event onDeviceError_Present",true);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸é’ç¥¨é€é’å¤±è´¥ Withdraw Event onDeviceError_Present",true);
 	top.withdraw.CdmEnr.clearAll();
 	if (typeof(top.MainFrame.onDeviceError_Present) == "function")
       top.MainFrame.onDeviceError_Present();
@@ -431,51 +431,51 @@ function Withdraw()
     top.withdraw.CdmEnr.appendEvent("ShutterClosed", top.withdraw.ShutterClosed);
     top.withdraw.CdmEnr.appendEvent("DeviceError", top.withdraw.onDeviceError_closeShutter);
     top.YHAXCashDispenser.CloseShutter();	
-    top.journalPrinter.addCashJournalWithTime("¹Ø±Õ³®ÃÅ  Withdraw command CloseShutter",false);
+    top.journalPrinter.addCashJournalWithTime("å…³é—­é’é—¨  Withdraw command CloseShutter",false);
   }
   /*
-   * ¹ØÃÅ»Øµ÷
+   * å…³é—¨å›è°ƒ
    * */
   this.ShutterClosed = function()
   {
 	  top.withdraw.CdmEnr.clearAll();
-	  top.journalPrinter.addCashJournalWithTime("³®ÃÅÒÑ¹Ø±Õ ShutterClosed",false);
+	  top.journalPrinter.addCashJournalWithTime("é’é—¨å·²å…³é—­ ShutterClosed",false);
 	  if (typeof(top.MainFrame.onCashTaken) == "function")
 	     top.MainFrame.onCashTaken();
   }
   /*
-   * ¹ØÃÅÓ²¼ş¹ÊÕÏ
+   * å…³é—¨ç¡¬ä»¶æ•…éšœ
    * */ 
   this.onDeviceError_closeShutter = function()
   {
 	  top.withdraw.CdmEnr.clearAll();
-	  top.journalPrinter.addCashJournalWithTime("³®¿Ú¹ØÃÅ¹ÊÕÏ DeviceError",false); 
-	  try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
-	  // È¡ÏûÈ¡¿îËÍ³®³¬Ê±±£»¤
+	  top.journalPrinter.addCashJournalWithTime("é’å£å…³é—¨æ•…éšœ DeviceError",false); 
+	  try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯
+	  // å–æ¶ˆå–æ¬¾é€é’è¶…æ—¶ä¿æŠ¤
 	  top.serviceCtrl.stopFlowCtrlTimeout();
 	  if (typeof(top.MainFrame.onDeviceError_closeShutter) == "function")
 	     top.MainFrame.onDeviceError_closeShutter();
   }
  /*
-    Ö½±ÒReset
-	MixÒÔ¼°MIxÇ°µ÷ÓÃ£¬Ö®ºó²»µ÷ÓÃ£¬Ç®»áResetÍÆµ½³®¿Ú
+    çº¸å¸Reset
+	Mixä»¥åŠMIxå‰è°ƒç”¨ï¼Œä¹‹åä¸è°ƒç”¨ï¼Œé’±ä¼šResetæ¨åˆ°é’å£
    */
  this.reset4Mix = function()
   {
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
     top.withdraw.CdmEnr.clearAll();
     top.withdraw.CdmEnr.appendEvent("ResetComplete", top.withdraw.onResetEnd4MixDispFailed);
     top.withdraw.CdmEnr.appendEvent("DeviceError", top.withdraw.onResetEnd4MixDispFailed);
     top.YHAXCashDispenser.Reset("RETRACT", 0);
-	top.journalPrinter.addCashJournalWithTime("Ö½±ÒReset Withdraw command reset4Mix",true);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸Reset Withdraw command reset4Mix",true);
   }
 
   /*
-    ¸´Î»½áÊøÊ§°ÜµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    å¤ä½ç»“æŸå¤±è´¥çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onResetEnd4MixDispFailed = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò¸´Î»Ê§°Ü Withdraw Event onResetEnd4MixDispFailed",true);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸å¤ä½å¤±è´¥ Withdraw Event onResetEnd4MixDispFailed",true);
     top.withdraw.CdmEnr.clearAll();	
 	if (typeof(top.MainFrame.onResetEndFailed) == "function")
 	{
@@ -485,11 +485,11 @@ function Withdraw()
   
   
     /*
-    ¸´Î»½áÊø³É¹¦µÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    å¤ä½ç»“æŸæˆåŠŸçš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onResetEnd4MixDispSucc = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ö½±Ò¸´Î»³É¹¦ Withdraw Event onResetEnd4MixDispSucc",true);
+	top.journalPrinter.addCashJournalWithTime("çº¸å¸å¤ä½æˆåŠŸ Withdraw Event onResetEnd4MixDispSucc",true);
     top.withdraw.CdmEnr.clearAll();	
 	if (typeof(top.MainFrame.onResetEndSucc) == "function")
 	{
@@ -497,7 +497,7 @@ function Withdraw()
 	}
   }
      /*
-    Ó²±ÒËÍ³®¶¯×÷
+    ç¡¬å¸é€é’åŠ¨ä½œ
    */
   this.PresentFen = function()
   {
@@ -507,16 +507,16 @@ function Withdraw()
     top.withdraw.CdmEnrFen.appendEvent("Timeout", top.withdraw.onTimeout_PresentFen);
     top.withdraw.CdmEnrFen.appendEvent("DeviceError", top.withdraw.onDeviceError_PresentFen);
     top.YHAXCashDispenserFen.Present(top.withdraw.iCashPresentTimeout*1000);
-	top.journalPrinter.addCashJournalWithTime("Ó²±ÒËÍ³® Withdraw command PresentFen",false);
-	try{top.cashguidelights.setCoinAcceptorLight("MEDIUM");}catch(e){} //Ó²±Ò³ö¿ÚµÆ
-	// È¡¿îËÍ³®³¬Ê±±£»¤
+	top.journalPrinter.addCashJournalWithTime("ç¡¬å¸é€é’ Withdraw command PresentFen",false);
+	try{top.cashguidelights.setCoinAcceptorLight("MEDIUM");}catch(e){} //ç¡¬å¸å‡ºå£ç¯
+	// å–æ¬¾é€é’è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.startFlowCtrlTimeout(function(){top.withdraw.onDeviceError_PresentFen();}, 120*1000);
   }
   
   this.onCashPresentedFen = function()
   {
-	try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //Ó²±Ò³ö¿ÚµÆ
-	try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //Ó²±ÒÄÚ²àÕÕÃ÷µÆ
+	try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //ç¡¬å¸å‡ºå£ç¯
+	try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //ç¡¬å¸å†…ä¾§ç…§æ˜ç¯
 	top.withdraw.CdmEnrFen.clearAll();	
 	top.serviceCtrl.stopFlowCtrlTimeout();
 	if (typeof(top.MainFrame.onCashPresentedFen) == "function")
@@ -525,47 +525,47 @@ function Withdraw()
 	}  
   }
   
-  // ËÍ³®ºóÓÃ»§³¬Ê±Î´È¡×ß³®Æ±µÄÊÂ¼ş
+  // é€é’åç”¨æˆ·è¶…æ—¶æœªå–èµ°é’ç¥¨çš„äº‹ä»¶
   this.onTimeout_PresentFen = function()
   {
 	  top.serviceCtrl.stopFlowCtrlTimeout();
-	  try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //Ó²±Ò³ö¿ÚµÆ
-	  try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //Ó²±ÒÄÚ²àÕÕÃ÷µÆ
+	  try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //ç¡¬å¸å‡ºå£ç¯
+	  try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //ç¡¬å¸å†…ä¾§ç…§æ˜ç¯
   }
   
-  // ËÍ³®ºóÓÃ»§³¬Ê±Î´È¡×ß³®Æ±µÄÊÂ¼ş
+  // é€é’åç”¨æˆ·è¶…æ—¶æœªå–èµ°é’ç¥¨çš„äº‹ä»¶
   this.onCashTakenFen = function()
   {
 	  top.serviceCtrl.stopFlowCtrlTimeout();
-	  try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //Ó²±Ò³ö¿ÚµÆ
-	  try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //Ó²±ÒÄÚ²àÕÕÃ÷µÆ
+	  try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //ç¡¬å¸å‡ºå£ç¯
+	  try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //ç¡¬å¸å†…ä¾§ç…§æ˜ç¯
   }
   
   this.onDeviceError_PresentFen = function()
   {
-    // È¡ÏûÈ¡¿îËÍ³®³¬Ê±±£»¤
+    // å–æ¶ˆå–æ¬¾é€é’è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
-	try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //Ó²±Ò³ö¿ÚµÆ
-	try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //Ó²±ÒÄÚ²àÕÕÃ÷µÆ    
+	try{top.cashguidelights.setCoinDispenserLight("OFF");}catch(e){} //ç¡¬å¸å‡ºå£ç¯
+	try{top.cashguidelights.setCoinAcceptorLight("OFF");}catch(e){} //ç¡¬å¸å†…ä¾§ç…§æ˜ç¯    
   }  
   
-  //¸ù¾İÈ¡¿î½ğ¶îÅĞ¶ÏÖ½±Ò¡¢Ó²±ÒÄ£¿é×´Ì¬
+  //æ ¹æ®å–æ¬¾é‡‘é¢åˆ¤æ–­çº¸å¸ã€ç¡¬å¸æ¨¡å—çŠ¶æ€
   this.checkDeviceStatus = function(strAmount)
   {
 	var strAvaiStatus = top.withdraw.checkAvai();	
 	var strAvaiFenStatus = top.withdraw.checkAvaiFen();
 	var strCheckAmount = strAmount.toString();
-	//½ğ¶îÅĞ¶ÏÒÔ·ÖÎªµ¥Î»
+	//é‡‘é¢åˆ¤æ–­ä»¥åˆ†ä¸ºå•ä½
 	if(strCheckAmount.length > 3){
 		if(strCheckAmount.substr(strCheckAmount.length-3,strCheckAmount.length) == "000"){
 			if(strAvaiStatus != "true"){
-				//Ö»ÓĞÖ½±Ò£¬ÅĞ¶ÏÖ½±ÒÄ£¿é×´Ì¬
+				//åªæœ‰çº¸å¸ï¼Œåˆ¤æ–­çº¸å¸æ¨¡å—çŠ¶æ€
 				return strAvaiStatus;
 			}else{
 				return "true";
 			}	    	
 		}else{
-			//ÓĞÖ½±ÒºÍÓ²±Ò£¬2¸öÄ£¿é¾ùÅĞ¶Ï
+			//æœ‰çº¸å¸å’Œç¡¬å¸ï¼Œ2ä¸ªæ¨¡å—å‡åˆ¤æ–­
 			if(strAvaiStatus != "true" || strAvaiFenStatus != "true"){
 				if(strAvaiFenStatus != "true"){
 					return strAvaiFenStatus;
@@ -578,7 +578,7 @@ function Withdraw()
 			}			
 		}			
 	}else{
-		//Ö»ÓĞÓ²±Ò
+		//åªæœ‰ç¡¬å¸
 		if(strAvaiFenStatus != "true"){
 			return strAvaiFenStatus;
 		}else{

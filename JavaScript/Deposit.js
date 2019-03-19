@@ -1,23 +1,23 @@
 /*
-´æ¿î£ºD7D0B898-40CF-46AF-9F76-F8EBA24D78E1
+å­˜æ¬¾ï¼šD7D0B898-40CF-46AF-9F76-F8EBA24D78E1
  */
 function Deposit()
 {
-  // ´æ¿îĞéÄ£¿éÊÂ¼şÏìÓ¦¶ÔÏó
+  // å­˜æ¬¾è™šæ¨¡å—äº‹ä»¶å“åº”å¯¹è±¡
   this.CimEnr = new top.EventHandling(top.YHAXCashAcceptor);
 
 
-  // ÊÇ·ñÄÜ¹»¼ì²âµ½Ç®±»²åÈë
+  // æ˜¯å¦èƒ½å¤Ÿæ£€æµ‹åˆ°é’±è¢«æ’å…¥
   this.CpCanDetectCashInserted = top.YHAXCashAcceptor.CpCanDetectCashInserted;
 
-  // ´æ¿îÊÜÀíµÄ±ÒÖÖ
+  // å­˜æ¬¾å—ç†çš„å¸ç§
   this.strCurrency          = "CNY";
-  // ½ÓÊÜÓÃ»§²åÈë³®Æ±³¬Ê±ÃëÊı
+  // æ¥å—ç”¨æˆ·æ’å…¥é’ç¥¨è¶…æ—¶ç§’æ•°
   this.iAcceptCashTimeout   = 120;
-  // ÓÃ»§È¡×ß¾Ü³®»òÍË³®µÄ³¬Ê±ÃëÊı
+  // ç”¨æˆ·å–èµ°æ‹’é’æˆ–é€€é’çš„è¶…æ—¶ç§’æ•°
   this.iEjectCashTimeout    = -1;
 
-  // Ñé³®Ç°µÄÊÂ¼ş
+  // éªŒé’å‰çš„äº‹ä»¶
   this.EIC_ACCEPTCANCELLED  = 1;
   this.EIC_ACCEPTED         = 2;
   this.EIC_ACCEPTTIMEOUT    = 3;
@@ -28,15 +28,15 @@ function Deposit()
   this.iWaitSecondsAfterDepEnd = 120;
   
   /*
-    ¼ì²é´æ¿î¹¦ÄÜÊÇ·ñ¿ÉÓÃ
-    ·µ»Ø£º
-      VM_AVAIL_OK       Õı³£¿ÉÓÃ
-      VM_AVAIL_LOCKED   ±»Ëø¶¨
-      VM_AVAIL_DEVERR   Ó²¼ş¹ÊÕÏ
+    æ£€æŸ¥å­˜æ¬¾åŠŸèƒ½æ˜¯å¦å¯ç”¨
+    è¿”å›ï¼š
+      VM_AVAIL_OK       æ­£å¸¸å¯ç”¨
+      VM_AVAIL_LOCKED   è¢«é”å®š
+      VM_AVAIL_DEVERR   ç¡¬ä»¶æ•…éšœ
   */
 //  this.checkAvai = function()
 //  {
-//    // ĞéÄ£¿é×´Ì¬ÊÇ·ñÕı³£
+//    // è™šæ¨¡å—çŠ¶æ€æ˜¯å¦æ­£å¸¸
 //    var StDeviceStatus      = top.YHAXCashAcceptor.StDeviceStatus;
 //    var StAcceptorStatus    = top.YHAXCashAcceptor.StAcceptorStatus;
 //    var StInputOutputStatus = top.YHAXCashAcceptor.StInputOutputStatus;
@@ -62,7 +62,7 @@ function Deposit()
   
   this.checkAvai = function()
   {
-    // ĞéÄ£¿é×´Ì¬ÊÇ·ñÕı³£
+    // è™šæ¨¡å—çŠ¶æ€æ˜¯å¦æ­£å¸¸
     var StDeviceStatus      = top.YHAXCashAcceptor.StDeviceStatus;
     var StAcceptorStatus    = top.YHAXCashAcceptor.StAcceptorStatus;
     var StInputOutputStatus = top.YHAXCashAcceptor.StInputOutputStatus;
@@ -71,39 +71,39 @@ function Deposit()
     var StSafeDoorStatus    = top.YHAXCashAcceptor.StSafeDoorStatus;
     
     if(StDeviceStatus != "HEALTHY") {
-      return "Ó²¼ş¹ÊÕÏ";
+      return "ç¡¬ä»¶æ•…éšœ";
     }
     if(StAcceptorStatus != "HEALTHY" && StAcceptorStatus != "DEGRADED" && StAcceptorStatus != "UNKNOWN")
     {
-      return "ÊÕ³®Ä£¿é×´Ì¬²»ÕıÈ·";
+      return "æ”¶é’æ¨¡å—çŠ¶æ€ä¸æ­£ç¡®";
     }
     if(StInputOutputStatus != "EMPTY" && StInputOutputStatus != "UNKNOWN"
 	  || (StTransportStatus != "HEALTHY" && StTransportStatus != "UNKNOWN" && StTransportStatus != "EMPTY")
 	  || (StTransportStatus == "UNKNOWN" && StInputOutputStatus == "UNKNOWN")) 
     {
-      return "³®¿Ú»òÍ¨µÀ×´Ì¬²»ÕıÈ·";
+      return "é’å£æˆ–é€šé“çŠ¶æ€ä¸æ­£ç¡®";
     }
     if(StShutterStatus != "CLOSED")
     {
-      return "³®ÃÅ×´Ì¬²»ÕıÈ·";
+      return "é’é—¨çŠ¶æ€ä¸æ­£ç¡®";
     }
     if(StSafeDoorStatus != "CLOSED")
     {
-      return "°²È«ÃÅ×´Ì¬²»ÕıÈ·";
+      return "å®‰å…¨é—¨çŠ¶æ€ä¸æ­£ç¡®";
     }
     return "true";
   }
   
   /*
-    ¼ì²é´æ¿î¹¦ÄÜÊÇ·ñ¿ÉÓÃ(Èë³®ºó)
-    ·µ»Ø£º
-    VM_AVAIL_OK       Õı³£¿ÉÓÃ
-    VM_AVAIL_LOCKED   ±»Ëø¶¨
-    VM_AVAIL_DEVERR   Ó²¼ş¹ÊÕÏ
+    æ£€æŸ¥å­˜æ¬¾åŠŸèƒ½æ˜¯å¦å¯ç”¨(å…¥é’å)
+    è¿”å›ï¼š
+    VM_AVAIL_OK       æ­£å¸¸å¯ç”¨
+    VM_AVAIL_LOCKED   è¢«é”å®š
+    VM_AVAIL_DEVERR   ç¡¬ä»¶æ•…éšœ
   */
   this.checkCashinAvai = function()
   {
-    // ĞéÄ£¿é×´Ì¬ÊÇ·ñÕı³£
+    // è™šæ¨¡å—çŠ¶æ€æ˜¯å¦æ­£å¸¸
     var StDeviceStatus      = top.YHAXCashAcceptor.StDeviceStatus;
     var StAcceptorStatus    = top.YHAXCashAcceptor.StAcceptorStatus;
     var StInputOutputStatus = top.YHAXCashAcceptor.StInputOutputStatus;
@@ -112,31 +112,31 @@ function Deposit()
     var StSafeDoorStatus    = top.YHAXCashAcceptor.StSafeDoorStatus;
     
     if(StDeviceStatus != "HEALTHY") {
-	  return "Ó²¼ş¹ÊÕÏ";
+	  return "ç¡¬ä»¶æ•…éšœ";
 	}
 	if(StAcceptorStatus != "HEALTHY" && StAcceptorStatus != "DEGRADED" && StAcceptorStatus != "UNKNOWN")
 	{
-      return "ÊÕ³®Ä£¿é×´Ì¬²»ÕıÈ·";
+      return "æ”¶é’æ¨¡å—çŠ¶æ€ä¸æ­£ç¡®";
 	}
 	if(StInputOutputStatus != "EMPTY" && StInputOutputStatus != "UNKNOWN"
   	  || (StTransportStatus != "HEALTHY" && StTransportStatus != "UNKNOWN" && StTransportStatus != "EMPTY")
   	  || (StTransportStatus == "UNKNOWN" && StInputOutputStatus == "UNKNOWN")) 
 	{
-      return "³®¿Ú»òÍ¨µÀ×´Ì¬²»ÕıÈ·";
+      return "é’å£æˆ–é€šé“çŠ¶æ€ä¸æ­£ç¡®";
 	}
 	if(StSafeDoorStatus != "CLOSED")
 	{
-	  return "°²È«ÃÅ×´Ì¬²»ÕıÈ·";
+	  return "å®‰å…¨é—¨çŠ¶æ€ä¸æ­£ç¡®";
 	}
 	return "true";
   }
 
   /*
-    Ë½ÓĞº¯Êı£º´æ¿îÊ±Ó²¼ş¹ÊÕÏ£¬¸´Î»³¢ÊÔ»Ö¸´½áÊøµÄ»Øµ÷º¯Êı¡£
+    ç§æœ‰å‡½æ•°ï¼šå­˜æ¬¾æ—¶ç¡¬ä»¶æ•…éšœï¼Œå¤ä½å°è¯•æ¢å¤ç»“æŸçš„å›è°ƒå‡½æ•°ã€‚
    */
   this.onResetEnd4StatusError = function()
   {
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
    // var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "CIM: Reset For Status Error!" + top.jrn.strLineFeed;
   //  top.journalPrinter.addCashJournalWithTime(strJrn,false);
 
@@ -144,21 +144,21 @@ function Deposit()
   }
 
   /*
-    ´æ¿î³õÊ¼»¯£¬¿ªÊ¼´æ¿îÊ±µ÷ÓÃ¸Ãº¯Êı
+    å­˜æ¬¾åˆå§‹åŒ–ï¼Œå¼€å§‹å­˜æ¬¾æ—¶è°ƒç”¨è¯¥å‡½æ•°
    */
   this.init = function()
   {
     iAmount = 0;
-    // ¼ÇÂ¼´æ¿î¿ªÊ¼µÄÊ±¼ä
+    // è®°å½•å­˜æ¬¾å¼€å§‹çš„æ—¶é—´
     dtDepositStart = new Date();
 
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
    // var strJrn = new top.StringCtrl("DEP " + "TELLER:"+top.term.strTellerNum).preandsufStr('-', top.jrn.TITLEWIDTH) +
    //   top.jrn.strLineFeed + new top.DateTimeCtrl().getHHmmSSWithSep() + " " + top.deposit.getCassUnitInfo() + top.jrn.strLineFeed;
    // top.journalPrinter.addCashJournalWithTime(strJrn,false);
   }
   /*
-   * ¿ªÊ¼´æ¿îÖÜÆÚ  CASH_IN_START
+   * å¼€å§‹å­˜æ¬¾å‘¨æœŸ  CASH_IN_START
    * 
    */
   this.prepare = function()
@@ -169,50 +169,50 @@ function Deposit()
 	 top.deposit.CimEnr.appendEvent("Timeout", top.deposit.onTimeout_prepare);
 	 top.YHAXCashAcceptor.PrepareForAcceptCash(); 
   }
-  //´æ¿îÖÜÆÚ¿ªÆô³É¹¦
+  //å­˜æ¬¾å‘¨æœŸå¼€å¯æˆåŠŸ
   this.onCashPrepared = function(){
-	top.journalPrinter.addCashJournalWithTime("¹ñÔ±´æ¿î¿ªÊ¼ÖÜÆÚ", false);
+	top.journalPrinter.addCashJournalWithTime("æŸœå‘˜å­˜æ¬¾å¼€å§‹å‘¨æœŸ", false);
 	top.deposit.CimEnr.clearAll();
 	if (typeof(top.MainFrame.onCashPrepared) == "function")
 	{
-	   // Í£Ö¹ÏÔÊ¾Çë·Å³®ÌáÊ¾µÄÑÓÊ±¼ÆÊ±£¬±ÜÃâÏÔÊ¾Òì³£¡£
+	   // åœæ­¢æ˜¾ç¤ºè¯·æ”¾é’æç¤ºçš„å»¶æ—¶è®¡æ—¶ï¼Œé¿å…æ˜¾ç¤ºå¼‚å¸¸ã€‚
 	   top.serviceCtrl.stopUserTimeout();
 	   top.MainFrame.onCashPrepared();
 	}
   }
   
   this.onTimeout_prepare= function(){
-	top.journalPrinter.addCashJournalWithTime("¹ñÔ±´æ¿î¿ªÊ¼ÖÜÆÚ³¬Ê±", false);
+	top.journalPrinter.addCashJournalWithTime("æŸœå‘˜å­˜æ¬¾å¼€å§‹å‘¨æœŸè¶…æ—¶", false);
 	top.deposit.CimEnr.clearAll();
 	if (typeof(top.MainFrame.onTimeout_prepare) == "function")
 	{
-		// Í£Ö¹ÏÔÊ¾Çë·Å³®ÌáÊ¾µÄÑÓÊ±¼ÆÊ±£¬±ÜÃâÏÔÊ¾Òì³£¡£
+		// åœæ­¢æ˜¾ç¤ºè¯·æ”¾é’æç¤ºçš„å»¶æ—¶è®¡æ—¶ï¼Œé¿å…æ˜¾ç¤ºå¼‚å¸¸ã€‚
 		top.serviceCtrl.stopUserTimeout();
 		top.MainFrame.onTimeout_prepare();
 	}
   }
   
   /*
-	CashInserted £¬CashAccepted £»CashInserted £¬CashRefused £»
-	CashInserted £¬DeviceError £»CashAcceptCancelled £»Timeout £»	DeviceError £»CashRefused£»
-    ÔÊĞíÓÃ»§·Å³®
-    MainFrameÌá¹©»Øµ÷º¯Êı£º
+	CashInserted ï¼ŒCashAccepted ï¼›CashInserted ï¼ŒCashRefused ï¼›
+	CashInserted ï¼ŒDeviceError ï¼›CashAcceptCancelled ï¼›Timeout ï¼›	DeviceError ï¼›CashRefusedï¼›
+    å…è®¸ç”¨æˆ·æ”¾é’
+    MainFrameæä¾›å›è°ƒå‡½æ•°ï¼š
       onCashInserted();
       onDeviceError_Ac();
       onRefusedCashEjected();
       onDeviceError_Ejr();
       onRetractEnd();
       onIndentifyCash(lais, event2IdCash);
-      ²ÎÊı£º
-        lais            Ñé³®½á¹û£¬LastAcceptItems(LastAcceptItemµÄ¼¯ºÏ)
-        event2IdCash    Ñé³®Ç°µÄ¶¯×÷ÊÂ¼ş
+      å‚æ•°ï¼š
+        lais            éªŒé’ç»“æœï¼ŒLastAcceptItems(LastAcceptItemçš„é›†åˆ)
+        event2IdCash    éªŒé’å‰çš„åŠ¨ä½œäº‹ä»¶
    */
   this.accept = function()
   {
 	//var strJrn = new top.StringCtrl("DEP " + "TELLER:"+top.terminal.strTellerNum).preandsufStr('-', top.journalPrinter.TITLEWIDTH) +
 	//top.journalPrinter.strNewLine + " " + top.deposit.getCassUnitInfo();
 //	top.journalPrinter.addCashJournalWithTime(strJrn, false);
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
 //    this.iCurAcceptTimes++;
     top.deposit.CimEnr.clearAll();
     top.deposit.CimEnr.appendEvent("CashInserted", top.deposit.onCashInserted);
@@ -223,39 +223,39 @@ function Deposit()
     top.deposit.CimEnr.appendEvent("Timeout", top.deposit.onTimeout_Ac);
 //    top.YHAXCashAcceptor.AcceptCash(top.deposit.iAcceptCashTimeout*1000);
     top.YHAXCashAcceptor.AcceptCash(-1);
-    try{top.cashguidelights.setCashAcceptorLight("MEDIUM");}catch(e){} //½ø³®¿ÚµÆ
-    // ´æ¿î³¬Ê±±£»¤
+    try{top.cashguidelights.setCashAcceptorLight("MEDIUM");}catch(e){} //è¿›é’å£ç¯
+    // å­˜æ¬¾è¶…æ—¶ä¿æŠ¤
 //    top.serviceCtrl.startFlowCtrlTimeout(function(){top.deposit.onDeviceError_Ac();}, 120*1000);
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºµÈ´ıÓÃ»§·Å³®Ê±³®Æ±±»·ÅÈëµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šç­‰å¾…ç”¨æˆ·æ”¾é’æ—¶é’ç¥¨è¢«æ”¾å…¥çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onCashInserted = function()
   {
-	top.journalPrinter.addCashJournalWithTime("¿Í»§·Å³® onCashInserted", false);
+	top.journalPrinter.addCashJournalWithTime("å®¢æˆ·æ”¾é’ onCashInserted", false);
     if (typeof(top.MainFrame.onCashInserted) == "function")
     {
-      // Í£Ö¹ÏÔÊ¾Çë·Å³®ÌáÊ¾µÄÑÓÊ±¼ÆÊ±£¬±ÜÃâÏÔÊ¾Òì³£¡£
+      // åœæ­¢æ˜¾ç¤ºè¯·æ”¾é’æç¤ºçš„å»¶æ—¶è®¡æ—¶ï¼Œé¿å…æ˜¾ç¤ºå¼‚å¸¸ã€‚
       top.serviceCtrl.stopUserTimeout();
       top.MainFrame.onCashInserted();
     }
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºÓÃ»§·Å³®±»ÊÜÀíµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
-    ²ÎÊı£º
-      TotalItems    ÊÜÀíµÄ³®Æ±ÕÅÊı
-      PartRefused   ÊÇ·ñÓĞ²¿·Ö¾Ü³®
+    ç§æœ‰å‡½æ•°ï¼šç”¨æˆ·æ”¾é’è¢«å—ç†çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
+    å‚æ•°ï¼š
+      TotalItems    å—ç†çš„é’ç¥¨å¼ æ•°
+      PartRefused   æ˜¯å¦æœ‰éƒ¨åˆ†æ‹’é’
    */
   this.onCashAccepted = function(TotalItems, PartRefused)
   {
-	top.journalPrinter.addCashJournalWithTime("³®Æ±ÒÑÊÜÀí Cash Accepted (PartRefused)£º"+PartRefused +" TotalItems:"+TotalItems, false);
-    // Í£Ö¹´æ¿î³¬Ê±±£»¤
+	top.journalPrinter.addCashJournalWithTime("é’ç¥¨å·²å—ç† Cash Accepted (PartRefused)ï¼š"+PartRefused +" TotalItems:"+TotalItems, false);
+    // åœæ­¢å­˜æ¬¾è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
     
     top.pool.set("strTotalItems", TotalItems);
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
     //var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "Cash Accepted" +
       //(PartRefused ? "(PartRefused)" : "") + top.jrn.strLineFeed;
     //top.journalPrinter.addCashJournalWithTime(strJrn,false);
@@ -269,15 +269,15 @@ function Deposit()
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºµÈ´ıÓÃ»§·Å³®³¬Ê±µÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šç­‰å¾…ç”¨æˆ·æ”¾é’è¶…æ—¶çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onTimeout_Ac = function()
   {
-	top.journalPrinter.addCashJournalWithTime("·Å³®³¬Ê± onTimeout_Ac", false);	  
-    // Í£Ö¹´æ¿î³¬Ê±±£»¤
+	top.journalPrinter.addCashJournalWithTime("æ”¾é’è¶…æ—¶ onTimeout_Ac", false);	  
+    // åœæ­¢å­˜æ¬¾è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
 
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
    // var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "Accept:User Timeout" + top.jrn.strLineFeed;
    // top.journalPrinter.addCashJournalWithTime(strJrn,true);
 
@@ -286,30 +286,30 @@ function Deposit()
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºÓÃ»§·Å³®¾ÍĞ÷µÈ´ıÑé³®µÄ´¦Àíº¯Êı
-    ²ÎÊı£º
-      event2IdCash    Ñé³®Ç°µÄÊÂ¼ş
+    ç§æœ‰å‡½æ•°ï¼šç”¨æˆ·æ”¾é’å°±ç»ªç­‰å¾…éªŒé’çš„å¤„ç†å‡½æ•°
+    å‚æ•°ï¼š
+      event2IdCash    éªŒé’å‰çš„äº‹ä»¶
    */
   this.iEvent2IdCash;
   this.onIndentifyCash = function(event2IdCash)
   {
-	try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
-	try{top.cashguidelights.setCashAcceptorLight("OFF");}catch(e){} //½ø³®¿ÚµÆ
+	try{top.cashguidelights.setCashDispenLight("OFF");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯
+	try{top.cashguidelights.setCashAcceptorLight("OFF");}catch(e){} //è¿›é’å£ç¯
     top.deposit.iEvent2IdCash = event2IdCash;
     top.serviceCtrl.startFlowCtrlTimeout(function(){top.deposit.onIndentifyCash_func();}, 1*1000);
   }
   
   this.onIndentifyCash_func = function()
   {
-	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 ¼ÇÂ¼³®ÏäĞÅÏ¢
+	top.journalPrinter.addCashJournalWithTime(new top.CashBoxCheck().getCashBoxRecord(),false);//2018-1-18 è®°å½•é’ç®±ä¿¡æ¯
     var lais = top.YHAXCashAcceptor.LastAcceptItems;
     top.deposit.iAmount = top.deposit.getLaisValidAmount(lais, top.deposit.strCurrency);
-    top.journalPrinter.addCashJournalWithTime("Ñé³®Íê³É onIndentifyCash Ñé³®×Ü½ğ¶îÎª " + top.deposit.iAmount + ".00 Ôª ", false);	
+    top.journalPrinter.addCashJournalWithTime("éªŒé’å®Œæˆ onIndentifyCash éªŒé’æ€»é‡‘é¢ä¸º " + top.deposit.iAmount + ".00 å…ƒ ", false);	
     if (typeof(top.MainFrame.onIndentifyCash) == "function")
 //      top.MainFrame.onIndentifyCash(lais, top.deposit.iEvent2IdCash);
       top.MainFrame.onIndentifyCash(lais, top.deposit.iAmount);
 
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
     if (!top.deposit.isNoCash(lais))
     {
      // var strJrn = "IdentifyCash:" + top.deposit.getLaisDetailStr(lais) + top.jrn.strLineFeed;
@@ -323,23 +323,23 @@ function Deposit()
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºµÈ´ıÓÃ»§·Å³®Ê±Ó²¼ş¹ÊÕÏµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šç­‰å¾…ç”¨æˆ·æ”¾é’æ—¶ç¡¬ä»¶æ•…éšœçš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onDeviceError_Ac = function()
   {
-	top.journalPrinter.addCashJournalWithTime("Ó²¼ş¹ÊÕÏ onDeviceError_Ac", false);	
-    // Í£Ö¹´æ¿î³¬Ê±±£»¤
+	top.journalPrinter.addCashJournalWithTime("ç¡¬ä»¶æ•…éšœ onDeviceError_Ac", false);	
+    // åœæ­¢å­˜æ¬¾è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
 
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
   //  var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "Accept:Device Error" + top.deposit.getLastAcceptNumDesc() + top.jrn.strLineFeed;
    // top.jrn.appendJournal(strJrn);
 
     top.deposit.CimEnr.clearAll();
-    // ±È½Ï´æ¿î¿ªÊ¼µÄÊ±¼ä
+    // æ¯”è¾ƒå­˜æ¬¾å¼€å§‹çš„æ—¶é—´
 //    var msFromDepStart = new Date().getTime() - top.deposit.dtDepositStart.getTime();
 //    
-//    // Èç¹û´Ó´æ¿î¿ªÊ¼µ½¹ÊÕÏÊ±Ê±¼ä³¬¹ı20·ÖÖÓ£¬ÔòÖ±½ÓÍË³öËùÓĞÁ÷³Ì£¬·ÀÖ¹µ±Ç°¿Í»§ÒÑÀë¿ªµ¼ÖÂ·çÏÕ
+//    // å¦‚æœä»å­˜æ¬¾å¼€å§‹åˆ°æ•…éšœæ—¶æ—¶é—´è¶…è¿‡20åˆ†é’Ÿï¼Œåˆ™ç›´æ¥é€€å‡ºæ‰€æœ‰æµç¨‹ï¼Œé˜²æ­¢å½“å‰å®¢æˆ·å·²ç¦»å¼€å¯¼è‡´é£é™©
 //    if (msFromDepStart >= 20*60*1000)
 //    {
 //	  var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "Accept:Device Error 20m"  + top.jrn.strLineFeed;
@@ -350,9 +350,9 @@ function Deposit()
 
     if (typeof(top.MainFrame.onDeviceError_Ac) == "function")
     {
-      // Í£Ö¹ÏÔÊ¾Çë·Å³®ÌáÊ¾µÄÑÓÊ±¼ÆÊ±£¬±ÜÃâÏÔÊ¾Òì³£¡£
+      // åœæ­¢æ˜¾ç¤ºè¯·æ”¾é’æç¤ºçš„å»¶æ—¶è®¡æ—¶ï¼Œé¿å…æ˜¾ç¤ºå¼‚å¸¸ã€‚
       top.serviceCtrl.stopUserTimeout();
-      // ÏÔÊ¾´æ¿î·şÎñÕıÔÚÈ¡ÏûÌáÊ¾£¬Í¬Ê±±ÜÃâÕıÔÚ´¦Àí³¬Ê±¼ÆÊ±µ½´ïÒıÆğÁ÷³ÌÖĞÖ¹¡£
+      // æ˜¾ç¤ºå­˜æ¬¾æœåŠ¡æ­£åœ¨å–æ¶ˆæç¤ºï¼ŒåŒæ—¶é¿å…æ­£åœ¨å¤„ç†è¶…æ—¶è®¡æ—¶åˆ°è¾¾å¼•èµ·æµç¨‹ä¸­æ­¢ã€‚
 //      top.wins.showProcessingTip(top.langcur.oDepCancelling);
 //      top.serviceCtrl.startFlowCtrlTimeout(function(){top.MainFrame.onDeviceError_Ac();}, 30*1000);
       top.MainFrame.onDeviceError_Ac();
@@ -360,23 +360,23 @@ function Deposit()
   }
 
   /*
-    Ë½ÓĞº¯Êı£º´æ¿î»òÍË¾Ü³®Ê±Ó²¼ş¹ÊÕÏ£¬³¢ÊÔÍË³®Ê§°Üºó¸´Î»Ê§°ÜµÄ»Øµ÷º¯Êı¡£
+    ç§æœ‰å‡½æ•°ï¼šå­˜æ¬¾æˆ–é€€æ‹’é’æ—¶ç¡¬ä»¶æ•…éšœï¼Œå°è¯•é€€é’å¤±è´¥åå¤ä½å¤±è´¥çš„å›è°ƒå‡½æ•°ã€‚
    */
   this.onReset4AcAndEjrErr_DeviceError = function()
   {
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
     //var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "Reset(EJECT): DeviceError" + top.jrn.strLineFeed;
    // top.journalPrinter.addCashJournalWithTime(strJrn,true);
 
-    // ºóĞø¿ÉÄÜ»¹»á³öCashTakenÊÂ¼ş
+    // åç»­å¯èƒ½è¿˜ä¼šå‡ºCashTakenäº‹ä»¶
   }
 
   /*
-    Ë½ÓĞº¯Êı£º×¼±¸´æ¿îÊ±Ó²¼ş¹ÊÕÏ£¬¸´Î»³¢ÊÔ»Ö¸´½áÊøµÄ»Øµ÷º¯Êı¡£
+    ç§æœ‰å‡½æ•°ï¼šå‡†å¤‡å­˜æ¬¾æ—¶ç¡¬ä»¶æ•…éšœï¼Œå¤ä½å°è¯•æ¢å¤ç»“æŸçš„å›è°ƒå‡½æ•°ã€‚
    */
   this.onResetEnd4PrepareErrAc = function()
   {
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
     //var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "CIM: Reset For Prepare Error!" + top.jrn.strLineFeed;
     //top.journalPrinter.addCashJournalWithTime(strJrn,true);
 
@@ -384,24 +384,24 @@ function Deposit()
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºÓÃ»§·Å³®ºó·¢ÏÖÈ«²¿¾Ü³®µÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šç”¨æˆ·æ”¾é’åå‘ç°å…¨éƒ¨æ‹’é’çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onCashRefused_All = function()
   {
-	top.journalPrinter.addCashJournalWithTime("ÓĞ¾Ü³® onCashRefused_All", false);	  
-    // Í£Ö¹´æ¿î³¬Ê±±£»¤
+	top.journalPrinter.addCashJournalWithTime("æœ‰æ‹’é’ onCashRefused_All", false);	  
+    // åœæ­¢å­˜æ¬¾è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
     top.pool.set("strTotalItems", "");
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
    // var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "Accept:Cash Refused" + top.jrn.strLineFeed;
    // top.journalPrinter.addCashJournalWithTime(strJrn,false);
     top.deposit.onCashRefused();
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºÓÃ»§·Å³®ºó·¢ÏÖ¾Ü³®µÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
-	RefusedCashEjected £¬RefusedCashEjected then CashTaken£¬RefusedCashEjected then Timeout£¬
-	RefusedCashEjected then DeviceError£¬DeviceError
+    ç§æœ‰å‡½æ•°ï¼šç”¨æˆ·æ”¾é’åå‘ç°æ‹’é’çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
+	RefusedCashEjected ï¼ŒRefusedCashEjected then CashTakenï¼ŒRefusedCashEjected then Timeoutï¼Œ
+	RefusedCashEjected then DeviceErrorï¼ŒDeviceError
    */
   this.dtOnRefusedCash;
   this.onCashRefused = function()
@@ -410,26 +410,26 @@ function Deposit()
     top.deposit.CimEnr.appendEvent("RefusedCashEjected", top.deposit.onRefusedCashEjected);
     top.deposit.CimEnr.appendEvent("CashTaken", top.deposit.onCashTaken_Ejr);
 
-    // ¼ÇÂ¼·¢ÏÖ¾Ü³®µÄÊ±¼ä
+    // è®°å½•å‘ç°æ‹’é’çš„æ—¶é—´
     top.deposit.dtOnRefusedCash = new Date();
 
     top.deposit.CimEnr.appendEvent("DeviceError", top.deposit.onDeviceError_Ejr);
 //    var iEjectRefuseCashRet = top.YHAXCashAcceptor.EjectRefusedCash(top.deposit.iEjectCashTimeout);
  
-    try{top.cashguidelights.setCashDispenLight("MEDIUM");}catch(e){} //³ö³®¿ÚµÆ&¾Ü³®¿ÚµÆ
-    // ´æ¿îÍË¾Ü³®³¬Ê±±£»¤
+    try{top.cashguidelights.setCashDispenLight("MEDIUM");}catch(e){} //å‡ºé’å£ç¯&æ‹’é’å£ç¯
+    // å­˜æ¬¾é€€æ‹’é’è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.startFlowCtrlTimeout(function(){top.deposit.onCashTaken_Ejr();}, 10*1000);
   }
 
   /*
-    Ë½ÓĞº¯Êı£º¾Ü³®ÒÑ¾­±»ÍË³öµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šæ‹’é’å·²ç»è¢«é€€å‡ºçš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onRefusedCashEjected = function()
   {
   
-    // ÕâÊ±²»ÄÜÍ£Ö¹´æ¿îÍË¾Ü³®³¬Ê±±£»¤
+    // è¿™æ—¶ä¸èƒ½åœæ­¢å­˜æ¬¾é€€æ‹’é’è¶…æ—¶ä¿æŠ¤
 
-    // ¾Ü³®ÕÅÊı
+    // æ‹’é’å¼ æ•°
     var strNumOfRefusedDesc = "";
     try
     {
@@ -437,8 +437,8 @@ function Deposit()
         strNumOfRefusedDesc = "(RefusedNum:" + top.YHAXCashAcceptor.NumOfRefused + ")";
     } catch(e){}
     
-    top.journalPrinter.addCashJournalWithTime("ÍË¾Ü³® onRefusedCashEjected "+strNumOfRefusedDesc, false);
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    top.journalPrinter.addCashJournalWithTime("é€€æ‹’é’ onRefusedCashEjected "+strNumOfRefusedDesc, false);
+    // è®°å½•ç»ˆç«¯æµæ°´
    // var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "Refused Cash Ejected" + strNumOfRefusedDesc + top.jrn.strLineFeed;
     //top.journalPrinter.addCashJournalWithTime(strJrn,false);
 
@@ -447,15 +447,15 @@ function Deposit()
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºÍË³öµÄ¾Ü³®ÒÑ¾­±»ÓÃ»§È¡×ßµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šé€€å‡ºçš„æ‹’é’å·²ç»è¢«ç”¨æˆ·å–èµ°çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onCashTaken_Ejr = function()
   {
-	top.journalPrinter.addCashJournalWithTime("¾Ü³®È¡×ß onCashTaken_Ejr", false);	
-    // Í£Ö¹´æ¿îÍË¾Ü³®³¬Ê±±£»¤
+	top.journalPrinter.addCashJournalWithTime("æ‹’é’å–èµ° onCashTaken_Ejr", false);	
+    // åœæ­¢å­˜æ¬¾é€€æ‹’é’è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
 
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
     //var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "Refused Cash Taken" + top.jrn.strLineFeed;
     //top.journalPrinter.addCashJournalWithTime(strJrn,false);
 
@@ -467,15 +467,15 @@ function Deposit()
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºÍË¾Ü³®Ê±Ó²¼ş¹ÊÕÏµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šé€€æ‹’é’æ—¶ç¡¬ä»¶æ•…éšœçš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onDeviceError_Ejr = function()
   {
-	top.journalPrinter.addCashJournalWithTime("ÍË¾Ü³®¹ÊÕÏ onDeviceError_Ejr", false);	  
-    // Í£Ö¹´æ¿îÍË¾Ü³®³¬Ê±±£»¤
+	top.journalPrinter.addCashJournalWithTime("é€€æ‹’é’æ•…éšœ onDeviceError_Ejr", false);	  
+    // åœæ­¢å­˜æ¬¾é€€æ‹’é’è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
 
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
     //var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "EjectRefusedCash:Device Error" + top.deposit.getLastAcceptNumDesc() + top.jrn.strLineFeed;
     //top.journalPrinter.addCashJournalWithTime(strJrn,false);
 
@@ -488,8 +488,8 @@ function Deposit()
   }
 
   /*
-   ÔÚ´æ¿î¶¯×÷Íê³ÉÖ®Ç°£¬È¡Ïû´æ¿î
-  MainFrameÌá¹©»Øµ÷º¯Êı£º
+   åœ¨å­˜æ¬¾åŠ¨ä½œå®Œæˆä¹‹å‰ï¼Œå–æ¶ˆå­˜æ¬¾
+  MainFrameæä¾›å›è°ƒå‡½æ•°ï¼š
   onCashAcceptCancelled();
   */
   this.CancelAcceptCash = function()
@@ -515,8 +515,8 @@ function Deposit()
   }
   
   /*
-    ½«EscrowÖĞµÄ³®Æ±´æÈë³®Ïä
-    MainFrameÌá¹©»Øµ÷º¯Êı£º
+    å°†Escrowä¸­çš„é’ç¥¨å­˜å…¥é’ç®±
+    MainFrameæä¾›å›è°ƒå‡½æ•°ï¼š
       onStoreEscrowedCashEnd();
    */
   this.storeEscrowedCash = function()
@@ -529,17 +529,17 @@ function Deposit()
     top.deposit.CimEnr.appendEvent("DeviceError", top.deposit.onDeviceError_Se);
     top.deposit.CimEnr.appendEvent("FatalError", top.deposit.onDeviceError_Se);
     top.deposit.CimEnr.appendEvent("CashTaken", top.deposit.onCashTaken_Se);
-    // ´æÈë³®Ïä³¬Ê±±£»¤
+    // å­˜å…¥é’ç®±è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.startFlowCtrlTimeout(function(){top.deposit.onDeviceError_Se();}, 30*1000);
     top.YHAXCashAcceptor.StoreEscrowedCash();
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºEscrowÖĞµÄ³®Æ±ÒÑ¾­±»´æÈë³®ÏäµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šEscrowä¸­çš„é’ç¥¨å·²ç»è¢«å­˜å…¥é’ç®±çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onEscrowedCashStored = function()
   {
-    // Í£Ö¹´æÈë³®Ïä³¬Ê±±£»¤
+    // åœæ­¢å­˜å…¥é’ç®±è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
 
     top.journalPrinter.addCashJournalWithTime("Escrowed Cash Stored" ,false);
@@ -552,16 +552,16 @@ function Deposit()
   }
 
   /*
-    Ë½ÓĞº¯Êı£ºEscrowÖĞµÄ³®Æ±´æÈë³®ÏäÊ±Ó²¼ş¹ÊÕÏµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šEscrowä¸­çš„é’ç¥¨å­˜å…¥é’ç®±æ—¶ç¡¬ä»¶æ•…éšœçš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onDeviceError_Se = function()
   {
-    // Í£Ö¹´æÈë³®Ïä³¬Ê±±£»¤
+    // åœæ­¢å­˜å…¥é’ç®±è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
     top.journalPrinter.addCashJournalWithTime("StoreEscrowedCash:Device Error",true);
 
     top.deposit.CimEnr.clearAll();
-    // ÑÓÊ±ÏÔÊ¾½á¹û
+    // å»¶æ—¶æ˜¾ç¤ºç»“æœ
 //    top.serviceCtrl.startFlowCtrlTimeout(function(){try{top.MainFrame.onStoreEscrowedCashEnd();}catch(e){}}, 30*1000);
     if (typeof(top.MainFrame.onDeviceError_Store) == "function")
         top.MainFrame.onDeviceError_Store();
@@ -569,15 +569,15 @@ function Deposit()
 
 
   /*
-    Ë½ÓĞº¯Êı£ºEscrowÖĞµÄ³®Æ±´æÈë³®ÏäÊ±³®Æ±±»ÓÃ»§È¡×ßµÄÊÂ¼ş»Øµ÷µÄ´¦Àíº¯Êı
+    ç§æœ‰å‡½æ•°ï¼šEscrowä¸­çš„é’ç¥¨å­˜å…¥é’ç®±æ—¶é’ç¥¨è¢«ç”¨æˆ·å–èµ°çš„äº‹ä»¶å›è°ƒçš„å¤„ç†å‡½æ•°
    */
   this.onCashTaken_Se = function()
   {
 	top.journalPrinter.addCashJournalWithTime("StoreEscrowedCash:onCashTaken_Se", false);	  
-    // Í£Ö¹´æÈë³®Ïä³¬Ê±±£»¤
+    // åœæ­¢å­˜å…¥é’ç®±è¶…æ—¶ä¿æŠ¤
     top.serviceCtrl.stopFlowCtrlTimeout();
 
-    // ¼ÇÂ¼ÖÕ¶ËÁ÷Ë®
+    // è®°å½•ç»ˆç«¯æµæ°´
   //  var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "StoreEscrowedCash:Cash Taken" + top.jrn.strLineFeed;
 	//top.journalPrinter.addCashJournalWithTime(strJrn,true);
 
@@ -588,9 +588,9 @@ function Deposit()
 
 
   /*
-    ×îºóÒ»´Î·Å³®ÒÑµã³®ÕÅÊıµÄÃèÊö¡£ÓÃÓÚÀû¶à¸»µÈ´æ¿îÉè±¸·¢Éú¹ÊÕÏÊ±£¬±ãÓÚÕÊÎñºË¶Ô¡£
-    ·µ»Ø£º
-      ×îºóÒ»´Î·Å³®ÒÑµã³®ÕÅÊıµÄÃèÊö¡£
+    æœ€åä¸€æ¬¡æ”¾é’å·²ç‚¹é’å¼ æ•°çš„æè¿°ã€‚ç”¨äºåˆ©å¤šå¯Œç­‰å­˜æ¬¾è®¾å¤‡å‘ç”Ÿæ•…éšœæ—¶ï¼Œä¾¿äºå¸åŠ¡æ ¸å¯¹ã€‚
+    è¿”å›ï¼š
+      æœ€åä¸€æ¬¡æ”¾é’å·²ç‚¹é’å¼ æ•°çš„æè¿°ã€‚
    */
   this.getLastAcceptNumDesc = function()
   {
@@ -607,11 +607,11 @@ function Deposit()
   }
 
   /*
-    µÃµ½Ñé³®µÄ½á¹ûÖĞ³®Æ±×ÜÕÅÊı
-    ²ÎÊı£º
-      lais Ñé³®½á¹û£¬LastAcceptItems(LastAcceptItemµÄ¼¯ºÏ)
-    ·µ»Ø£º
-      ³®Æ±×ÜÕÅÊı
+    å¾—åˆ°éªŒé’çš„ç»“æœä¸­é’ç¥¨æ€»å¼ æ•°
+    å‚æ•°ï¼š
+      lais éªŒé’ç»“æœï¼ŒLastAcceptItems(LastAcceptItemçš„é›†åˆ)
+    è¿”å›ï¼š
+      é’ç¥¨æ€»å¼ æ•°
    */
   this.getLaisCountTotal = function(lais)
   {
@@ -622,12 +622,12 @@ function Deposit()
   }
 
   /*
-    µÃµ½Ñé³®µÄ½á¹ûÖĞÓĞĞ§µÄ³®Æ±×ÜÕÅÊı
-    ²ÎÊı£º
-      lais      Ñé³®½á¹û£¬LastAcceptItems(LastAcceptItemµÄ¼¯ºÏ)
-      currency  ÓĞĞ§µÄ±ÒÖÖ
-    ·µ»Ø£º
-      ÓĞĞ§µÄ³®Æ±×ÜÕÅÊı
+    å¾—åˆ°éªŒé’çš„ç»“æœä¸­æœ‰æ•ˆçš„é’ç¥¨æ€»å¼ æ•°
+    å‚æ•°ï¼š
+      lais      éªŒé’ç»“æœï¼ŒLastAcceptItems(LastAcceptItemçš„é›†åˆ)
+      currency  æœ‰æ•ˆçš„å¸ç§
+    è¿”å›ï¼š
+      æœ‰æ•ˆçš„é’ç¥¨æ€»å¼ æ•°
    */
   this.getLaisValidCountTotal = function(lais, currency)
   {
@@ -646,9 +646,9 @@ function Deposit()
   }
 
   /*
-    Ê¶±ğµÄ³®Æ±ÖĞÊÇ·ñÓĞ²»Ï£ÍûÊÜÀíµÄ£¨Èç·ÇÈËÃñ±Ò±ÒÖÖ£©
-    ²ÎÊı£º
-      lais Ñé³®½á¹û£¬LastAcceptItems(LastAcceptItemµÄ¼¯ºÏ)
+    è¯†åˆ«çš„é’ç¥¨ä¸­æ˜¯å¦æœ‰ä¸å¸Œæœ›å—ç†çš„ï¼ˆå¦‚éäººæ°‘å¸å¸ç§ï¼‰
+    å‚æ•°ï¼š
+      lais éªŒé’ç»“æœï¼ŒLastAcceptItems(LastAcceptItemçš„é›†åˆ)
    */
   this.isCashMisMatch = function(lais)
   {
@@ -656,9 +656,9 @@ function Deposit()
   }
 
   /*
-    ÊÇ·ñÎŞ¿ÉÊ¶±ğµÄ³®Æ±
-    ²ÎÊı£º
-      lais Ñé³®½á¹û£¬LastAcceptItems(LastAcceptItemµÄ¼¯ºÏ)
+    æ˜¯å¦æ— å¯è¯†åˆ«çš„é’ç¥¨
+    å‚æ•°ï¼š
+      lais éªŒé’ç»“æœï¼ŒLastAcceptItems(LastAcceptItemçš„é›†åˆ)
    */
   this.isNoCash = function(lais)
   {
@@ -666,9 +666,9 @@ function Deposit()
   }
 
   /*
-    µÃµ½Ñé³®µÄ½á¹ûÖĞÓĞĞ§µÄ³®Æ±×Ü½ğ¶î
-    ·µ»Ø£º
-      ÓĞĞ§µÄ³®Æ±×Ü½ğ¶î
+    å¾—åˆ°éªŒé’çš„ç»“æœä¸­æœ‰æ•ˆçš„é’ç¥¨æ€»é‡‘é¢
+    è¿”å›ï¼š
+      æœ‰æ•ˆçš„é’ç¥¨æ€»é‡‘é¢
    */
   this.getLaisValidAmount = function(lais, currency)
   {
@@ -687,19 +687,19 @@ function Deposit()
         && lais.item(i).Count > 0 ) {
     	if(lais.item(i).Denomination == 100){
     		top.pool.set("strY100Count", lais.item(i).Count);
-    		top.journalPrinter.addCashJournalWithTime("Ñé³® 100ÔªÆ±ÃæÕÅÊıÎª " + lais.item(i).Count + " ÕÅ ", false);
+    		top.journalPrinter.addCashJournalWithTime("éªŒé’ 100å…ƒç¥¨é¢å¼ æ•°ä¸º " + lais.item(i).Count + " å¼  ", false);
     	}else if(lais.item(i).Denomination == 50) {
     		top.pool.set("strY50Count", lais.item(i).Count);
-    		top.journalPrinter.addCashJournalWithTime("Ñé³® 50ÔªÆ±ÃæÕÅÊıÎª " + lais.item(i).Count + " ÕÅ ", false);
+    		top.journalPrinter.addCashJournalWithTime("éªŒé’ 50å…ƒç¥¨é¢å¼ æ•°ä¸º " + lais.item(i).Count + " å¼  ", false);
     	}else if(lais.item(i).Denomination == 20) {
     		top.pool.set("strY20Count", lais.item(i).Count);
-    		top.journalPrinter.addCashJournalWithTime("Ñé³® 20ÔªÆ±ÃæÕÅÊıÎª " + lais.item(i).Count + " ÕÅ ", false);
+    		top.journalPrinter.addCashJournalWithTime("éªŒé’ 20å…ƒç¥¨é¢å¼ æ•°ä¸º " + lais.item(i).Count + " å¼  ", false);
     	}else if(lais.item(i).Denomination == 10) {
     		top.pool.set("strY10Count", lais.item(i).Count);
-    		top.journalPrinter.addCashJournalWithTime("Ñé³® 10ÔªÆ±ÃæÕÅÊıÎª " + lais.item(i).Count + " ÕÅ ", false);
+    		top.journalPrinter.addCashJournalWithTime("éªŒé’ 10å…ƒç¥¨é¢å¼ æ•°ä¸º " + lais.item(i).Count + " å¼  ", false);
     	}else if(lais.item(i).Denomination == 5) {
     		top.pool.set("strY5Count", lais.item(i).Count);
-    		top.journalPrinter.addCashJournalWithTime("Ñé³® 5ÔªÆ±ÃæÕÅÊıÎª " + lais.item(i).Count + " ÕÅ ", false);
+    		top.journalPrinter.addCashJournalWithTime("éªŒé’ 5å…ƒç¥¨é¢å¼ æ•°ä¸º " + lais.item(i).Count + " å¼  ", false);
     	}
     	amount += lais.item(i).Count*lais.item(i).Denomination;
       }
@@ -708,15 +708,15 @@ function Deposit()
   }
 
   /*
-    µÃµ½Ñé³®µÄ½á¹ûÖĞÓĞĞ§µÄ³®Æ±Ãæ¶îÓëÕÅÊıÊı×é
-    ²ÎÊı£º
-      lais      Ñé³®½á¹û£¬LastAcceptItems(LastAcceptItemµÄ¼¯ºÏ)
-      currency  ÓĞĞ§µÄ±ÒÖÖ
-    ·µ»Ø£º
-      ÓĞĞ§µÄ³®Æ±Ãæ¶îÓëÕÅÊıÊı×é
-    ×¢£º
-      ·µ»ØµÄÊı×é£¬ÒÔÃæ¶îÎªÏÂ±ê£¬ÕÅÊıÎªÖµ
-      Ãæ¶î´Ó1ÖÁ100£¬µ±Ä³Ãæ¶îµÄ³®Æ±²»´æÔÚÊ±£¬ÆäÖµÎªnull
+    å¾—åˆ°éªŒé’çš„ç»“æœä¸­æœ‰æ•ˆçš„é’ç¥¨é¢é¢ä¸å¼ æ•°æ•°ç»„
+    å‚æ•°ï¼š
+      lais      éªŒé’ç»“æœï¼ŒLastAcceptItems(LastAcceptItemçš„é›†åˆ)
+      currency  æœ‰æ•ˆçš„å¸ç§
+    è¿”å›ï¼š
+      æœ‰æ•ˆçš„é’ç¥¨é¢é¢ä¸å¼ æ•°æ•°ç»„
+    æ³¨ï¼š
+      è¿”å›çš„æ•°ç»„ï¼Œä»¥é¢é¢ä¸ºä¸‹æ ‡ï¼Œå¼ æ•°ä¸ºå€¼
+      é¢é¢ä»1è‡³100ï¼Œå½“æŸé¢é¢çš„é’ç¥¨ä¸å­˜åœ¨æ—¶ï¼Œå…¶å€¼ä¸ºnull
    */
   this.getLaisValidItems = function(lais, currency)
   {
@@ -740,11 +740,11 @@ function Deposit()
   }
 
   /*
-    µÃµ½Ñé³®µÄ½á¹ûµÄÏêÏ¸×Ö·û´®ÃèÊö
-    ²ÎÊı£º
-      lais      Ñé³®½á¹û£¬LastAcceptItems(LastAcceptItemµÄ¼¯ºÏ)
-    ·µ»Ø£º
-      ÏêÏ¸ÃèÊö×Ö·û´®
+    å¾—åˆ°éªŒé’çš„ç»“æœçš„è¯¦ç»†å­—ç¬¦ä¸²æè¿°
+    å‚æ•°ï¼š
+      lais      éªŒé’ç»“æœï¼ŒLastAcceptItems(LastAcceptItemçš„é›†åˆ)
+    è¿”å›ï¼š
+      è¯¦ç»†æè¿°å­—ç¬¦ä¸²
    */
   this.getLaisDetailStr = function(lais)
   {
@@ -760,9 +760,9 @@ function Deposit()
   }
 
   /*
-¡¡¡¡ »ñÈ¡³®ÏäĞÅÏ¢µÄÃèÊö£¨ÓÃÓÚÁ÷Ë®¼ÇÂ¼£©
-    ·µ»Ø£º
-      ³®ÏäĞÅÏ¢µÄÃèÊö×Ö·û´®
+ã€€ã€€ è·å–é’ç®±ä¿¡æ¯çš„æè¿°ï¼ˆç”¨äºæµæ°´è®°å½•ï¼‰
+    è¿”å›ï¼š
+      é’ç®±ä¿¡æ¯çš„æè¿°å­—ç¬¦ä¸²
    */
   this.getCassUnitInfo = function()
   {
@@ -781,9 +781,9 @@ function Deposit()
   }
 
   /*
- ¡¡ »ñÈ¡³®ÏäÕÅÊı»ã×Ü
-    ·µ»Ø£º
-      ³®ÏäÕÅÊı»ã×Ü
+ ã€€ è·å–é’ç®±å¼ æ•°æ±‡æ€»
+    è¿”å›ï¼š
+      é’ç®±å¼ æ•°æ±‡æ€»
    */
   this.getAllCUTotal = function()
   {
@@ -798,24 +798,24 @@ function Deposit()
   }
   
   /*
-   ¹ØÃÅ
+   å…³é—¨
    */
   this.CloseShutter = function()
   {
 	    top.deposit.CimEnr.clearAll();
 	    top.deposit.CimEnr.appendEvent("ShutterClosed ", top.deposit.onShutterClosed);
 	    top.deposit.CimEnr.appendEvent("DeviceError", top.deposit.onAcShutterNotClosed);
-	    //¹ØÃÅ³¬Ê±
+	    //å…³é—¨è¶…æ—¶
 	    //top.serviceCtrl.startFlowCtrlTimeout(function(){top.deposit.onDeviceError_Se();}, 30*1000);
 	    top.YHAXCashAcceptor.CloseShutter();	  
   }
   
   /*
-       Ë½ÓĞº¯Êı£º¹ØÃÅ³É¹¦
+       ç§æœ‰å‡½æ•°ï¼šå…³é—¨æˆåŠŸ
  */
   this.onShutterClosed = function()
   {
-	  top.journalPrinter.addCashJournalWithTime("¹ØÃÅ³É¹¦:onShutterClosed", false);	  
+	  top.journalPrinter.addCashJournalWithTime("å…³é—¨æˆåŠŸ:onShutterClosed", false);	  
 	  top.serviceCtrl.stopFlowCtrlTimeout();
 
 	//var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "onShutterClosed" + top.jrn.strLineFeed;
@@ -827,11 +827,11 @@ function Deposit()
    }  
 
   /*
-	  Ë½ÓĞº¯Êı:¹ØÃÅÉè±¸¹ÊÕÏ
+	  ç§æœ‰å‡½æ•°:å…³é—¨è®¾å¤‡æ•…éšœ
 	*/
    this.onAcShutterNotClosed = function()
    {
-	 top.journalPrinter.addCashJournalWithTime("¹ØÃÅ¹ÊÕÏ:onAcShutterNotClosed", false);	   
+	 top.journalPrinter.addCashJournalWithTime("å…³é—¨æ•…éšœ:onAcShutterNotClosed", false);	   
 	 top.serviceCtrl.stopFlowCtrlTimeout();
 	
 	//var strJrn = new top.DateTimeCtrl().getHHmmSSWithSep() + " " + "onAcShutterNotClosed" + top.jrn.strLineFeed;
